@@ -154,3 +154,34 @@ class Resolution(Base):
     )
     resolved_at = Column(DateTime, default=datetime.utcnow)
     submitted_at = Column(DateTime, default=datetime.utcnow)
+
+class SignalProblem(Base):
+    __tablename__ = "signal_problems"
+
+    id = Column(String, primary_key=True)  # e.g. "SIG-001"
+    title = Column(String(500), nullable=False)
+    severity = Column(String(50), nullable=False)  # Critical, High, Medium, Low
+    category = Column(String(200), nullable=False)
+    location = Column(String(300))
+    detected_at = Column(String(50))
+    description = Column(Text)
+    risk_score = Column(Float, default=0.0)
+    source = Column(String(300))
+    status = Column(String(50), default="Pending")  # "Pending" or "Problem Resolved"
+
+
+class SystemMetric(Base):
+    __tablename__ = "system_metrics"
+
+    id = Column(String, primary_key=True)  # e.g. "SYS-001"
+    subsystem_name = Column(String(300), nullable=False)
+    metric_type = Column(String(100), nullable=False)  # CPU, Memory, Latency, etc.
+    status = Column(String(50), default="Healthy")  # Healthy, Warning, Critical, Degraded
+    current_value = Column(Float, default=0.0)
+    threshold_value = Column(Float, default=0.0)
+    unit = Column(String(30), default="%")
+    location = Column(String(300))
+    ai_diagnosis = Column(Text, default="")
+    ai_recommendation = Column(Text, default="")
+    last_checked_at = Column(String(50))
+    trend = Column(String(50), default="Stable")  # Improving, Stable, Degrading

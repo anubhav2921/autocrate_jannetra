@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import {
     CheckCircle2, MapPin, Building2, Users, Send, Clock, Award,
+    Circle, AlertTriangle, Radio, Zap,
 } from 'lucide-react';
 
 const CATEGORIES = ['Water', 'Infrastructure', 'Healthcare', 'Education', 'Law & Order', 'Corruption', 'Environment', 'Housing', 'Sanitation', 'Transport'];
@@ -13,6 +14,7 @@ const LOCATIONS = [
 
 export default function Resolutions({ user }) {
     const [resolutions, setResolutions] = useState([]);
+    const [signalProblems, setSignalProblems] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -25,9 +27,14 @@ export default function Resolutions({ user }) {
     const update = (field, value) => setForm({ ...form, [field]: value });
 
     useEffect(() => {
-        fetch('/api/resolutions')
-            .then((r) => r.json())
-            .then((data) => setResolutions(data.resolutions || []))
+        Promise.all([
+            fetch('/api/resolutions').then((r) => r.json()),
+            fetch('/api/signal-problems').then((r) => r.json()),
+        ])
+            .then(([resData, sigData]) => {
+                setResolutions(resData.resolutions || []);
+                setSignalProblems(sigData || []);
+            })
             .catch(console.error)
             .finally(() => setLoading(false));
     }, []);
@@ -194,6 +201,51 @@ export default function Resolutions({ user }) {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* Signal Problem Status Showcase */}
+            {signalProblems.length > 0 && (
+                <div className="glass-card animate-in" style={{ marginBottom: '24px' }}>
+                    <div className="section-title" style={{ marginBottom: '16px' }}>
+                        <Radio size={18} /> Signal Problem Status
+                    </div>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                        {signalProblems.map((sp) => {
+                            const isResolved = sp.status === 'Problem Resolved';
+                            return (
+                                <div key={sp.id} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: '12px 16px', borderRadius: '10px',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '1px solid var(--border-color)',
+                                    transition: 'all 0.2s ease',
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                        <span style={{
+                                            fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)',
+                                            background: 'rgba(59,130,246,0.1)', padding: '3px 8px', borderRadius: '4px',
+                                            minWidth: '60px', textAlign: 'center',
+                                        }}>{sp.id}</span>
+                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                                            {sp.title}
+                                        </span>
+                                    </div>
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                        padding: '5px 14px', borderRadius: '20px', fontSize: '0.75rem',
+                                        fontWeight: 700, whiteSpace: 'nowrap',
+                                        background: isResolved ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+                                        color: isResolved ? '#10b981' : '#f59e0b',
+                                        border: `1px solid ${isResolved ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)'}`,
+                                    }}>
+                                        {isResolved ? <CheckCircle2 size={12} /> : <Circle size={12} />}
+                                        {isResolved ? 'Problem Resolved' : 'Pending'}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
+import SplashScreen from './components/SplashScreen';
 import Dashboard from './pages/Dashboard';
 import Articles from './pages/Articles';
 import Alerts from './pages/Alerts';
@@ -13,11 +14,17 @@ import Account from './pages/Account';
 import Leaderboard from './pages/Leaderboard';
 import Chatbot from './pages/Chatbot';
 import Scanner from './pages/Scanner';
+import SignalMonitor from './pages/SignalMonitor';
+import ProblemDetail from './pages/ProblemDetail';
+import SystemMonitoring from './pages/SystemMonitoring';
+import SystemMetricDetail from './pages/SystemMetricDetail';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import LandingPage from './pages/LandingPage';
 
 export default function App() {
     const [user, setUser] = useState(null);
+    const [showSplash, setShowSplash] = useState(true);
 
     useEffect(() => {
         const saved = localStorage.getItem('user');
@@ -32,12 +39,17 @@ export default function App() {
         setUser(null);
     };
 
+    if (showSplash) {
+        return <SplashScreen onComplete={() => setShowSplash(false)} />;
+    }
+
     if (!user) {
         return (
             <BrowserRouter>
                 <Routes>
+                    <Route path="/login" element={<Login onLogin={handleLogin} />} />
                     <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
-                    <Route path="*" element={<Login onLogin={handleLogin} />} />
+                    <Route path="*" element={<LandingPage />} />
                 </Routes>
             </BrowserRouter>
         );
@@ -60,6 +72,10 @@ export default function App() {
                         <Route path="/leaderboard" element={<Leaderboard />} />
                         <Route path="/chatbot" element={<Chatbot />} />
                         <Route path="/scanner" element={<Scanner />} />
+                        <Route path="/signal-monitor" element={<SignalMonitor />} />
+                        <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
+                        <Route path="/system-monitoring" element={<SystemMonitoring />} />
+                        <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
                         <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
@@ -68,3 +84,4 @@ export default function App() {
         </BrowserRouter>
     );
 }
+

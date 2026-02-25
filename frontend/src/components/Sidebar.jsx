@@ -1,16 +1,17 @@
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe, Shield,
-    LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan,
+    LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan, Activity,
 } from 'lucide-react';
 
 const navLinks = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/articles', label: 'Signal Monitor', icon: FileText },
+    { path: '/signal-monitor', label: 'Signal Monitor', icon: FileText },
     { path: '/alerts', label: 'Alerts & Actions', icon: AlertTriangle },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/map', label: 'Problem Map', icon: Map },
     { path: '/scanner', label: 'Social Scanner', icon: Scan },
+    { path: '/system-monitoring', label: 'System Health', icon: Activity },
     { path: '/chatbot', label: 'AI Assistant', icon: Bot },
     { path: '/sources', label: 'Source Registry', icon: Globe },
     { path: '/resolutions', label: 'Resolved Issues', icon: CheckSquare },

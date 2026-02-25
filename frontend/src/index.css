@@ -893,6 +893,10 @@ a:hover {
   }
 }
 
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .grid-2 {
