@@ -1,4 +1,4 @@
-# Python
+# ── Python ────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -10,25 +10,38 @@ env/
 dist/
 build/
 
-# Node
+# ── Node ──────────────────────────────────────────────────
 node_modules/
 npm-debug.log*
 
-# IDE
+# ── IDE ───────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# ── OS ────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# Environment variables
+# ── Secrets (NEVER commit) ───────────────────────────────
 .env
 .env.local
 .env.*.local
+.env.production
 
-# Miscellaneous
+# ── Firebase (NEVER commit) ──────────────────────────────
+serviceAccountKey.json
+
+# ── Database ─────────────────────────────────────────────
+*.db
+
+# ── Logs & temp ──────────────────────────────────────────
 *.log
 *.resolved
+*.txt
+!requirements.txt
+!README.md
+
+# ── Gemini agent ─────────────────────────────────────────
+.gemini/

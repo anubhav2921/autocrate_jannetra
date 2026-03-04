@@ -20,6 +20,7 @@ import SystemMonitoring from './pages/SystemMonitoring';
 import SystemMetricDetail from './pages/SystemMetricDetail';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
 import LandingPage from './pages/LandingPage';
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
                 <Routes>
                     <Route path="/login" element={<Login onLogin={handleLogin} />} />
                     <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
                     <Route path="*" element={<LandingPage />} />
                 </Routes>
             </BrowserRouter>

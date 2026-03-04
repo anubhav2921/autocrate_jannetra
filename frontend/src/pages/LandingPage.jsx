@@ -1,290 +1,628 @@
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Eye, Shield, Brain, BarChart3, Globe, Zap,
-    ArrowRight, ChevronRight, Sparkles, Activity,
-    Lock, Users, TrendingUp, Scan
+    Eye, Shield, Brain, Zap, ArrowRight, ChevronRight,
+    Sparkles, Lock, Users, MapPin, AlertTriangle,
+    CheckCircle2, X, Send, Database, Cpu, GitBranch, Bell,
+    ThumbsUp, ThumbsDown,
 } from 'lucide-react';
+import api from '../services/api';
 
-const FEATURES = [
+/* ─────────────────────────────────────────────────────────────
+   ReviewModal
+   Open to ALL users — no login required (anonymous verification)
+───────────────────────────────────────────────────────────── */
+function ReviewModal({ complaint, onClose, onSubmit }) {
+    const [text, setText] = useState('');
+    const [verifiedAs, setVerifiedAs] = useState('unconfirmed');
+    const [submitting, setSubmitting] = useState(false);
+    const [done, setDone] = useState(false);
+    const [error, setError] = useState('');
+
+    /* Client-side validation — minimum 20 characters */
+    const isValid = text.trim().length >= 20;
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!isValid) {
+            setError('Review must be at least 20 characters.');
+            return;
+        }
+        setError('');
+        setSubmitting(true);
+        try {
+            await onSubmit(complaint.id, text.trim(), verifiedAs);
+            setDone(true);
+            setTimeout(onClose, 1800);
+        } catch {
+            setError('Submission failed — please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="review-modal-overlay">
+            <div className="review-modal-card">
+                <button className="review-modal-close" onClick={onClose}>
+                    <X size={16} />
+                </button>
+
+                <div className="review-modal-header">
+                    <div className="review-modal-icon">
+                        <Shield size={20} />
+                    </div>
+                    <div>
+                        <p className="review-modal-title">Community Review</p>
+                        <p className="review-modal-sub">Open to all — no account required</p>
+                    </div>
+                </div>
+
+                <div className="review-complaint-preview">
+                    <p className="review-complaint-preview-title">
+                        {complaint.title || 'Untitled Complaint'}
+                    </p>
+                    <p className="review-complaint-preview-loc">
+                        <MapPin size={12} />
+                        {complaint.location || 'Unknown location'}
+                    </p>
+                    <div className="review-confidence-badge">
+                        <AlertTriangle size={11} />
+                        AI Confidence: {complaint.confidence_score ?? 'N/A'}%
+                    </div>
+                </div>
+
+                {done ? (
+                    <div className="review-success">
+                        <CheckCircle2 size={40} />
+                        <p>Review submitted — thank you!</p>
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit}>
+                        {/* Verification verdict */}
+                        <select
+                            className="filter-bar"
+                            value={verifiedAs}
+                            onChange={(e) => setVerifiedAs(e.target.value)}
+                            style={{ width: '100%', marginBottom: '10px' }}
+                        >
+                            <option value="unconfirmed">— Select your verdict —</option>
+                            <option value="real">✅ I believe this is a real issue</option>
+                            <option value="false">❌ I believe this is false / exaggerated</option>
+                            <option value="needs_more_info">🔎 Needs more information</option>
+                        </select>
+
+                        <textarea
+                            className="review-textarea"
+                            rows={4}
+                            placeholder="Describe what you observed. Min 20 characters — does this issue seem valid? Add any context…"
+                            value={text}
+                            onChange={(e) => { setText(e.target.value); setError(''); }}
+                        />
+
+                        {/* Character counter */}
+                        <p className="review-modal-sub" style={{ textAlign: 'right', marginTop: '4px' }}>
+                            {text.trim().length} / 20 min chars
+                        </p>
+
+                        {error && (
+                            <p className="auth-error" style={{ marginBottom: '10px' }}>{error}</p>
+                        )}
+
+                        <button
+                            type="submit"
+                            className="review-submit-btn"
+                            disabled={submitting || !isValid}
+                        >
+                            <Send size={15} />
+                            {submitting ? 'Submitting…' : 'Submit Review'}
+                        </button>
+                    </form>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   AlertCard
+   Displayed in the Verified Alerts section
+───────────────────────────────────────────────────────────── */
+function AlertCard({ complaint, onReview, onSupport, onMarkFalse }) {
+    const score = complaint.confidence_score ?? 0;
+    const isVerified = complaint.status === 'verified';
+
+    return (
+        <div className="alert-card-landing animate-in">
+            <div className="alert-card-landing-score">
+                {score}%
+            </div>
+
+            {isVerified && (
+                <span className="badge badge-verified">
+                    <CheckCircle2 size={10} style={{ marginRight: '4px' }} />
+                    Verified
+                </span>
+            )}
+
+            <h4 className="alert-card-landing-title">
+                {complaint.title || 'Untitled Complaint'}
+            </h4>
+            <p className="alert-card-landing-meta">
+                <MapPin size={12} />
+                {complaint.location || 'Unknown location'}
+            </p>
+
+            <div className="alert-card-landing-actions">
+                <button className="btn-verify" onClick={() => onReview(complaint)}>
+                    <Shield size={12} /> Review
+                </button>
+                <button className="btn-support" onClick={() => onSupport(complaint.id)}>
+                    <ThumbsUp size={12} /> Support
+                </button>
+                <button className="btn-false" onClick={() => onMarkFalse(complaint.id)}>
+                    <ThumbsDown size={12} /> False
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HOW IT WORKS — step data
+───────────────────────────────────────────────────────────── */
+const HOW_STEPS = [
+    {
+        icon: Database,
+        title: 'Data Collection',
+        desc: 'Civic reports from citizens, social signals, and government feeds are ingested in real-time from verified channels.',
+        colorClass: 'how-step-blue',
+        step: '01',
+    },
+    {
+        icon: Cpu,
+        title: 'AI Detection',
+        desc: 'ML models analyse each complaint, assign a confidence score, detect anomalies, and auto-flag urgent civic issues.',
+        colorClass: 'how-step-purple',
+        step: '02',
+    },
+    {
+        icon: Users,
+        title: 'Community Verification',
+        desc: 'Citizens cross-check AI findings with real observations, vote on validity, and add context that machines miss.',
+        colorClass: 'how-step-green',
+        step: '03',
+    },
+    {
+        icon: GitBranch,
+        title: 'Department Escalation',
+        desc: 'Verified issues are intelligently routed to the correct civic department — PWD, municipal body, health & more.',
+        colorClass: 'how-step-amber',
+        step: '04',
+    },
+];
+
+/* ─────────────────────────────────────────────────────────────
+   ABOUT — card data
+───────────────────────────────────────────────────────────── */
+const ABOUT_CARDS = [
     {
         icon: Brain,
-        title: 'AI-Powered Detection',
-        desc: 'Advanced machine learning models analyze governance signals in real-time to detect anomalies and risks.',
-        color: '#8b5cf6',
+        title: 'AI Detection',
+        desc: 'Machine learning models continuously scan civic signals, score confidence, and surface real issues before they escalate into crises.',
+        colorClass: 'about-card-blue',
     },
     {
-        icon: Shield,
-        title: 'Fake News Shield',
-        desc: 'Multi-layer verification system cross-references sources to identify misinformation instantly.',
-        color: '#3b82f6',
+        icon: Users,
+        title: 'Community Verification',
+        desc: 'Citizens like you cross-check AI findings with on-ground observations, vote on issue validity, and add essential context.',
+        colorClass: 'about-card-green',
     },
     {
-        icon: Activity,
-        title: 'Real-Time Monitoring',
-        desc: 'Continuous surveillance of governance metrics with instant alerts for critical changes.',
-        color: '#10b981',
-    },
-    {
-        icon: BarChart3,
-        title: 'Risk Analytics',
-        desc: 'Comprehensive risk scoring and trend analysis to predict governance challenges before they escalate.',
-        color: '#f59e0b',
-    },
-    {
-        icon: Globe,
-        title: 'Source Intelligence',
-        desc: 'Track credibility scores and accuracy ratings across all signal sources in your network.',
-        color: '#06b6d4',
-    },
-    {
-        icon: Scan,
-        title: 'Social Scanner',
-        desc: 'Deep scanning of social media channels to identify emerging governance concerns early.',
-        color: '#ef4444',
+        icon: GitBranch,
+        title: 'Department Routing',
+        desc: 'Once verified, issues are intelligently matched to the right civic body — PWD, municipal corp, health board, and more — for swift action.',
+        colorClass: 'about-card-purple',
     },
 ];
 
-const STATS = [
-    { value: '99.2%', label: 'Detection Accuracy' },
-    { value: '50K+', label: 'Signals Analyzed' },
-    { value: '<2s', label: 'Response Time' },
-    { value: '24/7', label: 'Active Monitoring' },
-];
-
+/* ─────────────────────────────────────────────────────────────
+   LandingPage — main export
+───────────────────────────────────────────────────────────── */
 export default function LandingPage() {
     const navigate = useNavigate();
 
+    /* ── state ── */
+    const [complaints, setComplaints] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [reviewTarget, setReviewTarget] = useState(null);
+
+    /* ── fetch complaints ── */
+    useEffect(() => {
+        api.get('/complaints')
+            .then((data) => {
+                const list = Array.isArray(data)
+                    ? data
+                    : (data?.complaints ?? data?.data ?? []);
+                setComplaints(list);
+            })
+            .catch(() => setComplaints([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    /* ── derived lists via useMemo ── */
+    const lowConfidenceIssues = useMemo(
+        () => complaints.filter((c) => (c.confidence_score ?? 100) < 70).slice(0, 3),
+        [complaints]
+    );
+
+    const verifiedIssues = useMemo(
+        () => complaints.filter((c) => (c.confidence_score ?? 0) >= 70 || c.status === 'verified'),
+        [complaints]
+    );
+
+    /* ── helpers ── */
+    const scrollTo = (id) =>
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+
+    /* No auth required — open modal directly for any visitor */
+    const handleReview = (complaint) => {
+        setReviewTarget(complaint);
+    };
+
+    /* Payload includes verified_as for anonymous verdict */
+    const handleSubmitReview = (complaintId, reviewText, verifiedAs) =>
+        api.post('/reviews', {
+            complaint_id: complaintId,
+            review_text: reviewText,
+            verified_as: verifiedAs,
+        });
+
+    /* Support / false — open to all, no login needed */
+    const handleSupport = async (id) => {
+        try { await api.post(`/complaints/${id}/support`); } catch { /* ignore */ }
+    };
+
+    const handleMarkFalse = async (id) => {
+        try { await api.post(`/complaints/${id}/false`); } catch { /* ignore */ }
+    };
+
+    /* ────────────────────── JSX ────────────────────── */
     return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'var(--bg-primary)',
-            color: 'var(--text-primary)',
-            fontFamily: "'Inter', system-ui, sans-serif",
-            overflow: 'hidden',
-        }}>
-            {/* ── Navbar ─── */}
-            <nav style={{
-                position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 40px',
-                background: 'rgba(10, 14, 26, 0.8)',
-                backdropFilter: 'blur(16px)',
-                borderBottom: '1px solid var(--border-color)',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Eye size={26} style={{ color: '#3b82f6' }} />
-                    <span style={{
-                        fontSize: '1.3rem', fontWeight: 800, letterSpacing: '0.08em',
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>JanNetra</span>
+        <div className="landing-root">
+
+            {/* ══════════════════════════════════════════
+                NAVBAR
+            ══════════════════════════════════════════ */}
+            <nav className="landing-nav">
+
+                {/* Logo */}
+                <button className="landing-nav-logo" onClick={() => scrollTo('hero')}>
+                    <div className="landing-nav-logo-icon">
+                        <Eye size={18} color="#fff" />
+                    </div>
+                    <span className="landing-nav-logo-text">Janmnetra</span>
+                </button>
+
+                {/* Center scroll-links — hidden on mobile via CSS */}
+                <div className="landing-nav-center">
+                    <button className="landing-nav-link" onClick={() => scrollTo('about')}>About</button>
+                    <button className="landing-nav-link" onClick={() => scrollTo('how')}>How It Works</button>
+                    <button className="landing-nav-link" onClick={() => scrollTo('alerts')}>Live Alerts</button>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => navigate('/login')} style={{
-                        padding: '9px 22px', borderRadius: '8px', fontSize: '0.85rem',
-                        fontWeight: 600, border: '1px solid var(--border-color)',
-                        background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer',
-                        transition: 'all 0.2s',
-                    }}>Sign In</button>
-                    <button onClick={() => navigate('/signup')} style={{
-                        padding: '9px 22px', borderRadius: '8px', fontSize: '0.85rem',
-                        fontWeight: 600, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                        color: '#fff', transition: 'all 0.2s',
-                    }}>Get Started</button>
+
+                {/* Auth buttons */}
+                <div className="landing-nav-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>
+                        Sign In
+                    </button>
+                    <button className="btn btn-primary btn-sm" onClick={() => navigate('/signup')}>
+                        Get Started
+                    </button>
                 </div>
             </nav>
 
-            {/* ── Hero ─── */}
-            <section style={{
-                position: 'relative', minHeight: '100vh',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                textAlign: 'center', padding: '120px 24px 80px',
-            }}>
-                {/* Ambient glow */}
-                <div style={{
-                    position: 'absolute', top: '10%', left: '50%', transform: 'translateX(-50%)',
-                    width: '800px', height: '800px', borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.04) 40%, transparent 70%)',
-                    pointerEvents: 'none',
-                }} />
+            {/* ══════════════════════════════════════════
+                HERO — Split layout
+            ══════════════════════════════════════════ */}
+            <section id="hero" className="landing-hero">
+                <div className="landing-hero-inner">
 
-                <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                    padding: '6px 16px', borderRadius: '100px', marginBottom: '24px',
-                    background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
-                    fontSize: '0.78rem', color: '#3b82f6', fontWeight: 600,
-                    letterSpacing: '0.05em', textTransform: 'uppercase',
-                }}>
-                    <Sparkles size={14} /> AI-Powered Governance Intelligence
-                </div>
-
-                <h1 style={{
-                    fontSize: 'clamp(2.8rem, 7vw, 4.5rem)',
-                    fontWeight: 800, lineHeight: 1.1, maxWidth: '800px',
-                    marginBottom: '20px',
-                }}>
-                    <span style={{
-                        background: 'linear-gradient(135deg, #fff 30%, #94a3b8)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>See What Others Miss.</span>
-                    <br />
-                    <span style={{
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>Act Before It's Too Late.</span>
-                </h1>
-
-                <p style={{
-                    fontSize: '1.1rem', color: 'var(--text-secondary)',
-                    maxWidth: '580px', lineHeight: 1.7, marginBottom: '36px',
-                }}>
-                    JanNetra harnesses artificial intelligence to monitor governance signals,
-                    detect misinformation, and deliver actionable intelligence — in real time.
-                </p>
-
-                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <button onClick={() => navigate('/signup')} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '14px 32px', borderRadius: '12px', fontSize: '0.95rem',
-                        fontWeight: 700, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #3b82f6, #7c3aed)',
-                        color: '#fff', transition: 'all 0.3s', boxShadow: '0 4px 24px rgba(59,130,246,0.3)',
-                    }}>
-                        Start Monitoring <ArrowRight size={18} />
-                    </button>
-                    <button onClick={() => navigate('/login')} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '14px 32px', borderRadius: '12px', fontSize: '0.95rem',
-                        fontWeight: 600, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--text-primary)', transition: 'all 0.3s',
-                    }}>
-                        View Dashboard <ChevronRight size={18} />
-                    </button>
-                </div>
-
-                {/* Stats strip */}
-                <div style={{
-                    display: 'flex', gap: '48px', marginTop: '80px',
-                    flexWrap: 'wrap', justifyContent: 'center',
-                }}>
-                    {STATS.map((s, i) => (
-                        <div key={i} style={{ textAlign: 'center' }}>
-                            <div style={{
-                                fontSize: '2rem', fontWeight: 800,
-                                background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-                                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                            }}>{s.value}</div>
-                            <div style={{
-                                fontSize: '0.75rem', color: 'var(--text-muted)',
-                                textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px',
-                            }}>{s.label}</div>
+                    {/* LEFT: copy + CTAs */}
+                    <div className="landing-hero-left">
+                        <div className="landing-badge">
+                            <span className="landing-badge-dot" />
+                            AI-Powered Civic Intelligence
                         </div>
-                    ))}
-                </div>
-            </section>
 
-            {/* ── Features ─── */}
-            <section style={{
-                padding: '80px 24px', maxWidth: '1200px', margin: '0 auto',
-            }}>
-                <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-                    <h2 style={{
-                        fontSize: '2.2rem', fontWeight: 800, marginBottom: '12px',
-                        background: 'linear-gradient(135deg, #fff, #94a3b8)',
-                        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                    }}>Intelligent Capabilities</h2>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
-                        Powered by advanced AI to give you complete governance visibility
-                    </p>
-                </div>
+                        <h1 className="landing-hero-title">
+                            <span className="landing-hero-title-white">Empowering Civic<br /></span>
+                            <span className="landing-hero-title-gradient">Action with AI</span>
+                        </h1>
 
-                <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                    gap: '20px',
-                }}>
-                    {FEATURES.map((f, i) => (
-                        <div key={i} className="glass-card" style={{
-                            padding: '28px', cursor: 'default',
-                            transition: 'transform 0.3s, border-color 0.3s',
-                            borderColor: 'transparent',
-                        }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translateY(-4px)';
-                                e.currentTarget.style.borderColor = `${f.color}40`;
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.borderColor = 'transparent';
-                            }}
-                        >
-                            <div style={{
-                                width: '44px', height: '44px', borderRadius: '12px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                background: `${f.color}15`, marginBottom: '16px',
-                            }}>
-                                <f.icon size={22} style={{ color: f.color }} />
+                        <p className="landing-hero-sub">
+                            Janmnetra combines <strong>advanced AI detection</strong> with{' '}
+                            <strong>community-powered verification</strong> to surface real civic
+                            issues and route them directly to the right departments — faster than
+                            ever before.
+                        </p>
+
+                        <div className="landing-hero-btns">
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => document.getElementById('alerts')?.scrollIntoView({ behavior: 'smooth' })}
+                            >
+                                Explore Live Alerts <ArrowRight size={16} />
+                            </button>
+                            <button className="btn btn-ghost" onClick={() => scrollTo('alerts')}>
+                                View Verified Alerts <ChevronRight size={16} />
+                            </button>
+                        </div>
+
+                        {/* Live mini-stats */}
+                        <div className="landing-stats-strip">
+                            <div className="landing-stat-item">
+                                <div className="landing-stat-value">
+                                    {loading ? '—' : verifiedIssues.length}
+                                </div>
+                                <div className="landing-stat-label">Verified Alerts</div>
                             </div>
-                            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '8px' }}>{f.title}</h3>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{f.desc}</p>
+                            <div className="landing-stat-item">
+                                <div className="landing-stat-value">
+                                    {loading ? '—' : lowConfidenceIssues.length}
+                                </div>
+                                <div className="landing-stat-label">Needs Review</div>
+                            </div>
+                            <div className="landing-stat-item">
+                                <div className="landing-stat-value">24/7</div>
+                                <div className="landing-stat-label">Monitoring</div>
+                            </div>
                         </div>
-                    ))}
+                    </div>
+
+                    {/* RIGHT: AI Flagged Issues panel */}
+                    <div className="landing-hero-right">
+                        <div className="flagged-panel">
+
+                            {/* Panel header */}
+                            <div className="flagged-panel-header">
+                                <div className="flagged-panel-title-row">
+                                    <div className="flagged-panel-icon">
+                                        <AlertTriangle size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="flagged-panel-title">
+                                            🚩 AI Flagged Issues
+                                        </p>
+                                        <p className="flagged-panel-sub">
+                                            Needs community verification
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="flagged-count-badge">
+                                    {loading ? '…' : lowConfidenceIssues.length} Issues
+                                </span>
+                            </div>
+
+                            {/* Issue list */}
+                            {loading ? (
+                                <div className="landing-loading">
+                                    <div className="spinner" />
+                                    Loading issues…
+                                </div>
+                            ) : lowConfidenceIssues.length === 0 ? (
+                                <div className="landing-loading">
+                                    <CheckCircle2 size={36} style={{ color: 'var(--risk-low)', marginBottom: '10px' }} />
+                                    <p>No low-confidence issues right now.</p>
+                                </div>
+                            ) : (
+                                <div className="flagged-list">
+                                    {lowConfidenceIssues.map((c) => (
+                                        <div key={c.id} className="flagged-item animate-in">
+                                            <div className="flagged-item-header">
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p className="flagged-item-title">
+                                                        {c.title || 'Untitled'}
+                                                    </p>
+                                                    <p className="flagged-item-location">
+                                                        <MapPin size={11} />
+                                                        {c.location || 'Unknown'}
+                                                    </p>
+                                                </div>
+                                                <span className="flagged-item-score">
+                                                    {c.confidence_score ?? 'N/A'}% AI
+                                                </span>
+                                            </div>
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                style={{ width: '100%' }}
+                                                onClick={() => handleReview(c)}
+                                            >
+                                                <Shield size={13} /> Verify This Issue
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Footer note — no login CTA; each card has its own Verify button */}
+                            <div className="flagged-panel-footer">
+                                <p>
+                                    No account needed — click <strong>Verify This Issue</strong> on
+                                    any card above to submit your community review instantly.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            {/* ── CTA ─── */}
-            <section style={{
-                padding: '80px 24px', textAlign: 'center',
-            }}>
-                <div className="glass-card" style={{
-                    maxWidth: '700px', margin: '0 auto', padding: '56px 40px',
-                    background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.06))',
-                    borderColor: 'rgba(59,130,246,0.15)',
-                }}>
-                    <Lock size={32} style={{ color: '#3b82f6', marginBottom: '16px' }} />
-                    <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px' }}>
-                        Ready to Secure Governance?
-                    </h2>
-                    <p style={{
-                        color: 'var(--text-secondary)', fontSize: '0.95rem',
-                        maxWidth: '450px', margin: '0 auto 28px', lineHeight: 1.7,
-                    }}>
-                        Join leaders who trust JanNetra for real-time governance intelligence and AI-powered decision support.
+            {/* ══════════════════════════════════════════
+                ABOUT — id="about"
+            ══════════════════════════════════════════ */}
+            <section id="about" className="landing-section-alt">
+                <div className="landing-section-inner">
+
+                    <div className="landing-section-head">
+                        <div className="landing-label landing-label-purple">
+                            <Sparkles size={12} />
+                            About Janmnetra
+                        </div>
+                        <h2 className="landing-section-title">The Civic Intelligence Platform</h2>
+                        <p className="landing-section-sub">
+                            Janmnetra bridges the gap between citizens and civic administration through
+                            the power of AI — making it effortless to report, verify, and resolve real
+                            community problems.
+                        </p>
+                    </div>
+
+                    <div className="about-grid">
+                        {ABOUT_CARDS.map((card, i) => (
+                            <div key={i} className={`about-card ${card.colorClass} animate-in`}>
+                                <div className="about-card-icon">
+                                    <card.icon size={26} />
+                                </div>
+                                <h3 className="about-card-title">{card.title}</h3>
+                                <p className="about-card-desc">{card.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ══════════════════════════════════════════
+                HOW IT WORKS — id="how"
+            ══════════════════════════════════════════ */}
+            <section id="how" className="landing-section">
+                <div className="landing-section-inner">
+
+                    <div className="landing-section-head">
+                        <div className="landing-label landing-label-cyan">
+                            <Zap size={12} />
+                            The Process
+                        </div>
+                        <h2 className="landing-section-title">How It Works</h2>
+                        <p className="landing-section-sub">
+                            Four intelligent steps from detection to resolution
+                        </p>
+                    </div>
+
+                    <div className="how-grid">
+                        {HOW_STEPS.map((step, i) => (
+                            <div key={i} className={`how-step ${step.colorClass} animate-in`}>
+                                <span className="how-step-number">{step.step}</span>
+                                <div className="how-step-icon">
+                                    <step.icon size={22} />
+                                </div>
+                                <span className="how-step-pill">Step {step.step}</span>
+                                <h3 className="how-step-title">{step.title}</h3>
+                                <p className="how-step-desc">{step.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ══════════════════════════════════════════
+                VERIFIED ALERTS — id="alerts"
+            ══════════════════════════════════════════ */}
+            <section id="alerts" className="landing-section-alt">
+                <div className="landing-section-inner">
+
+                    <div className="alerts-section-header">
+                        <div>
+                            <div className="landing-label landing-label-green">
+                                <Bell size={12} />
+                                Live Feed
+                            </div>
+                            <h2 className="landing-section-title">Verified Alerts</h2>
+                            <p className="landing-section-sub" style={{ textAlign: 'left', margin: 0 }}>
+                                Community-confirmed civic issues ready for departmental action
+                            </p>
+                        </div>
+                        <div className="alerts-count-box">
+                            <CheckCircle2 size={20} style={{ color: 'var(--risk-low)' }} />
+                            <div>
+                                <div className="alerts-count-value">
+                                    {loading ? '—' : verifiedIssues.length}
+                                </div>
+                                <div className="alerts-count-label">Verified</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="landing-loading">
+                            <div className="spinner" />
+                            Loading verified alerts…
+                        </div>
+                    ) : verifiedIssues.length === 0 ? (
+                        <div className="alerts-empty">
+                            <CheckCircle2 size={48} style={{ color: 'var(--risk-low)' }} />
+                            <p>No verified alerts right now. Great work, community!</p>
+                        </div>
+                    ) : (
+                        <div className="alerts-grid">
+                            {verifiedIssues.map((c) => (
+                                <AlertCard
+                                    key={c.id}
+                                    complaint={c}
+                                    onReview={handleReview}
+                                    onSupport={handleSupport}
+                                    onMarkFalse={handleMarkFalse}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* ══════════════════════════════════════════
+                CTA BANNER
+            ══════════════════════════════════════════ */}
+            <section className="landing-cta-section">
+                <div className="landing-cta-card">
+                    <Lock size={36} style={{ color: 'var(--accent-blue)', marginBottom: '18px' }} />
+                    <h2 className="landing-cta-title">Ready to Secure Your Community?</h2>
+                    <p className="landing-cta-sub">
+                        Join Janmnetra today — verify AI findings, report issues, and help route
+                        them to the departments that can fix them.
                     </p>
-                    <button onClick={() => navigate('/signup')} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '8px',
-                        padding: '14px 36px', borderRadius: '12px', fontSize: '0.95rem',
-                        fontWeight: 700, border: 'none', cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #3b82f6, #7c3aed)',
-                        color: '#fff', boxShadow: '0 4px 24px rgba(59,130,246,0.3)',
-                    }}>
-                        Create Free Account <ArrowRight size={18} />
-                    </button>
+                    <div className="landing-cta-btns">
+                        <button className="btn btn-primary" onClick={() => navigate('/signup')}>
+                            Create Free Account <ArrowRight size={17} />
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => navigate('/login')}>
+                            Sign In
+                        </button>
+                    </div>
                 </div>
             </section>
 
-            {/* ── Footer ─── */}
-            <footer style={{
-                padding: '32px 40px', borderTop: '1px solid var(--border-color)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                flexWrap: 'wrap', gap: '12px',
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Eye size={18} style={{ color: '#3b82f6' }} />
-                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                        JanNetra
-                    </span>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        &copy; 2026 All rights reserved
-                    </span>
+            {/* ══════════════════════════════════════════
+                FOOTER
+            ══════════════════════════════════════════ */}
+            <footer className="landing-footer">
+                <div className="landing-footer-brand">
+                    <div className="landing-footer-logo">
+                        <Eye size={13} color="#fff" />
+                    </div>
+                    <span className="landing-footer-name">Janmnetra</span>
+                    <span className="landing-footer-copy">© 2026 All rights reserved</span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    AI-Powered Governance Intelligence System
-                </div>
+                <span className="landing-footer-sub">AI-Powered Civic Intelligence Platform</span>
             </footer>
+
+            {/* ══════════════════════════════════════════
+                REVIEW MODAL (conditional)
+            ══════════════════════════════════════════ */}
+            {reviewTarget && (
+                <ReviewModal
+                    complaint={reviewTarget}
+                    onClose={() => setReviewTarget(null)}
+                    onSubmit={handleSubmitReview}
+                />
+            )}
         </div>
     );
 }

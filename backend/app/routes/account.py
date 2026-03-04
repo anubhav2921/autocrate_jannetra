@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.models import User, Resolution
+from ..database import get_db
+from ..models import User, Resolution
 
 router = APIRouter(prefix="/api/account", tags=["Account"])
 

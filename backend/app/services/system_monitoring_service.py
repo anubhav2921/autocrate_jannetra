@@ -1,13 +1,15 @@
 """
 System Monitoring AI Service — Uses Gemini to generate governance subsystem
 health metrics and provide AI-powered diagnostics & recommendations.
+
+Security: API key is loaded from environment via gemini_config.
 """
 import json
-import google.generativeai as genai
+import logging
 
-GEMINI_API_KEY = "AIzaSyB0JJ0LlcOoUKsAvdI7_4SCHW20b8AifB0"
-genai.configure(api_key=GEMINI_API_KEY)
-MODEL_NAME = "gemini-2.0-flash"
+from .gemini_config import gemini_client, GEMINI_MODEL
+
+logger = logging.getLogger(__name__)
 
 
 def generate_system_metrics(count: int = 5) -> list[dict]:
@@ -36,8 +38,10 @@ Return ONLY a valid JSON array with exactly {count} objects. No markdown, no exp
 Make the metrics diverse across types, statuses, and locations. Include specific numbers and technical details."""
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
 
         text = response.text.strip()
         if text.startswith("```"):
@@ -70,7 +74,7 @@ Make the metrics diverse across types, statuses, and locations. Include specific
         return valid_metrics
 
     except Exception as e:
-        print(f"[GEMINI SYSTEM MONITOR ERROR] {e}")
+        logger.error("[GEMINI SYSTEM MONITOR ERROR] %s", e)
         return []
 
 
@@ -98,8 +102,10 @@ Respond with ONLY a valid JSON object with exactly these fields:
 Return ONLY the JSON object, no markdown fences or explanation."""
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(prompt)
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
 
         text = response.text.strip()
         if text.startswith("```"):
@@ -117,7 +123,7 @@ Return ONLY the JSON object, no markdown fences or explanation."""
         }
 
     except Exception as e:
-        print(f"[GEMINI ANALYSIS ERROR] {e}")
+        logger.error("[GEMINI ANALYSIS ERROR] %s", e)
         return {
             "diagnosis": "AI analysis temporarily unavailable. Please try again.",
             "recommendation": "Manual inspection recommended while AI service recovers.",

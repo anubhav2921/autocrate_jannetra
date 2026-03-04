@@ -1,2 +1,0 @@
-C:\Users\Asus\Downloads\project\backend\venv\Scripts\python.exe
-C:\Users\Asus\AppData\Local\Microsoft\WindowsApps\python.exe

@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
 from sqlalchemy import (
-    Column, String, Text, Float, Boolean, DateTime, ForeignKey, Enum, JSON
+    Column, String, Text, Float, Integer, Boolean, DateTime, ForeignKey, Enum, JSON
 )
 from sqlalchemy.orm import relationship
-from app.database import Base
+from .database import Base
 
 
 def gen_uuid():
@@ -122,17 +122,24 @@ class SentimentRecord(Base):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, default=gen_uuid)
-    name = Column(String(200), nullable=False)
-    email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(
+    id            = Column(String, primary_key=True, default=gen_uuid)
+    name          = Column(String(200), nullable=False)
+    email         = Column(String(255), unique=True, nullable=True)   # nullable for phone-only accounts
+    password_hash = Column(String(255), nullable=True)                # nullable for Google / phone accounts
+    role          = Column(
         Enum("LEADER", "ADMIN", "ANALYST", name="user_role_enum"),
         default="LEADER",
     )
-    department = Column(String(200))
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    department    = Column(String(200))
+    is_active     = Column(Boolean, default=True)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    # ── Firebase / OAuth fields ──────────────────────────────
+    google_uid    = Column(String(255), unique=True, nullable=True)   # Legacy — kept for backward compat
+    firebase_uid  = Column(String(255), unique=True, nullable=True, index=True)  # Canonical Firebase UID
+    phone_number  = Column(String(20), unique=True, nullable=True, index=True)   # E.164 format
+    picture       = Column(String(500), nullable=True)                # Profile photo URL
+    auth_provider = Column(String(50), default="email")               # "email" | "google" | "phone"
 
 
 class Resolution(Base):
@@ -185,3 +192,57 @@ class SystemMetric(Base):
     ai_recommendation = Column(Text, default="")
     last_checked_at = Column(String(50))
     trend = Column(String(50), default="Stable")  # Improving, Stable, Degrading
+
+
+class CommunityReview(Base):
+    __tablename__ = "community_reviews"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    article_id = Column(String, ForeignKey("articles.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)  # Nullable for anonymous
+    review_text = Column(Text, nullable=False)
+    verdict = Column(String(50), default="unconfirmed")  # real, false, needs_more_info
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    article = relationship("Article")
+    user    = relationship("User")
+
+
+class NewsArticle(Base):
+    """
+    Real-world scraped articles — separate from seeded demo data.
+    Populated by the automated data pipeline (scrapers → NLP → DB).
+    """
+    __tablename__ = "news_articles"
+
+    id               = Column(String, primary_key=True, default=gen_uuid)
+    title            = Column(String(500), nullable=False)
+    content          = Column(Text, nullable=False)
+    source_name      = Column(String(300), nullable=False)
+    source_url       = Column(String(500), default="")
+    url              = Column(String(500), default="")
+    published_at     = Column(DateTime, nullable=True)
+    content_hash     = Column(String(64), unique=True, nullable=False)  # SHA-256 for dedup
+
+    # NLP analysis results
+    credibility_score = Column(Float, default=0.5)
+    risk_score        = Column(Float, default=0.0)      # GRI score 0–100
+    risk_level        = Column(String(20), default="LOW")  # LOW / MODERATE / HIGH
+    sentiment_label   = Column(String(20), default="NEUTRAL")
+    sentiment_polarity = Column(Float, default=0.0)
+    anger_rating      = Column(Float, default=0.0)
+    fake_news_label   = Column(String(20), default="UNCERTAIN")  # REAL / FAKE / UNCERTAIN
+    fake_news_confidence = Column(Float, default=0.0)
+
+    # Priority / frequency tracking
+    occurrence_count  = Column(Integer, default=1)
+    priority_score    = Column(Float, default=1.0)
+    priority_level    = Column(String(20), default="LOW")  # LOW / MEDIUM / HIGH / CRITICAL
+    last_seen         = Column(DateTime, default=datetime.utcnow)
+
+    # Metadata
+    category         = Column(String(100), default="General")
+    source_type      = Column(String(50), default="NEWS")
+    tier             = Column(String(20), default="UNKNOWN")
+    scraped_at       = Column(DateTime, default=datetime.utcnow)
+    created_at       = Column(DateTime, default=datetime.utcnow)

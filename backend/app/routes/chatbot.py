@@ -3,8 +3,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
-from app.database import get_db
-from app.models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord, Resolution
+from ..database import get_db
+from ..models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord, Resolution
 
 router = APIRouter(prefix="/api", tags=["Chatbot"])
 

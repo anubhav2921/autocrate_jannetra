@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.services.nlp_service import run_nlp_pipeline
-from app.services.fake_news_detector import detect_fake_news
-from app.services.gri_service import compute_gri
-from app.services.alert_service import generate_alert
+from ..database import get_db
+from ..services.nlp_service import run_nlp_pipeline
+from ..services.fake_news_detector import detect_fake_news
+from ..services.gri_service import compute_gri
+from ..services.alert_service import generate_alert
 
 router = APIRouter(prefix="/api", tags=["Scanner"])
 

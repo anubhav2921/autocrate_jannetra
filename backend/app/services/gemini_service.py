@@ -1,15 +1,15 @@
 """
 Gemini AI Service — Generates realistic governance signal problems
-using the Google Gemini API.
+using the Google Gemini API (new google-genai SDK).
+
+Security: API key is loaded from environment via gemini_config.
 """
 import json
-import google.generativeai as genai
+import logging
 
-GEMINI_API_KEY = "AIzaSyB0JJ0LlcOoUKsAvdI7_4SCHW20b8AifB0"
+from .gemini_config import gemini_client, GEMINI_MODEL
 
-genai.configure(api_key=GEMINI_API_KEY)
-
-MODEL_NAME = "gemini-2.0-flash"
+logger = logging.getLogger(__name__)
 
 
 def generate_signal_problems(count: int = 5) -> list[dict]:
@@ -17,7 +17,7 @@ def generate_signal_problems(count: int = 5) -> list[dict]:
     Use Gemini to generate `count` realistic governance signal problems.
     Returns a list of dicts ready to be inserted into the SignalProblem table.
     """
-    prompt = f"""You are a Governance Intelligence AI System. Generate exactly {count} realistic governance signal problems 
+    prompt = f"""You are a Governance Intelligence AI System. Generate exactly {count} realistic governance signal problems \
 that would be detected by an AI-powered governance monitoring system in India.
 
 Each problem must be a JSON object with these exact fields:
@@ -36,23 +36,25 @@ Return ONLY a valid JSON array with exactly {count} objects. No markdown, no exp
 Make the problems diverse across categories and severity levels. Include specific numbers, percentages, and technical details to make them realistic."""
 
     try:
-        model = genai.GenerativeModel(MODEL_NAME)
-        response = model.generate_content(prompt)
-        
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+        )
+
         # Extract the text and parse JSON
         text = response.text.strip()
-        
+
         # Remove markdown code fences if present
         if text.startswith("```"):
-            text = text.split("\n", 1)[1]  # Remove first line
+            text = text.split("\n", 1)[1]
             if text.endswith("```"):
                 text = text[:-3]
             elif "```" in text:
                 text = text[:text.rfind("```")]
             text = text.strip()
-        
+
         problems = json.loads(text)
-        
+
         # Validate and clean up
         valid_problems = []
         for p in problems:
@@ -68,9 +70,9 @@ Make the problems diverse across categories and severity levels. Include specifi
                 "source": str(p.get("source", "AI Monitor"))[:300],
                 "status": "Pending",
             })
-        
+
         return valid_problems
-    
+
     except Exception as e:
-        print(f"[GEMINI ERROR] {e}")
+        logger.error("[GEMINI ERROR] %s", e)
         return []

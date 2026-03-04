@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.models import SignalProblem
-from app.services.gemini_service import generate_signal_problems
+from ..database import get_db
+from ..models import SignalProblem
+from ..services.gemini_service import generate_signal_problems
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
 

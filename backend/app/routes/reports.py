@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.database import get_db
-from app.models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord
+from ..database import get_db
+from ..models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord
 
 
 router = APIRouter(prefix="/api", tags=["Reports"])

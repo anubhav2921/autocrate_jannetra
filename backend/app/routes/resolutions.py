@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.models import Resolution, User
+from ..database import get_db
+from ..models import Resolution, User
 
 router = APIRouter(prefix="/api", tags=["Resolutions"])
 

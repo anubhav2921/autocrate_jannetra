@@ -1,1 +1,0 @@
-{"system":"Predictive Governance Intelligence & Decision Support System","version":"1.0.0","endpoints":["/api/dashboard","/api/articles","/api/alerts","/api/analytics/sentiment-trend","/api/analytics/risk-heatmap","/api/analytics/category-breakdown","/api/sources","/docs"]}

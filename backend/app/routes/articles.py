@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Article, DetectionResult, GovernanceRiskScore, SentimentRecord
+from ..database import get_db
+from ..models import Article, DetectionResult, GovernanceRiskScore, SentimentRecord
 
 router = APIRouter(prefix="/api", tags=["Articles"])
 
@@ -71,7 +71,7 @@ def get_article(article_id: str, db: Session = Depends(get_db)):
     gri = db.query(GovernanceRiskScore).filter(GovernanceRiskScore.article_id == article_id).first()
     sent = db.query(SentimentRecord).filter(SentimentRecord.article_id == article_id).first()
 
-    from app.models import Source
+    from ..models import Source
     source = db.query(Source).filter(Source.id == art.source_id).first()
 
     return {

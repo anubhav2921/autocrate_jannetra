@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
-from app.database import get_db
-from app.models import SystemMetric
-from app.services.system_monitoring_service import generate_system_metrics, analyze_system_metric
+from ..database import get_db
+from ..models import SystemMetric
+from ..services.system_monitoring_service import generate_system_metrics, analyze_system_metric
 
 router = APIRouter(prefix="/api", tags=["System Monitoring"])
 
