@@ -271,6 +271,8 @@ async def firebase_phone_login(request: Request, db: Session = Depends(get_db)):
     # 2. Verify token with Firebase Admin SDK
     try:
         from firebase_admin import auth as firebase_auth
+        from ..firebase_admin_config import initialize_firebase
+        initialize_firebase()
 
         decoded_token = firebase_auth.verify_id_token(token)
     except ImportError:

@@ -4,19 +4,13 @@
         "${workspaceFolder}/backend"
     ],
     "python.envFile": "${workspaceFolder}/backend/.env",
+    "python.languageServer": "Pylance",
     "python.analysis.typeCheckingMode": "basic",
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportMissingModuleSource": "none",
-        "reportMissingImports": "warning"
-    },
-    "python.languageServer": "Default",
-    "pyre.enable": false,
     "python.analysis.autoSearchPaths": true,
+    "pyre.enable": false,
     "files.exclude": {
         "**/__pycache__": true,
         "**/*.pyc": true,
-        "**/node_modules": true,
-        "**/.venv": true,
-        "**/venv": true
+        "**/node_modules": true
     }
 }

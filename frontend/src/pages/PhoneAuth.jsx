@@ -1,15 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Shield, Phone, KeyRound, ArrowLeft, RefreshCw } from 'lucide-react';
+import {
+    Shield, Phone, KeyRound, ArrowLeft, RefreshCw, CheckCircle, AlertTriangle,
+} from 'lucide-react';
 import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import axios from 'axios';
 
+// ── Firebase Test Phone Numbers (development only) ──────────
+// Add these in Firebase Console → Authentication → Sign-in method
+// → Phone → Phone numbers for testing
+const TEST_PHONES = {
+    '+911234567890': '123456',
+};
+
 export default function PhoneAuth({ onLogin }) {
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const [step, setStep] = useState('phone');   // 'phone' | 'otp'
+    const [step, setStep] = useState('phone');        // 'phone' | 'otp' | 'success'
+    const [authMode, setAuthMode] = useState(null);   // 'firebase' | 'backend'
     const [error, setError] = useState('');
+    const [info, setInfo] = useState('');
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
     const [confirmationResult, setConfirmationResult] = useState(null);
@@ -18,20 +29,45 @@ export default function PhoneAuth({ onLogin }) {
     const recaptchaRef = useRef(null);
     const otpRefs = useRef([]);
     const timerRef = useRef(null);
+    const recaptchaContainerRef = useRef(null);
 
-    // ── reCAPTCHA setup ──────────────────────────────────────
-    useEffect(() => {
-        if (!recaptchaRef.current) {
+    // ── Initialize reCAPTCHA ─────────────────────────────────
+    const initRecaptcha = useCallback(() => {
+        try {
+            // Clear any existing verifier
+            if (recaptchaRef.current) {
+                try { recaptchaRef.current.clear(); } catch { /* ignore */ }
+                recaptchaRef.current = null;
+            }
+
             recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
                 size: 'invisible',
-                callback: () => { },
+                callback: () => {
+                    // reCAPTCHA solved — allow signInWithPhoneNumber
+                },
                 'expired-callback': () => {
                     setError('reCAPTCHA expired. Please try again.');
+                    recaptchaRef.current = null;
                 },
             });
+
+            return recaptchaRef.current;
+        } catch (err) {
+            console.error('reCAPTCHA init error:', err);
+            return null;
         }
+    }, []);
+
+    // ── Cleanup on unmount ───────────────────────────────────
+    useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
+            try {
+                if (recaptchaRef.current) {
+                    recaptchaRef.current.clear();
+                    recaptchaRef.current = null;
+                }
+            } catch { /* ignore */ }
         };
     }, []);
 
@@ -50,44 +86,118 @@ export default function PhoneAuth({ onLogin }) {
         }, 1000);
     };
 
-    // ── Send OTP ─────────────────────────────────────────────
+    // ── Format & validate phone number ───────────────────────
+    const validatePhone = (phoneNumber) => {
+        const cleaned = phoneNumber.replace(/\s/g, '');
+        if (!/^\+[1-9]\d{7,14}$/.test(cleaned)) {
+            return { valid: false, cleaned: '' };
+        }
+        return { valid: true, cleaned };
+    };
+
+    // ── Get user-friendly error message ──────────────────────
+    const getErrorMessage = (err) => {
+        const code = err?.code || '';
+        switch (code) {
+            case 'auth/invalid-phone-number':
+                return 'Invalid phone number. Please use international format (e.g., +919876543210).';
+            case 'auth/too-many-requests':
+                return 'Too many attempts. Please wait a few minutes before trying again.';
+            case 'auth/captcha-check-failed':
+                return 'reCAPTCHA verification failed. Please refresh the page and try again.';
+            case 'auth/invalid-verification-code':
+                return 'Invalid OTP. Please check the code and try again.';
+            case 'auth/code-expired':
+                return 'OTP has expired. Please request a new one.';
+            case 'auth/billing-not-enabled':
+            case 'auth/operation-not-allowed':
+                return 'Phone authentication is not enabled. Trying alternative method...';
+            case 'auth/quota-exceeded':
+                return 'SMS quota exceeded. Please try again later.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your internet connection.';
+            default:
+                return err?.message || 'An unexpected error occurred. Please try again.';
+        }
+    };
+
+    // ── Send OTP (Firebase-first with backend fallback) ──────
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
+        setInfo('');
 
-        // Validate E.164 format
-        const cleaned = phone.replace(/\s/g, '');
-        if (!/^\+[1-9]\d{7,14}$/.test(cleaned)) {
-            setError('Enter a valid phone number in E.164 format (e.g. +919876543210)');
+        const { valid, cleaned } = validatePhone(phone);
+        if (!valid) {
+            setError('Enter a valid phone number in E.164 format (e.g., +919876543210)');
             return;
         }
 
         setLoading(true);
+
+        // Try Firebase Phone Auth first
         try {
-            const result = await signInWithPhoneNumber(auth, cleaned, recaptchaRef.current);
+            const appVerifier = initRecaptcha();
+            if (!appVerifier) {
+                throw new Error('reCAPTCHA initialization failed');
+            }
+
+            const result = await signInWithPhoneNumber(auth, cleaned, appVerifier);
             setConfirmationResult(result);
+            setAuthMode('firebase');
             setStep('otp');
             startResendTimer();
-            // Focus first OTP input
+            setInfo('OTP sent successfully via SMS.');
             setTimeout(() => otpRefs.current[0]?.focus(), 100);
         } catch (err) {
-            console.error('Send OTP Error:', err);
-            if (err?.code === 'auth/too-many-requests') {
-                setError('Too many attempts. Please wait a few minutes before trying again.');
-            } else if (err?.code === 'auth/invalid-phone-number') {
-                setError('Invalid phone number. Please use E.164 format (e.g. +919876543210).');
-            } else if (err?.code === 'auth/captcha-check-failed') {
-                setError('reCAPTCHA verification failed. Please refresh and try again.');
-            } else {
-                setError(err?.message || 'Failed to send OTP. Please try again.');
+            console.error('Firebase OTP Error:', err);
+
+            // If Firebase phone auth is blocked (billing, not enabled, etc.)
+            // fallback to backend-managed OTP
+            if (
+                err?.code === 'auth/billing-not-enabled' ||
+                err?.code === 'auth/operation-not-allowed' ||
+                err?.code === 'auth/internal-error' ||
+                err?.message?.includes('reCAPTCHA')
+            ) {
+                try {
+                    const res = await fetch('/api/auth/send-phone-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone_number: cleaned }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setConfirmationResult(null);
+                        setAuthMode('backend');
+                        setStep('otp');
+                        startResendTimer();
+                        setInfo('OTP sent! Check your phone or backend console.');
+                        // Show demo OTP in dev
+                        if (data.demo_otp) {
+                            setInfo(`OTP sent! Dev OTP: ${data.demo_otp}`);
+                        }
+                        setTimeout(() => otpRefs.current[0]?.focus(), 100);
+                        return;
+                    } else {
+                        setError(data.error || 'Failed to send OTP.');
+                        return;
+                    }
+                } catch (backendErr) {
+                    console.error('Backend OTP fallback error:', backendErr);
+                    setError('Server unavailable. Please start the backend server and try again.');
+                    return;
+                }
             }
+
+            setError(getErrorMessage(err));
+
             // Reset reCAPTCHA on failure
             try {
-                recaptchaRef.current?.clear();
-                recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                    size: 'invisible',
-                    callback: () => { },
-                });
+                if (recaptchaRef.current) {
+                    recaptchaRef.current.clear();
+                    recaptchaRef.current = null;
+                }
             } catch { /* ignore */ }
         } finally {
             setLoading(false);
@@ -108,7 +218,6 @@ export default function PhoneAuth({ onLogin }) {
     };
 
     const handleOtpKeyDown = (index, e) => {
-        // Backspace: go to previous field
         if (e.key === 'Backspace' && !otp[index] && index > 0) {
             otpRefs.current[index - 1]?.focus();
         }
@@ -127,6 +236,7 @@ export default function PhoneAuth({ onLogin }) {
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setError('');
+        setInfo('');
 
         const code = otp.join('');
         if (code.length !== 6) {
@@ -135,32 +245,75 @@ export default function PhoneAuth({ onLogin }) {
         }
 
         setLoading(true);
+        const cleaned = phone.replace(/\s/g, '');
+
         try {
-            // 1. Confirm OTP with Firebase
-            const result = await confirmationResult.confirm(code);
+            if (authMode === 'firebase' && confirmationResult) {
+                // ── Firebase OTP verification ────────────────
+                const result = await confirmationResult.confirm(code);
+                const user = result.user;
 
-            // 2. Get Firebase ID token
-            const idToken = await result.user.getIdToken();
+                // Get Firebase ID token
+                const idToken = await user.getIdToken();
 
-            // 3. Send to backend for verification + user upsert
-            const response = await axios.post(
-                '/api/auth/firebase-login',
-                {},
-                { headers: { Authorization: `Bearer ${idToken}` } }
-            );
+                // Send to backend for user upsert
+                const response = await axios.post(
+                    '/api/auth/firebase-login',
+                    {},
+                    { headers: { Authorization: `Bearer ${idToken}` } }
+                );
 
-            const { user } = response.data;
+                const { user: userData } = response.data;
+                localStorage.setItem('user', JSON.stringify(userData));
+                setStep('success');
+                setTimeout(() => {
+                    onLogin(userData);
+                    navigate('/');
+                }, 1500);
+            } else {
+                // ── Backend OTP verification ─────────────────
+                const res = await fetch('/api/auth/login-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone_number: cleaned, otp: code }),
+                });
+                const data = await res.json();
 
-            // 4. Store user and redirect
-            localStorage.setItem('user', JSON.stringify(user));
-            onLogin(user);
-            navigate('/');
+                if (data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    setStep('success');
+                    setTimeout(() => {
+                        onLogin(data.user);
+                        navigate('/');
+                    }, 1500);
+                } else {
+                    // If user not found, try register instead
+                    if (data.error?.includes('No account found')) {
+                        const regRes = await fetch('/api/auth/register-phone', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone_number: cleaned, otp: code }),
+                        });
+                        const regData = await regRes.json();
+                        if (regData.success) {
+                            localStorage.setItem('user', JSON.stringify(regData.user));
+                            setStep('success');
+                            setTimeout(() => {
+                                onLogin(regData.user);
+                                navigate('/');
+                            }, 1500);
+                        } else {
+                            setError(regData.error || 'Registration failed.');
+                        }
+                    } else {
+                        setError(data.error || 'Verification failed.');
+                    }
+                }
+            }
         } catch (err) {
             console.error('Verify OTP Error:', err);
-            if (err?.code === 'auth/invalid-verification-code') {
-                setError('Invalid OTP. Please check and try again.');
-            } else if (err?.code === 'auth/code-expired') {
-                setError('OTP has expired. Please request a new one.');
+            if (err?.code) {
+                setError(getErrorMessage(err));
             } else if (err?.response?.data?.detail) {
                 setError(err.response.data.detail);
             } else {
@@ -174,26 +327,66 @@ export default function PhoneAuth({ onLogin }) {
     // ── Resend OTP ───────────────────────────────────────────
     const handleResend = async () => {
         setError('');
+        setInfo('');
         setOtp(['', '', '', '', '', '']);
         setLoading(true);
 
-        try {
-            // Reset reCAPTCHA
-            try {
-                recaptchaRef.current?.clear();
-            } catch { /* ignore */ }
-            recaptchaRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                size: 'invisible',
-                callback: () => { },
-            });
+        const cleaned = phone.replace(/\s/g, '');
 
-            const cleaned = phone.replace(/\s/g, '');
-            const result = await signInWithPhoneNumber(auth, cleaned, recaptchaRef.current);
-            setConfirmationResult(result);
-            startResendTimer();
-            setTimeout(() => otpRefs.current[0]?.focus(), 100);
+        try {
+            if (authMode === 'firebase') {
+                // Reset reCAPTCHA and resend via Firebase
+                const appVerifier = initRecaptcha();
+                if (!appVerifier) throw new Error('reCAPTCHA failed');
+
+                const result = await signInWithPhoneNumber(auth, cleaned, appVerifier);
+                setConfirmationResult(result);
+                startResendTimer();
+                setInfo('OTP resent successfully.');
+                setTimeout(() => otpRefs.current[0]?.focus(), 100);
+            } else {
+                // Resend via backend
+                const res = await fetch('/api/auth/send-phone-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone_number: cleaned }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    startResendTimer();
+                    setInfo(data.demo_otp
+                        ? `OTP resent! Dev OTP: ${data.demo_otp}`
+                        : 'OTP resent successfully.'
+                    );
+                    setTimeout(() => otpRefs.current[0]?.focus(), 100);
+                } else {
+                    setError(data.error || 'Failed to resend OTP.');
+                }
+            }
         } catch (err) {
             console.error('Resend OTP Error:', err);
+            // If Firebase resend fails, try backend
+            if (authMode === 'firebase') {
+                try {
+                    const res = await fetch('/api/auth/send-phone-otp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone_number: cleaned }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        setAuthMode('backend');
+                        setConfirmationResult(null);
+                        startResendTimer();
+                        setInfo(data.demo_otp
+                            ? `OTP resent via backend! Dev OTP: ${data.demo_otp}`
+                            : 'OTP resent via alternative method.'
+                        );
+                        setTimeout(() => otpRefs.current[0]?.focus(), 100);
+                        return;
+                    }
+                } catch { /* ignore */ }
+            }
             setError(err?.message || 'Failed to resend OTP.');
         } finally {
             setLoading(false);
@@ -211,14 +404,20 @@ export default function PhoneAuth({ onLogin }) {
                     <p>Governance Intelligence System</p>
                 </div>
 
-                {step === 'phone' ? (
+                {/* ─── Step: Phone Number Input ─── */}
+                {step === 'phone' && (
                     <>
                         <h2 className="auth-title">Phone Sign In</h2>
                         <p className="auth-subtitle">
                             Enter your phone number to receive a verification code via SMS
                         </p>
 
-                        {error && <div className="auth-error">{error}</div>}
+                        {error && (
+                            <div className="auth-error">
+                                <AlertTriangle size={14} style={{ marginRight: 6, flexShrink: 0 }} />
+                                {error}
+                            </div>
+                        )}
 
                         <form onSubmit={handleSendOtp} className="auth-form">
                             <div className="auth-field">
@@ -231,11 +430,21 @@ export default function PhoneAuth({ onLogin }) {
                                     onChange={(e) => setPhone(e.target.value)}
                                     required
                                     autoComplete="tel"
+                                    autoFocus
                                 />
                             </div>
                             <p className="phone-hint">
                                 Include country code (e.g. +91 for India, +1 for US)
                             </p>
+
+                            {/* Test number hint for development */}
+                            <div className="phone-test-hint">
+                                <KeyRound size={12} />
+                                <span>
+                                    Dev test: <strong>+911234567890</strong> / OTP: <strong>123456</strong>
+                                </span>
+                            </div>
+
                             <button
                                 id="send-otp-btn"
                                 type="submit"
@@ -248,12 +457,18 @@ export default function PhoneAuth({ onLogin }) {
                                         Sending OTP…
                                     </span>
                                 ) : (
-                                    'Send OTP'
+                                    <>
+                                        <Phone size={16} />
+                                        Send OTP
+                                    </>
                                 )}
                             </button>
                         </form>
                     </>
-                ) : (
+                )}
+
+                {/* ─── Step: OTP Verification ─── */}
+                {step === 'otp' && (
                     <>
                         <button
                             className="otp-back-btn"
@@ -261,6 +476,9 @@ export default function PhoneAuth({ onLogin }) {
                                 setStep('phone');
                                 setOtp(['', '', '', '', '', '']);
                                 setError('');
+                                setInfo('');
+                                setAuthMode(null);
+                                setConfirmationResult(null);
                             }}
                             type="button"
                         >
@@ -274,7 +492,25 @@ export default function PhoneAuth({ onLogin }) {
                             <strong>{phone}</strong>
                         </p>
 
-                        {error && <div className="auth-error">{error}</div>}
+                        {authMode === 'backend' && (
+                            <div className="auth-info-badge">
+                                Using backend OTP verification
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="auth-error">
+                                <AlertTriangle size={14} style={{ marginRight: 6, flexShrink: 0 }} />
+                                {error}
+                            </div>
+                        )}
+
+                        {info && (
+                            <div className="auth-success">
+                                <CheckCircle size={14} style={{ marginRight: 6, flexShrink: 0 }} />
+                                {info}
+                            </div>
+                        )}
 
                         <form onSubmit={handleVerifyOtp} className="auth-form">
                             <div className="otp-input-group" onPaste={handleOtpPaste}>
@@ -307,7 +543,10 @@ export default function PhoneAuth({ onLogin }) {
                                         Verifying…
                                     </span>
                                 ) : (
-                                    'Verify & Sign In'
+                                    <>
+                                        <KeyRound size={16} />
+                                        Verify & Sign In
+                                    </>
                                 )}
                             </button>
 
@@ -333,22 +572,40 @@ export default function PhoneAuth({ onLogin }) {
                     </>
                 )}
 
-                <div className="auth-divider">
-                    <span>or</span>
-                </div>
+                {/* ─── Step: Success ─── */}
+                {step === 'success' && (
+                    <div className="phone-auth-success">
+                        <div className="phone-auth-success-icon">
+                            <CheckCircle size={40} />
+                        </div>
+                        <h2 className="auth-title">Authenticated!</h2>
+                        <p className="auth-subtitle">
+                            Redirecting to dashboard…
+                        </p>
+                        <div className="phone-auth-success-spinner" />
+                    </div>
+                )}
 
-                <p className="auth-footer">
-                    Sign in with email instead?{' '}
-                    <Link to="/login">Login</Link>
-                </p>
-                <p className="auth-footer" style={{ marginTop: '8px' }}>
-                    Don't have an account?{' '}
-                    <Link to="/signup">Create Account</Link>
-                </p>
+                {step !== 'success' && (
+                    <>
+                        <div className="auth-divider">
+                            <span>or</span>
+                        </div>
+
+                        <p className="auth-footer">
+                            Sign in with email instead?{' '}
+                            <Link to="/login">Login</Link>
+                        </p>
+                        <p className="auth-footer" style={{ marginTop: '8px' }}>
+                            Don't have an account?{' '}
+                            <Link to="/signup">Create Account</Link>
+                        </p>
+                    </>
+                )}
             </div>
 
             {/* reCAPTCHA container — invisible, must be in DOM */}
-            <div id="recaptcha-container" />
+            <div id="recaptcha-container" ref={recaptchaContainerRef} />
         </div>
     );
 }
