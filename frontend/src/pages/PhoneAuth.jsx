@@ -7,6 +7,8 @@ import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
+
 // ── Firebase Test Phone Numbers (development only) ──────────
 // Add these in Firebase Console → Authentication → Sign-in method
 // → Phone → Phone numbers for testing
@@ -161,7 +163,7 @@ export default function PhoneAuth({ onLogin }) {
                 err?.message?.includes('reCAPTCHA')
             ) {
                 try {
-                    const res = await fetch('/api/auth/send-phone-otp', {
+                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ phone_number: cleaned }),
@@ -258,7 +260,7 @@ export default function PhoneAuth({ onLogin }) {
 
                 // Send to backend for user upsert
                 const response = await axios.post(
-                    '/api/auth/firebase-login',
+                    `${API_BASE}/auth/firebase-login`,
                     {},
                     { headers: { Authorization: `Bearer ${idToken}` } }
                 );
@@ -272,7 +274,7 @@ export default function PhoneAuth({ onLogin }) {
                 }, 1500);
             } else {
                 // ── Backend OTP verification ─────────────────
-                const res = await fetch('/api/auth/login-phone', {
+                const res = await fetch(`${API_BASE}/auth/login-phone`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone_number: cleaned, otp: code }),
@@ -289,7 +291,7 @@ export default function PhoneAuth({ onLogin }) {
                 } else {
                     // If user not found, try register instead
                     if (data.error?.includes('No account found')) {
-                        const regRes = await fetch('/api/auth/register-phone', {
+                        const regRes = await fetch(`${API_BASE}/auth/register-phone`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ phone_number: cleaned, otp: code }),
@@ -368,7 +370,7 @@ export default function PhoneAuth({ onLogin }) {
             // If Firebase resend fails, try backend
             if (authMode === 'firebase') {
                 try {
-                    const res = await fetch('/api/auth/send-phone-otp', {
+                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ phone_number: cleaned }),

@@ -14,7 +14,7 @@ import {
 import { auth, googleProvider } from '../config/firebase';
 import axios from 'axios';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
 
 // ── Email Signup ─────────────────────────────────────────────
 export async function signUpWithEmail(email, password) {

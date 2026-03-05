@@ -4,7 +4,7 @@ Data Pipeline Service — Orchestrates: Scrape → Clean → NLP → Store
 The central pipeline that ties all scrapers and NLP services together.
 
 Pipeline stages:
-  1. Collect articles from all scrapers (RSS, NewsAPI, GDELT, Gov portals)
+  1. Collect articles from all scrapers (RSS, NewsAPI, GDELT, Gov portals, Reddit)
   2. Deduplicate by content_hash
   3. Categorize articles by keyword analysis
   4. Run NLP pipeline (sentiment, anger, entities, claims)
@@ -28,6 +28,7 @@ from app.models import NewsArticle
 from app.scrapers.rss_scraper import scrape_rss_feeds
 from app.scrapers.news_scraper import scrape_news_apis
 from app.scrapers.gov_portal_scraper import scrape_government_portals
+from app.scrapers.reddit_scraper import scrape_reddit_complaints
 
 # NLP Services
 from app.services.nlp_service import run_nlp_pipeline
@@ -179,6 +180,13 @@ def run_pipeline() -> dict:
     except Exception as e:
         logger.error("[Pipeline] Gov portal scraper failed: %s", e)
 
+    try:
+        reddit_articles = scrape_reddit_complaints()
+        all_articles.extend(reddit_articles)
+        logger.info("[Pipeline] Reddit complaints: %d posts", len(reddit_articles))
+    except Exception as e:
+        logger.error("[Pipeline] Reddit scraper failed: %s", e)
+
     if not all_articles:
         elapsed = round(time.time() - start_time, 2)
         logger.warning("[Pipeline] ⚠ No articles collected from any source. Elapsed: %ss", elapsed)
@@ -187,7 +195,7 @@ def run_pipeline() -> dict:
             "total_scraped": 0,
             "total_stored": 0,
             "elapsed_seconds": elapsed,
-            "sources": {"rss": 0, "news_api": 0, "gov": 0},
+            "sources": {"rss": 0, "news_api": 0, "gov": 0, "reddit": 0},
         }
 
     # ── Step 2: Deduplicate ──────────────────────────────────────

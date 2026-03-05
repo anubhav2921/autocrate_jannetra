@@ -14,6 +14,8 @@ import {
 } from '../services/authService';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
+
 export default function Login({ onLogin }) {
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
     const [email, setEmail] = useState('');
@@ -41,7 +43,7 @@ export default function Login({ onLogin }) {
                 try {
                     const idToken = await result.user.getIdToken();
                     const response = await axios.post(
-                        '/api/auth/google',
+                        `${API_BASE}/auth/google`,
                         {},
                         { headers: { Authorization: `Bearer ${idToken}` } }
                     );
@@ -104,7 +106,7 @@ export default function Login({ onLogin }) {
             if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
                 // Fallback to backend-only auth
                 try {
-                    const res = await fetch('/api/auth/login', {
+                    const res = await fetch(`${API_BASE}/auth/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password }),
@@ -128,7 +130,7 @@ export default function Login({ onLogin }) {
             if (err?.code === 'auth/user-not-found') {
                 // Try backend-only auth
                 try {
-                    const res = await fetch('/api/auth/login', {
+                    const res = await fetch(`${API_BASE}/auth/login`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ email, password }),
@@ -161,7 +163,7 @@ export default function Login({ onLogin }) {
 
             // Final fallback: try backend-only
             try {
-                const res = await fetch('/api/auth/login', {
+                const res = await fetch(`${API_BASE}/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
@@ -216,7 +218,7 @@ export default function Login({ onLogin }) {
                 err?.code === 'auth/internal-error'
             ) {
                 try {
-                    const res = await fetch('/api/auth/send-phone-otp', {
+                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ phone_number: cleaned }),
@@ -303,7 +305,7 @@ export default function Login({ onLogin }) {
             } else {
                 // Backend OTP verification (login)
                 const cleaned = phone.replace(/\s/g, '');
-                const res = await fetch('/api/auth/login-phone', {
+                const res = await fetch(`${API_BASE}/auth/login-phone`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone_number: cleaned, otp: code }),
@@ -352,7 +354,7 @@ export default function Login({ onLogin }) {
         } catch {
             // Fallback to backend
             try {
-                const res = await fetch('/api/auth/send-phone-otp', {
+                const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone_number: cleaned }),
@@ -383,7 +385,7 @@ export default function Login({ onLogin }) {
             const idToken = await result.user.getIdToken();
 
             const response = await axios.post(
-                '/api/auth/google',
+                `${API_BASE}/auth/google`,
                 {},
                 { headers: { Authorization: `Bearer ${idToken}` } }
             );
