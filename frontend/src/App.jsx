@@ -29,6 +29,15 @@ export default function App() {
     const [showSplash, setShowSplash] = useState(true);
 
     useEffect(() => {
+        const savedTheme = localStorage.getItem('app-theme');
+        if (savedTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else if (savedTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+
         const saved = localStorage.getItem('user');
         if (saved) {
             try { setUser(JSON.parse(saved)); } catch { localStorage.removeItem('user'); }

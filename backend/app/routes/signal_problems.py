@@ -20,21 +20,59 @@ class GenerateRequest(BaseModel):
 def list_signal_problems(db: Session = Depends(get_db)):
     """Return all signal problems with their current status."""
     problems = db.query(SignalProblem).all()
+
+    if problems:
+        return [
+            {
+                "id": p.id,
+                "title": p.title,
+                "severity": p.severity,
+                "category": p.category,
+                "location": p.location,
+                "detectedAt": p.detected_at,
+                "description": p.description,
+                "riskScore": p.risk_score,
+                "source": p.source,
+                "status": p.status,
+            }
+            for p in problems
+        ]
+
+    # Fallback: synthesize from NewsArticle when SignalProblem table is empty
+    from ..models import NewsArticle
+
+    articles = (
+        db.query(NewsArticle)
+        .order_by(NewsArticle.risk_score.desc())
+        .limit(100)
+        .all()
+    )
+
+    def get_severity(score):
+        if score >= 80:
+            return "Critical"
+        elif score >= 60:
+            return "High"
+        elif score >= 40:
+            return "Medium"
+        return "Low"
+
     return [
         {
-            "id": p.id,
-            "title": p.title,
-            "severity": p.severity,
-            "category": p.category,
-            "location": p.location,
-            "detectedAt": p.detected_at,
-            "description": p.description,
-            "riskScore": p.risk_score,
-            "source": p.source,
-            "status": p.status,
+            "id": f"SIG-{i+1:03d}",
+            "title": a.title,
+            "severity": get_severity(a.risk_score or 0),
+            "category": a.category or "General",
+            "location": "India",  # NewsArticle has no city location
+            "detectedAt": a.scraped_at.strftime("%Y-%m-%d") if a.scraped_at else None,
+            "description": (a.content or a.title)[:300],
+            "riskScore": round(a.risk_score or 0, 1),
+            "source": a.source_name,
+            "status": "Pending",
         }
-        for p in problems
+        for i, a in enumerate(articles)
     ]
+
 
 
 @router.get("/signal-problems/{problem_id}")

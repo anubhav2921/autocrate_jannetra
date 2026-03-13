@@ -58,6 +58,30 @@
 
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --navbar-bg: rgba(10, 14, 26, 0.85);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-glass: rgba(0, 0, 0, 0.04);
+  --bg-glass-hover: rgba(0, 0, 0, 0.08);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 0, 0, 0.15);
+
+  --gradient-glass: linear-gradient(135deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.02));
+  
+  --shadow-glow-blue: 0 4px 14px rgba(59, 130, 246, 0.3);
+  --shadow-glow-red: 0 4px 14px rgba(239, 68, 68, 0.3);
+
+  --navbar-bg: rgba(248, 250, 252, 0.85);
 }
 
 /* ── Reset ────────────────────────────────────────────────── */
@@ -601,7 +625,7 @@ a:hover {
 .anger-bar {
   flex: 1;
   height: 6px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-glass-hover);
   border-radius: 3px;
   overflow: hidden;
   max-width: 100px;
@@ -649,7 +673,7 @@ a:hover {
 .score-bar {
   width: 100%;
   height: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--bg-glass-hover);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -779,7 +803,7 @@ a:hover {
   left: var(--sidebar-width);
   right: 0;
   height: var(--navbar-height);
-  background: rgba(10, 14, 26, 0.85);
+  background: var(--navbar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-color);

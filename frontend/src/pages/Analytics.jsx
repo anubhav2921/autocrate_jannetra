@@ -21,9 +21,21 @@ export default function Analytics() {
             fetchCategoryBreakdown(),
         ])
             .then(([sTrend, hMap, cBreak]) => {
-                setSentiment(sTrend.trend || []);
+                let trendData = sTrend.trend || [];
+                // If only 1 data point, Recharts AreaChart draws a confusing flat line or doesn't render the area properly.
+                // We fake a previous day if there's exactly 1 day.
+                if (trendData.length === 1) {
+                    const single = trendData[0];
+                    const prevDate = new Date(new Date(single.date).getTime() - 86400000).toISOString().split('T')[0];
+                    trendData = [
+                        { ...single, date: prevDate, avg_polarity: 0, avg_anger: 0, count: 0 },
+                        single
+                    ];
+                }
+                setSentiment(trendData);
                 setHeatmap(hMap.heatmap || []);
-                setCategories(cBreak.categories || []);
+                // Limit category breakdown to top 15 to prevent the bar chart from breaking/disappearing when there are too many (e.g. 50+)
+                setCategories((cBreak.categories || []).slice(0, 15));
             })
             .catch(console.error)
             .finally(() => setLoading(false));

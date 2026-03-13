@@ -95,16 +95,26 @@ def news_article_stats(db: Session = Depends(get_db)):
     )
 
     return {
+        # Dashboard-compatible field names
+        "overall_gri": round(avg_risk, 1),
+        "total_articles": total,
+        "fake_news_percentage": round(fake_count / max(total, 1) * 100, 1),
+        "average_anger": round(avg_anger, 2),
+        "active_alerts": 0,
+        "sentiment_distribution": sentiments,
+        "category_risk": [
+            {"category": c or "General", "avg_gri": round(g or 0, 1), "count": n}
+            for c, n, g in categories
+        ],
+        "location_risk": [],
+        "top_risks": [],
+        "critical_alerts": [],
+        # Legacy fields kept for backward compatibility
         "total": total,
         "avg_risk_score": round(avg_risk, 1),
         "avg_anger_rating": round(avg_anger, 2),
         "fake_news_count": fake_count,
         "fake_news_pct": round(fake_count / max(total, 1) * 100, 1),
-        "sentiment_distribution": sentiments,
-        "categories": [
-            {"category": c, "count": n, "avg_risk": round(g or 0, 1)}
-            for c, n, g in categories
-        ],
     }
 
 

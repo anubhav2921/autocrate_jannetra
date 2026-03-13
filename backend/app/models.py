@@ -148,17 +148,23 @@ class Resolution(Base):
     id = Column(String, primary_key=True, default=gen_uuid)
     alert_id = Column(String, ForeignKey("alerts.id"), nullable=True)
     resolved_by = Column(String, ForeignKey("users.id"), nullable=False)
+
     title = Column(String(500), nullable=False)
     category = Column(String(100))
     location = Column(String(200))
+
     problem_description = Column(Text, nullable=False)
     action_taken = Column(Text, nullable=False)
+
     resources_used = Column(Text)
     people_benefited = Column(String(100))
+
     status = Column(
         Enum("RESOLVED", "IN_PROGRESS", "PARTIALLY_RESOLVED", name="resolution_status_enum"),
         default="RESOLVED",
     )
+
+    created_at = Column(DateTime, default=datetime.utcnow)   # ← ADD THIS
     resolved_at = Column(DateTime, default=datetime.utcnow)
     submitted_at = Column(DateTime, default=datetime.utcnow)
 

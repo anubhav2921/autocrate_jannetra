@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
     User, Mail, Building2, Lock, Trash2, Camera, Award, CheckCircle2,
-    Clock, Shield, Save,
+    Clock, Shield, Save, Moon, Sun, Monitor, Palette
 } from 'lucide-react';
 
 export default function Account({ user, onLogin, onLogout }) {
@@ -10,6 +10,7 @@ export default function Account({ user, onLogin, onLogout }) {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('profile');
     const [msg, setMsg] = useState({ text: '', type: '' });
+    const [theme, setTheme] = useState(localStorage.getItem('app-theme') || 'default');
 
     // Edit states
     const [editName, setEditName] = useState('');
@@ -87,10 +88,23 @@ export default function Account({ user, onLogin, onLogout }) {
         reader.readAsDataURL(file);
     };
 
+    const handleThemeChange = (newTheme) => {
+        setTheme(newTheme);
+        localStorage.setItem('app-theme', newTheme);
+        if (newTheme === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+        } else if (newTheme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+        }
+    };
+
     if (loading) return <div className="loading-container"><div className="spinner" /></div>;
 
     const tabs = [
         { id: 'profile', label: 'Profile', icon: User },
+        { id: 'appearance', label: 'Appearance', icon: Palette },
         { id: 'password', label: 'Password', icon: Lock },
         { id: 'danger', label: 'Delete Account', icon: Trash2 },
     ];
@@ -222,91 +236,160 @@ export default function Account({ user, onLogin, onLogout }) {
                 </div>
             )}
 
-            {/* Password Tab */}
-            {activeTab === 'password' && (
-                <div className="glass-card animate-in" style={{ maxWidth: '440px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Change Password</h3>
-                    <div style={{ display: 'grid', gap: '14px' }}>
-                        <div>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Current Password</label>
-                            <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)}
-                                placeholder="Enter current password"
-                                style={{
-                                    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px',
-                                    color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }} />
+            {/* Appearance Tab */}
+            {activeTab === 'appearance' && (
+                <div className="glass-card animate-in" style={{ maxWidth: '600px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Palette size={18} color="var(--accent-blue)" /> Theme Preferences
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+                        Customize how JanNetra looks on your device.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+                        {/* Default / System */}
+                        <div
+                            onClick={() => handleThemeChange('default')}
+                            style={{
+                                padding: '20px',
+                                border: `2px solid ${theme === 'default' ? 'var(--accent-blue)' : 'var(--border-color)'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                background: theme === 'default' ? 'var(--accent-blue-bg)' : 'var(--bg-glass)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Monitor size={32} color={theme === 'default' ? 'var(--accent-blue)' : 'var(--text-muted)'} />
+                            <span style={{ fontWeight: 600, color: theme === 'default' ? 'var(--accent-blue)' : 'var(--text-primary)' }}>System Default</span>
                         </div>
-                        <div>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>New Password</label>
-                            <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)}
-                                placeholder="Min 6 characters"
-                                style={{
-                                    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px',
-                                    color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }} />
+
+                        {/* Dark Mode */}
+                        <div
+                            onClick={() => handleThemeChange('dark')}
+                            style={{
+                                padding: '20px',
+                                border: `2px solid ${theme === 'dark' ? 'var(--accent-purple)' : 'var(--border-color)'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                background: theme === 'dark' ? 'var(--accent-purple-bg)' : 'var(--bg-glass)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Moon size={32} color={theme === 'dark' ? 'var(--accent-purple)' : 'var(--text-muted)'} />
+                            <span style={{ fontWeight: 600, color: theme === 'dark' ? 'var(--accent-purple)' : 'var(--text-primary)' }}>Dark Mode</span>
                         </div>
-                        <div>
-                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Confirm New Password</label>
-                            <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)}
-                                placeholder="Re-enter new password"
-                                style={{
-                                    width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px',
-                                    color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }} />
+
+                        {/* Light Mode */}
+                        <div
+                            onClick={() => handleThemeChange('light')}
+                            style={{
+                                padding: '20px',
+                                border: `2px solid ${theme === 'light' ? '#f59e0b' : 'var(--border-color)'}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                background: theme === 'light' ? 'rgba(245, 158, 11, 0.12)' : 'var(--bg-glass)',
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            <Sun size={32} color={theme === 'light' ? '#f59e0b' : 'var(--text-muted)'} />
+                            <span style={{ fontWeight: 600, color: theme === 'light' ? '#f59e0b' : 'var(--text-primary)' }}>Light Mode</span>
                         </div>
-                        <button className="btn btn-primary" onClick={handleChangePassword}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content' }}>
-                            <Lock size={14} /> Update Password
-                        </button>
                     </div>
                 </div>
             )}
 
-            {/* Delete Account Tab */}
-            {activeTab === 'danger' && (
-                <div className="glass-card animate-in" style={{ maxWidth: '440px', borderColor: 'rgba(239,68,68,0.3)' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '8px', color: '#ef4444' }}>
-                        ⚠️ Delete Account
-                    </h3>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
-                        This action is <strong style={{ color: '#ef4444' }}>permanent and irreversible</strong>.
-                        All your data, including resolutions, will be deleted.
-                    </p>
-
-                    {!deleteConfirm ? (
-                        <button className="btn btn-danger" onClick={() => setDeleteConfirm(true)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Trash2 size={14} /> I want to delete my account
-                        </button>
-                    ) : (
-                        <div style={{ display: 'grid', gap: '12px' }}>
+            {/* Password Tab */}
+            {
+                activeTab === 'password' && (
+                    <div className="glass-card animate-in" style={{ maxWidth: '440px' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>Change Password</h3>
+                        <div style={{ display: 'grid', gap: '14px' }}>
                             <div>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
-                                    Enter your password to confirm
-                                </label>
-                                <input type="password" value={deletePwd} onChange={(e) => setDeletePwd(e.target.value)}
-                                    placeholder="Your password"
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Current Password</label>
+                                <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)}
+                                    placeholder="Enter current password"
                                     style={{
                                         width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px',
+                                        border: '1px solid var(--border-color)', borderRadius: '8px',
                                         color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
                                     }} />
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <button className="btn btn-danger" onClick={handleDeleteAccount}>
-                                    Permanently Delete
-                                </button>
-                                <button className="btn btn-ghost" onClick={() => { setDeleteConfirm(false); setDeletePwd(''); }}>
-                                    Cancel
-                                </button>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>New Password</label>
+                                <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)}
+                                    placeholder="Min 6 characters"
+                                    style={{
+                                        width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid var(--border-color)', borderRadius: '8px',
+                                        color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
+                                    }} />
                             </div>
+                            <div>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Confirm New Password</label>
+                                <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)}
+                                    placeholder="Re-enter new password"
+                                    style={{
+                                        width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+                                        border: '1px solid var(--border-color)', borderRadius: '8px',
+                                        color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
+                                    }} />
+                            </div>
+                            <button className="btn btn-primary" onClick={handleChangePassword}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content' }}>
+                                <Lock size={14} /> Update Password
+                            </button>
                         </div>
-                    )}
-                </div>
-            )}
-        </div>
+                    </div>
+                )
+            }
+
+            {/* Delete Account Tab */}
+            {
+                activeTab === 'danger' && (
+                    <div className="glass-card animate-in" style={{ maxWidth: '440px', borderColor: 'rgba(239,68,68,0.3)' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '8px', color: '#ef4444' }}>
+                            ⚠️ Delete Account
+                        </h3>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+                            This action is <strong style={{ color: '#ef4444' }}>permanent and irreversible</strong>.
+                            All your data, including resolutions, will be deleted.
+                        </p>
+
+                        {!deleteConfirm ? (
+                            <button className="btn btn-danger" onClick={() => setDeleteConfirm(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Trash2 size={14} /> I want to delete my account
+                            </button>
+                        ) : (
+                            <div style={{ display: 'grid', gap: '12px' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>
+                                        Enter your password to confirm
+                                    </label>
+                                    <input type="password" value={deletePwd} onChange={(e) => setDeletePwd(e.target.value)}
+                                        placeholder="Your password"
+                                        style={{
+                                            width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
+                                            border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px',
+                                            color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'var(--font-family)'
+                                        }} />
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button className="btn btn-danger" onClick={handleDeleteAccount}>
+                                        Permanently Delete
+                                    </button>
+                                    <button className="btn btn-ghost" onClick={() => { setDeleteConfirm(false); setDeletePwd(''); }}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )
+            }
+        </div >
     );
 }

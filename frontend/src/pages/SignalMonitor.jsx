@@ -23,7 +23,16 @@ export default function SignalMonitor() {
     useEffect(() => {
         fetch('/api/signal-problems')
             .then((r) => r.json())
-            .then((data) => setProblems(data))
+            .then((data) => {
+                const formatted = data.map((p) => ({
+                    ...p,
+                    severity: p.severity || "Medium",
+                    status: p.status || "Pending",
+                    riskScore: p.riskScore || p.risk || 0,
+                    location: p.location || "Unknown"
+                }));
+                setProblems(formatted);
+            })
             .catch(console.error)
             .finally(() => setLoading(false));
     }, []);

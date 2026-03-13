@@ -1,11 +1,7 @@
 """
 JanNetra — Predictive Governance Intelligence & Decision Support System
 ═══════════════════════════════════════════════════════════════════════
-FastAPI backend entry-point.  Registers every route module, creates
-all DB tables on startup, and launches the automated data pipeline.
-
-Start command (from backend/):
-    venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --port 8000
+FastAPI backend entry-point.
 """
 
 import logging
@@ -37,6 +33,7 @@ from app.routes import (
     complaints,
     pipeline,
 )
+# signals.py is superseded by signal_problems.py (which has the correct schema)
 
 # ── Logging config ───────────────────────────────────────────────────
 logging.basicConfig(
@@ -109,7 +106,7 @@ async def lifespan(app: FastAPI):
     logger.info("[Shutdown] ✅ Scheduler stopped")
 
 
-# ── App instance ─────────────────────────────────────────────────────
+# ── App instance (single, authoritative) ────────────────────────────
 app = FastAPI(
     title="JanNetra API",
     description="Predictive Governance Intelligence & Decision Support System",
@@ -132,7 +129,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Register every router ───────────────────────────────────────────
+# ── Register every router (once each) ───────────────────────────────
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(articles.router)
@@ -150,7 +147,6 @@ app.include_router(reports.router)
 app.include_router(account.router)
 app.include_router(complaints.router)
 app.include_router(pipeline.router)
-
 
 # ── Health-check root ────────────────────────────────────────────────
 @app.get("/")

@@ -55,7 +55,7 @@ def list_resolutions(db: Session = Depends(get_db)):
     results = (
         db.query(Resolution, User)
         .join(User, User.id == Resolution.resolved_by)
-        .order_by(Resolution.created_at.desc())
+        .order_by(Resolution.submitted_at.desc())
         .all()
     )
 
