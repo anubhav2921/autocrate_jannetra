@@ -4,6 +4,7 @@ import {
     AlertTriangle, Shield, MapPin, Clock, Zap, Eye,
     CheckCircle2, Circle, Filter, Search,
 } from 'lucide-react';
+import { useLocation } from '../context/LocationContext';
 
 const SEVERITY_CONFIG = {
     Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
@@ -13,6 +14,7 @@ const SEVERITY_CONFIG = {
 };
 
 export default function SignalMonitor() {
+    const { locationParams, location } = useLocation();
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -21,7 +23,8 @@ export default function SignalMonitor() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetch('/api/signal-problems')
+        setLoading(true);
+        fetch(`/api/signal-problems?${locationParams()}`)
             .then((r) => r.json())
             .then((data) => {
                 const formatted = data.map((p) => ({
@@ -35,7 +38,7 @@ export default function SignalMonitor() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [location.state, location.district, location.city, location.ward]);
 
     const filtered = problems.filter((p) => {
         if (filterSeverity !== 'ALL' && p.severity !== filterSeverity) return false;

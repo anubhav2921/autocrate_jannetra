@@ -252,3 +252,11 @@ class NewsArticle(Base):
     tier             = Column(String(20), default="UNKNOWN")
     scraped_at       = Column(DateTime, default=datetime.utcnow)
     created_at       = Column(DateTime, default=datetime.utcnow)
+
+    # ── Geographic location (hierarchical) ───────────────────────────
+    state            = Column(String(100), nullable=True, index=True)
+    district         = Column(String(100), nullable=True, index=True)
+    city             = Column(String(100), nullable=True, index=True)
+    ward             = Column(String(150), nullable=True)
+    latitude         = Column(Float, nullable=True)
+    longitude        = Column(Float, nullable=True)

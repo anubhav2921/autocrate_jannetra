@@ -32,6 +32,7 @@ from app.routes import (
     account,
     complaints,
     pipeline,
+    location,
 )
 # signals.py is superseded by signal_problems.py (which has the correct schema)
 
@@ -147,6 +148,7 @@ app.include_router(reports.router)
 app.include_router(account.router)
 app.include_router(complaints.router)
 app.include_router(pipeline.router)
+app.include_router(location.router)
 
 # ── Health-check root ────────────────────────────────────────────────
 @app.get("/")

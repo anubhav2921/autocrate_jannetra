@@ -37,6 +37,101 @@ from app.services.gri_service import compute_gri
 
 logger = logging.getLogger("jannetra.pipeline")
 
+# ── City → (State, District, lat, lng) lookup ─────────────────────────────────
+CITY_LOCATION_MAP: dict[str, dict] = {
+    "Mumbai":    {"state": "Maharashtra",     "district": "Mumbai City",        "lat": 19.076,  "lng": 72.8777},
+    "Delhi":     {"state": "Delhi",           "district": "Central Delhi",       "lat": 28.6139, "lng": 77.209},
+    "Bangalore": {"state": "Karnataka",       "district": "Bangalore Urban",     "lat": 12.9716, "lng": 77.5946},
+    "Bengaluru": {"state": "Karnataka",       "district": "Bangalore Urban",     "lat": 12.9716, "lng": 77.5946},
+    "Hyderabad": {"state": "Telangana",       "district": "Hyderabad",           "lat": 17.385,  "lng": 78.4867},
+    "Chennai":   {"state": "Tamil Nadu",      "district": "Chennai",             "lat": 13.0827, "lng": 80.2707},
+    "Kolkata":   {"state": "West Bengal",     "district": "Kolkata",             "lat": 22.5726, "lng": 88.3639},
+    "Pune":      {"state": "Maharashtra",     "district": "Pune",                "lat": 18.5204, "lng": 73.8567},
+    "Jaipur":    {"state": "Rajasthan",       "district": "Jaipur",              "lat": 26.9124, "lng": 75.7873},
+    "Lucknow":   {"state": "Uttar Pradesh",   "district": "Lucknow",             "lat": 26.8467, "lng": 80.9462},
+    "Ahmedabad": {"state": "Gujarat",         "district": "Ahmedabad",           "lat": 23.0225, "lng": 72.5714},
+    "Patna":     {"state": "Bihar",           "district": "Patna",               "lat": 25.6093, "lng": 85.1376},
+    "Bhopal":    {"state": "Madhya Pradesh",  "district": "Bhopal",              "lat": 23.2599, "lng": 77.4126},
+    "Chandigarh":{"state": "Punjab",          "district": "Chandigarh",          "lat": 30.7333, "lng": 76.7794},
+    "Varanasi":  {"state": "Uttar Pradesh",   "district": "Varanasi",            "lat": 25.3176, "lng": 82.9739},
+    "Nagpur":    {"state": "Maharashtra",     "district": "Nagpur",              "lat": 21.1458, "lng": 79.0882},
+    "Indore":    {"state": "Madhya Pradesh",  "district": "Indore",              "lat": 22.7196, "lng": 75.8577},
+    "Surat":     {"state": "Gujarat",         "district": "Surat",               "lat": 21.1702, "lng": 72.8311},
+    "Noida":     {"state": "Uttar Pradesh",   "district": "Gautam Buddh Nagar",  "lat": 28.5355, "lng": 77.391},
+    "Gurgaon":   {"state": "Haryana",         "district": "Gurugram",            "lat": 28.4595, "lng": 77.0266},
+    "Ranchi":    {"state": "Jharkhand",       "district": "Ranchi",              "lat": 23.3441, "lng": 85.3096},
+    "Kochi":     {"state": "Kerala",          "district": "Ernakulam",           "lat": 9.9312,  "lng": 76.2673},
+    "Prayagraj": {"state": "Uttar Pradesh",   "district": "Prayagraj",           "lat": 25.4358, "lng": 81.8463},
+    "Allahabad": {"state": "Uttar Pradesh",   "district": "Prayagraj",           "lat": 25.4358, "lng": 81.8463},
+    "Kanpur":    {"state": "Uttar Pradesh",   "district": "Kanpur Nagar",        "lat": 26.4499, "lng": 80.3319},
+    "Agra":      {"state": "Uttar Pradesh",   "district": "Agra",                "lat": 27.1767, "lng": 78.0081},
+    "Ghaziabad": {"state": "Uttar Pradesh",   "district": "Ghaziabad",           "lat": 28.6692, "lng": 77.4538},
+    "Mysuru":    {"state": "Karnataka",       "district": "Mysuru",              "lat": 12.2958, "lng": 76.6394},
+    "Amritsar":  {"state": "Punjab",          "district": "Amritsar",            "lat": 31.634,  "lng": 74.8723},
+    "Ludhiana":  {"state": "Punjab",          "district": "Ludhiana",            "lat": 30.9009, "lng": 75.8573},
+    "Coimbatore":{"state": "Tamil Nadu",      "district": "Coimbatore",          "lat": 11.0168, "lng": 76.9558},
+    "Madurai":   {"state": "Tamil Nadu",      "district": "Madurai",             "lat": 9.9252,  "lng": 78.1198},
+    "India":     {"state": None,              "district": None,                   "lat": 22.5,    "lng": 78.5},
+}
+# Create lowercase lookup map for robust matching
+CITY_LOCATION_MAP_LOWER = {k.lower(): v for k, v in CITY_LOCATION_MAP.items()}
+
+
+def _resolve_location(article: dict) -> dict:
+    """
+    Resolve structured location fields from a scraped article.
+    Checks: article['location'] (set by scrapers) -> match to city map.
+    Returns dict with state, district, city, latitude, longitude.
+    """
+    raw_location = article.get("location", "") or ""
+    
+    # Check if a city matched case-insensitively using CITY_LOCATION_MAP_LOWER
+    city_candidate = raw_location.split(",")[0].strip().lower()
+    
+    # Default geography
+    geo = {"state": None, "district": None, "lat": None, "lng": None}
+    
+    if city_candidate in CITY_LOCATION_MAP_LOWER:
+        geo = CITY_LOCATION_MAP_LOWER[city_candidate]
+    else:
+        # Try full match case-insensitive
+        full_candidate = raw_location.strip().lower()
+        if full_candidate in CITY_LOCATION_MAP_LOWER:
+            geo = CITY_LOCATION_MAP_LOWER[full_candidate]
+            city_candidate = full_candidate
+        else:
+            city_candidate = None
+
+    # Handle randomize point placement around the bounds to prevent marker stacking
+    lat = geo["lat"]
+    lng = geo["lng"]
+    if lat is not None and lng is not None:
+        import random
+        # Base jitter +/- 0.02 degrees (roughly +/- 2km)
+        lat += random.uniform(-0.02, 0.02)
+        lng += random.uniform(-0.02, 0.02)
+
+    # Note: restore original casing logic where we can
+    original_city_case = None
+    if city_candidate and city_candidate != "india":
+        # Find original case
+        for k in CITY_LOCATION_MAP.keys():
+            if k.lower() == city_candidate:
+                original_city_case = k
+                break
+        
+        # Ensure fallback for Prayagraj if Allahabad matched
+        if original_city_case == "Allahabad":
+            original_city_case = "Prayagraj"
+
+    return {
+        "state": geo["state"],
+        "district": geo["district"],
+        "city": original_city_case,
+        "latitude": lat,
+        "longitude": lng,
+    }
+
 # ── Category detection via keywords ──────────────────────────────────
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "Water": ["water", "supply", "pipeline", "tanker", "drought", "contaminated", "sewage", "groundwater", "drinking water"],
@@ -228,6 +323,7 @@ def run_pipeline() -> dict:
                 processed = _process_article(article)
 
                 # ── Step 4: Store in database ────────────────────
+                loc = _resolve_location(article)
                 news_record = NewsArticle(
                     title=processed["title"],
                     content=processed["content"],
@@ -248,6 +344,12 @@ def run_pipeline() -> dict:
                     source_type=processed.get("source_type", "NEWS"),
                     tier=processed.get("tier", "UNKNOWN"),
                     scraped_at=datetime.utcnow(),
+                    # ── Location fields ────────────────────────────
+                    state=loc["state"],
+                    district=loc["district"],
+                    city=loc["city"],
+                    latitude=loc["latitude"],
+                    longitude=loc["longitude"],
                 )
 
                 db.add(news_record)

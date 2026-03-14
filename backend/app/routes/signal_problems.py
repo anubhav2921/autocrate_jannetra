@@ -1,7 +1,7 @@
 """
 Signal Problems API — CRUD + resolve + AI generation for Signal Monitor dashboard.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
@@ -17,9 +17,22 @@ class GenerateRequest(BaseModel):
 
 
 @router.get("/signal-problems")
-def list_signal_problems(db: Session = Depends(get_db)):
-    """Return all signal problems with their current status."""
-    problems = db.query(SignalProblem).all()
+def list_signal_problems(
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Return all signal problems with their current status, filtered by location."""
+    q_p = db.query(SignalProblem)
+    if state:
+        q_p = q_p.filter(SignalProblem.location.ilike(f"%{state}%"))
+    if district:
+        q_p = q_p.filter(SignalProblem.location.ilike(f"%{district}%"))
+    if city:
+        q_p = q_p.filter(SignalProblem.location.ilike(f"%{city}%"))
+    problems = q_p.all()
 
     if problems:
         return [
@@ -40,10 +53,12 @@ def list_signal_problems(db: Session = Depends(get_db)):
 
     # Fallback: synthesize from NewsArticle when SignalProblem table is empty
     from ..models import NewsArticle
+    from .location import _build_location_filter, _article_location_str
 
+    q_a = db.query(NewsArticle)
+    q_a = _build_location_filter(q_a, NewsArticle, state, district, city, ward)
     articles = (
-        db.query(NewsArticle)
-        .order_by(NewsArticle.risk_score.desc())
+        q_a.order_by(NewsArticle.risk_score.desc())
         .limit(100)
         .all()
     )
@@ -63,7 +78,7 @@ def list_signal_problems(db: Session = Depends(get_db)):
             "title": a.title,
             "severity": get_severity(a.risk_score or 0),
             "category": a.category or "General",
-            "location": "India",  # NewsArticle has no city location
+            "location": _article_location_str(a),
             "detectedAt": a.scraped_at.strftime("%Y-%m-%d") if a.scraped_at else None,
             "description": (a.content or a.title)[:300],
             "riskScore": round(a.risk_score or 0, 1),

@@ -1,0 +1,545 @@
+{
+  "schema": [
+    [
+      0,
+      "id",
+      "VARCHAR",
+      1,
+      null,
+      1
+    ],
+    [
+      1,
+      "title",
+      "VARCHAR(500)",
+      1,
+      null,
+      0
+    ],
+    [
+      2,
+      "content",
+      "TEXT",
+      1,
+      null,
+      0
+    ],
+    [
+      3,
+      "source_name",
+      "VARCHAR(300)",
+      1,
+      null,
+      0
+    ],
+    [
+      4,
+      "source_url",
+      "VARCHAR(500)",
+      0,
+      null,
+      0
+    ],
+    [
+      5,
+      "url",
+      "VARCHAR(500)",
+      0,
+      null,
+      0
+    ],
+    [
+      6,
+      "published_at",
+      "DATETIME",
+      0,
+      null,
+      0
+    ],
+    [
+      7,
+      "content_hash",
+      "VARCHAR(64)",
+      1,
+      null,
+      0
+    ],
+    [
+      8,
+      "credibility_score",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      9,
+      "risk_score",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      10,
+      "risk_level",
+      "VARCHAR(20)",
+      0,
+      null,
+      0
+    ],
+    [
+      11,
+      "sentiment_label",
+      "VARCHAR(20)",
+      0,
+      null,
+      0
+    ],
+    [
+      12,
+      "sentiment_polarity",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      13,
+      "anger_rating",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      14,
+      "fake_news_label",
+      "VARCHAR(20)",
+      0,
+      null,
+      0
+    ],
+    [
+      15,
+      "fake_news_confidence",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      16,
+      "occurrence_count",
+      "INTEGER",
+      0,
+      null,
+      0
+    ],
+    [
+      17,
+      "priority_score",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      18,
+      "priority_level",
+      "VARCHAR(20)",
+      0,
+      null,
+      0
+    ],
+    [
+      19,
+      "last_seen",
+      "DATETIME",
+      0,
+      null,
+      0
+    ],
+    [
+      20,
+      "category",
+      "VARCHAR(100)",
+      0,
+      null,
+      0
+    ],
+    [
+      21,
+      "source_type",
+      "VARCHAR(50)",
+      0,
+      null,
+      0
+    ],
+    [
+      22,
+      "tier",
+      "VARCHAR(20)",
+      0,
+      null,
+      0
+    ],
+    [
+      23,
+      "scraped_at",
+      "DATETIME",
+      0,
+      null,
+      0
+    ],
+    [
+      24,
+      "created_at",
+      "DATETIME",
+      0,
+      null,
+      0
+    ],
+    [
+      25,
+      "state",
+      "VARCHAR(100)",
+      0,
+      null,
+      0
+    ],
+    [
+      26,
+      "district",
+      "VARCHAR(100)",
+      0,
+      null,
+      0
+    ],
+    [
+      27,
+      "city",
+      "VARCHAR(100)",
+      0,
+      null,
+      0
+    ],
+    [
+      28,
+      "ward",
+      "VARCHAR(150)",
+      0,
+      null,
+      0
+    ],
+    [
+      29,
+      "latitude",
+      "FLOAT",
+      0,
+      null,
+      0
+    ],
+    [
+      30,
+      "longitude",
+      "FLOAT",
+      0,
+      null,
+      0
+    ]
+  ],
+  "total_records": 219,
+  "valid_metadata": 87,
+  "missing_metadata": 132,
+  "city_dist": [
+    [
+      null,
+      132
+    ],
+    [
+      "Bangalore",
+      11
+    ],
+    [
+      "Hyderabad",
+      10
+    ],
+    [
+      "Mumbai",
+      9
+    ],
+    [
+      "Chennai",
+      7
+    ],
+    [
+      "Delhi",
+      7
+    ],
+    [
+      "Kolkata",
+      6
+    ],
+    [
+      "Pune",
+      6
+    ],
+    [
+      "Bhopal",
+      4
+    ],
+    [
+      "Lucknow",
+      4
+    ],
+    [
+      "Chandigarh",
+      3
+    ],
+    [
+      "Noida",
+      3
+    ],
+    [
+      "Ahmedabad",
+      2
+    ],
+    [
+      "Jaipur",
+      2
+    ],
+    [
+      "Nagpur",
+      2
+    ],
+    [
+      "Prayagraj",
+      2
+    ],
+    [
+      "Ranchi",
+      2
+    ],
+    [
+      "Varanasi",
+      2
+    ],
+    [
+      "Agra",
+      1
+    ],
+    [
+      "Gurgaon",
+      1
+    ],
+    [
+      "Indore",
+      1
+    ],
+    [
+      "Patna",
+      1
+    ],
+    [
+      "Surat",
+      1
+    ]
+  ],
+  "invalid_coords": 0,
+  "prayagraj_coords": [
+    [
+      "Severe water shortage hits residential areas",
+      "Prayagraj",
+      25.4557422066275,
+      81.84650155366579
+    ],
+    [
+      "Contaminated water supply causes mass illness",
+      "Prayagraj",
+      25.45546550539788,
+      81.85984058873133
+    ]
+  ],
+  "prayagraj_count": 2,
+  "lucknow_count": 4,
+  "overlap_count": 0,
+  "sources": [
+    [
+      "CM Helpline",
+      3
+    ],
+    [
+      "Citizen Complaint Portal",
+      11
+    ],
+    [
+      "Facebook Community Groups",
+      2
+    ],
+    [
+      "Hindustan Times \u2014 India",
+      10
+    ],
+    [
+      "Indian Express \u2014 India",
+      10
+    ],
+    [
+      "LiveMint \u2014 Politics",
+      10
+    ],
+    [
+      "Local News Blog",
+      7
+    ],
+    [
+      "NDTV",
+      3
+    ],
+    [
+      "NDTV India",
+      10
+    ],
+    [
+      "NewsAPI \u2014 Al Jazeera English",
+      1
+    ],
+    [
+      "NewsAPI \u2014 BusinessLine",
+      2
+    ],
+    [
+      "NewsAPI \u2014 CBC News",
+      2
+    ],
+    [
+      "NewsAPI \u2014 Cointelegraph",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Fair Observer",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Globalresearch.ca",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Globalsecurity.org",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Internet",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Iop.org",
+      1
+    ],
+    [
+      "NewsAPI \u2014 Livemint",
+      2
+    ],
+    [
+      "NewsAPI \u2014 Nature.com",
+      2
+    ],
+    [
+      "NewsAPI \u2014 The Indian Express",
+      3
+    ],
+    [
+      "NewsAPI \u2014 The Punch",
+      1
+    ],
+    [
+      "NewsAPI \u2014 The Times of India",
+      8
+    ],
+    [
+      "NewsAPI \u2014 Thenation.com",
+      1
+    ],
+    [
+      "PIB India \u2014 Press Releases",
+      24
+    ],
+    [
+      "Reddit \u2014 r/AskIndia",
+      1
+    ],
+    [
+      "Reddit \u2014 r/IndiaGovernance",
+      1
+    ],
+    [
+      "Reddit \u2014 r/LegalAdviceIndia",
+      11
+    ],
+    [
+      "Reddit \u2014 r/bangalore",
+      8
+    ],
+    [
+      "Reddit \u2014 r/chennai",
+      5
+    ],
+    [
+      "Reddit \u2014 r/delhi",
+      4
+    ],
+    [
+      "Reddit \u2014 r/hyderabad",
+      4
+    ],
+    [
+      "Reddit \u2014 r/india",
+      9
+    ],
+    [
+      "Reddit \u2014 r/indianews",
+      7
+    ],
+    [
+      "Reddit \u2014 r/kolkata",
+      5
+    ],
+    [
+      "Reddit \u2014 r/mumbai",
+      3
+    ],
+    [
+      "Reddit \u2014 r/pune",
+      5
+    ],
+    [
+      "Republic TV",
+      2
+    ],
+    [
+      "The Hindu",
+      4
+    ],
+    [
+      "The Hindu \u2014 National",
+      10
+    ],
+    [
+      "Times of India",
+      5
+    ],
+    [
+      "Times of India \u2014 India",
+      10
+    ],
+    [
+      "Twitter Citizen Reports",
+      1
+    ],
+    [
+      "WhatsApp Forwards",
+      6
+    ]
+  ]
+}

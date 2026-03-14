@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2, MapPin, Clock } from 'lucide-react';
+import {
+    Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2,
+    MapPin, Clock, Globe, ChevronDown,
+} from 'lucide-react';
 import { fetchDashboard, fetchAlerts, acknowledgeAlert } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useLocation } from '../context/LocationContext';
+import LocationFilter from './LocationFilter';
 
 export default function Navbar({ user }) {
     const [alertCount, setAlertCount] = useState(0);
@@ -9,8 +14,11 @@ export default function Navbar({ user }) {
     const [alertsData, setAlertsData] = useState([]);
     const [loadingAlerts, setLoadingAlerts] = useState(false);
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const [isLocationOpen, setIsLocationOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const locationDropdownRef = useRef(null);
     const navigate = useNavigate();
+    const { hasLocation, locationLabel } = useLocation();
 
     useEffect(() => {
         fetchDashboard()
@@ -18,10 +26,14 @@ export default function Navbar({ user }) {
             .catch(() => { });
     }, []);
 
+    // Close both dropdowns on outside click
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
                 setIsAlertOpen(false);
+            }
+            if (locationDropdownRef.current && !locationDropdownRef.current.contains(e.target)) {
+                setIsLocationOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -31,8 +43,8 @@ export default function Navbar({ user }) {
     const toggleAlertOpen = () => {
         const nextState = !isAlertOpen;
         setIsAlertOpen(nextState);
+        setIsLocationOpen(false);
         if (nextState) {
-            // Reset the unread badge visually when opening the panel
             setAlertCount(0);
             setLoadingAlerts(true);
             fetchAlerts({ active_only: true, limit: 10 })
@@ -40,6 +52,11 @@ export default function Navbar({ user }) {
                 .catch(console.error)
                 .finally(() => setLoadingAlerts(false));
         }
+    };
+
+    const toggleLocationOpen = () => {
+        setIsLocationOpen(prev => !prev);
+        setIsAlertOpen(false);
     };
 
     return (
@@ -54,6 +71,52 @@ export default function Navbar({ user }) {
                     />
                 </div>
                 <div className="navbar-right">
+
+                    {/* ── Location Selector ─────────────────────────── */}
+                    <div style={{ position: 'relative' }} ref={locationDropdownRef}>
+                        <button
+                            id="btn-location-selector"
+                            className={`navbar-location-btn ${hasLocation ? 'navbar-location-btn-active' : ''}`}
+                            onClick={toggleLocationOpen}
+                            title="Select location"
+                        >
+                            {hasLocation ? (
+                                <MapPin size={14} className="navbar-location-icon" />
+                            ) : (
+                                <Globe size={14} className="navbar-location-icon" />
+                            )}
+                            <span className="navbar-location-label">
+                                {hasLocation ? locationLabel() : 'All India'}
+                            </span>
+                            <ChevronDown
+                                size={12}
+                                style={{
+                                    transition: 'transform 0.2s',
+                                    transform: isLocationOpen ? 'rotate(180deg)' : 'rotate(0)',
+                                }}
+                            />
+                        </button>
+
+                        {isLocationOpen && (
+                            <div
+                                className="location-dropdown-panel glass-card animate-in"
+                                style={{
+                                    position: 'absolute',
+                                    top: '45px',
+                                    right: '0',
+                                    zIndex: 1001,
+                                    width: '380px',
+                                }}
+                            >
+                                <LocationFilter
+                                    compact={true}
+                                    onApply={() => setIsLocationOpen(false)}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── Alert Bell ────────────────────────────────── */}
                     <div style={{ position: 'relative' }} ref={dropdownRef}>
                         <button className="notification-btn" title="Alerts" onClick={toggleAlertOpen}>
                             <Bell size={20} />
@@ -111,6 +174,8 @@ export default function Navbar({ user }) {
                             </div>
                         )}
                     </div>
+
+                    {/* ── User Avatar ───────────────────────────────── */}
                     <div
                         className="user-avatar"
                         title={user?.name || 'Admin'}

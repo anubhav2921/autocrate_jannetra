@@ -131,6 +131,12 @@ def _extract_location(title: str, selftext: str, subreddit: str) -> Optional[str
         "indore": "Indore, Madhya Pradesh",
         "nagpur": "Nagpur, Maharashtra",
         "surat": "Surat, Gujarat",
+        "prayagraj": "Prayagraj, Uttar Pradesh",
+        "allahabad": "Allahabad, Uttar Pradesh",
+        "kanpur": "Kanpur, Uttar Pradesh",
+        "varanasi": "Varanasi, Uttar Pradesh",
+        "agra": "Agra, Uttar Pradesh",
+        "ghaziabad": "Ghaziabad, Uttar Pradesh"
     }
 
     for city_kw, city_name in cities.items():

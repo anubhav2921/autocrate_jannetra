@@ -142,6 +142,41 @@ def _content_hash(text: str) -> str:
     """SHA-256 hash for deduplication."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
+def _extract_location(title: str, text: str) -> Optional[str]:
+    combined = (title + " " + text).lower()
+    cities = {
+        "mumbai": "Mumbai, Maharashtra",
+        "delhi": "Delhi, NCR",
+        "bangalore": "Bangalore, Karnataka",
+        "bengaluru": "Bangalore, Karnataka",
+        "hyderabad": "Hyderabad, Telangana",
+        "chennai": "Chennai, Tamil Nadu",
+        "kolkata": "Kolkata, West Bengal",
+        "pune": "Pune, Maharashtra",
+        "ahmedabad": "Ahmedabad, Gujarat",
+        "jaipur": "Jaipur, Rajasthan",
+        "lucknow": "Lucknow, Uttar Pradesh",
+        "chandigarh": "Chandigarh",
+        "bhopal": "Bhopal, Madhya Pradesh",
+        "patna": "Patna, Bihar",
+        "gurgaon": "Gurgaon, Haryana",
+        "noida": "Noida, Uttar Pradesh",
+        "kochi": "Kochi, Kerala",
+        "indore": "Indore, Madhya Pradesh",
+        "nagpur": "Nagpur, Maharashtra",
+        "surat": "Surat, Gujarat",
+        "prayagraj": "Prayagraj, Uttar Pradesh",
+        "allahabad": "Allahabad, Uttar Pradesh",
+        "kanpur": "Kanpur, Uttar Pradesh",
+        "varanasi": "Varanasi, Uttar Pradesh",
+        "agra": "Agra, Uttar Pradesh",
+        "ghaziabad": "Ghaziabad, Uttar Pradesh"
+    }
+    for city_kw, city_name in cities.items():
+        if city_kw in combined:
+            return city_name
+    return "India"
+
 
 def scrape_rss_feeds(feeds: list[dict] | None = None) -> list[dict]:
     """
@@ -221,6 +256,7 @@ def scrape_rss_feeds(feeds: list[dict] | None = None) -> list[dict]:
                     "tier": feed_info["tier"],
                     "category_hint": feed_info["category_hint"],
                     "content_hash": c_hash,
+                    "location": _extract_location(title, content),
                 })
                 feed_count += 1
 

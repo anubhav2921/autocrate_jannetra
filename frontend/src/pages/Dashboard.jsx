@@ -4,23 +4,26 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
-    AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame,
+    AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame, Globe,
 } from 'lucide-react';
-import { fetchDashboard } from '../services/api';
+import { fetchLocationDashboard } from '../services/api';
+import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444'];
 
 export default function Dashboard() {
+    const { location, hasLocation, locationLabel } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchDashboard()
+        setLoading(true);
+        fetchLocationDashboard(location)
             .then(setData)
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [location.state, location.district, location.city, location.ward]);
 
     if (loading) {
         return (
@@ -52,8 +55,27 @@ export default function Dashboard() {
 
             {/* Page Header */}
             <div className="page-header animate-in">
-                <h1>Governance Intelligence Dashboard</h1>
-                <p>Real-time predictive risk monitoring & decision support</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                        <h1>Governance Intelligence Dashboard</h1>
+                        <p>Real-time predictive risk monitoring &amp; decision support</p>
+                    </div>
+                    {/* Active Location Breadcrumb */}
+                    <div className={`location-breadcrumb ${hasLocation ? 'location-breadcrumb-active' : ''}`}>
+                        {hasLocation ? (
+                            <>
+                                <span className="location-breadcrumb-dot" />
+                                <MapPin size={13} />
+                                <span>{locationLabel()}</span>
+                            </>
+                        ) : (
+                            <>
+                                <Globe size={13} />
+                                <span>All India</span>
+                            </>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Stat Cards */}
@@ -95,20 +117,31 @@ export default function Dashboard() {
                     <div className="section-title">
                         <MapPin size={18} /> Risk Heatmap by Location
                     </div>
-                    <div className="heatmap-grid">
-                        {data.location_risk?.map((loc) => (
-                            <div
-                                key={loc.location}
-                                className={`heatmap-cell risk-${loc.avg_gri > 60 ? 'high' : loc.avg_gri > 30 ? 'moderate' : 'low'}`}
-                            >
-                                <div className="cell-location">{loc.location}</div>
-                                <div className="cell-score" style={{ color: RISK_COLORS[loc.avg_gri > 60 ? 'HIGH' : loc.avg_gri > 30 ? 'MODERATE' : 'LOW'] }}>
-                                    {loc.avg_gri}
+                    {data.location_risk?.length > 0 ? (
+                        <div className="heatmap-grid">
+                            {data.location_risk.map((loc) => (
+                                <div
+                                    key={loc.location}
+                                    className={`heatmap-cell risk-${loc.avg_gri > 60 ? 'high' : loc.avg_gri > 30 ? 'moderate' : 'low'}`}
+                                >
+                                    <div className="cell-location">{loc.location}</div>
+                                    <div className="cell-score" style={{ color: RISK_COLORS[loc.avg_gri > 60 ? 'HIGH' : loc.avg_gri > 30 ? 'MODERATE' : 'LOW'] }}>
+                                        {loc.avg_gri}
+                                    </div>
+                                    <div className="cell-count">{loc.count} signal{loc.count > 1 ? 's' : ''}</div>
                                 </div>
-                                <div className="cell-count">{loc.count} signal{loc.count > 1 ? 's' : ''}</div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', color: 'var(--text-muted)', gap: '10px' }}>
+                            <MapPin size={32} style={{ opacity: 0.3 }} />
+                            <span style={{ fontSize: '0.85rem' }}>
+                                {hasLocation
+                                    ? 'No location risk data available for the selected area'
+                                    : 'Select a location to see location-specific risk data'}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="glass-card chart-card animate-in">
@@ -174,6 +207,11 @@ export default function Dashboard() {
             <div className="glass-card animate-in">
                 <div className="section-title">
                     <Shield size={18} /> Priority Rankings — Top Risk Signals
+                    {hasLocation && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', fontWeight: 500, marginLeft: '8px', background: 'rgba(59,130,246,0.12)', padding: '2px 8px', borderRadius: '12px' }}>
+                            {locationLabel()}
+                        </span>
+                    )}
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                     <table className="data-table">
@@ -196,7 +234,7 @@ export default function Dashboard() {
                                         {r.title}
                                     </td>
                                     <td>{r.category}</td>
-                                    <td>{r.location}</td>
+                                    <td>{r.location || (r.city ? [r.city, r.district, r.state].filter(Boolean).join(', ') : '—')}</td>
                                     <td>
                                         <span style={{
                                             color: RISK_COLORS[r.risk_level] || '#94a3b8',
@@ -233,6 +271,11 @@ export default function Dashboard() {
                             ))}
                         </tbody>
                     </table>
+                    {(!data.top_risks || data.top_risks.length === 0) && (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            No signals found for the selected location.
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

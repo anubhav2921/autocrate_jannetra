@@ -23,6 +23,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import PhoneAuth from './pages/PhoneAuth';
 import LandingPage from './pages/LandingPage';
+import { LocationProvider } from './context/LocationContext';
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -69,32 +70,34 @@ export default function App() {
     }
 
     return (
-        <BrowserRouter>
-            <div className="app-layout">
-                <Sidebar user={user} onLogout={handleLogout} />
-                <div className="main-content">
-                    <Navbar user={user} />
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/articles" element={<Articles />} />
-                        <Route path="/alerts" element={<Alerts />} />
-                        <Route path="/analytics" element={<Analytics />} />
-                        <Route path="/sources" element={<Sources />} />
-                        <Route path="/resolutions" element={<Resolutions user={user} />} />
-                        <Route path="/map" element={<MapView />} />
-                        <Route path="/leaderboard" element={<Leaderboard />} />
-                        <Route path="/chatbot" element={<Chatbot />} />
-                        <Route path="/scanner" element={<Scanner />} />
-                        <Route path="/signal-monitor" element={<SignalMonitor />} />
-                        <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
-                        <Route path="/system-monitoring" element={<SystemMonitoring />} />
-                        <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
-                        <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
-                        <Route path="*" element={<Navigate to="/" />} />
-                    </Routes>
+        <LocationProvider>
+            <BrowserRouter>
+                <div className="app-layout">
+                    <Sidebar user={user} onLogout={handleLogout} />
+                    <div className="main-content">
+                        <Navbar user={user} />
+                        <Routes>
+                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/articles" element={<Articles />} />
+                            <Route path="/alerts" element={<Alerts />} />
+                            <Route path="/analytics" element={<Analytics />} />
+                            <Route path="/sources" element={<Sources />} />
+                            <Route path="/resolutions" element={<Resolutions user={user} />} />
+                            <Route path="/map" element={<MapView />} />
+                            <Route path="/leaderboard" element={<Leaderboard />} />
+                            <Route path="/chatbot" element={<Chatbot />} />
+                            <Route path="/scanner" element={<Scanner />} />
+                            <Route path="/signal-monitor" element={<SignalMonitor />} />
+                            <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
+                            <Route path="/system-monitoring" element={<SystemMonitoring />} />
+                            <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
+                            <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
+                            <Route path="*" element={<Navigate to="/" />} />
+                        </Routes>
+                    </div>
                 </div>
-            </div>
-        </BrowserRouter>
+            </BrowserRouter>
+        </LocationProvider>
     );
 }
 
