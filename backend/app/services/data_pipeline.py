@@ -1,6 +1,6 @@
 """
 Data Pipeline Service — Orchestrates: Scrape → Clean → NLP → Store
-═══════════════════════════════════════════════════════════════════════
+
 The central pipeline that ties all scrapers and NLP services together.
 
 Pipeline stages:
@@ -37,7 +37,7 @@ from app.services.gri_service import compute_gri
 
 logger = logging.getLogger("jannetra.pipeline")
 
-# ── City → (State, District, lat, lng) lookup ─────────────────────────────────
+# City → (State, District, lat, lng) lookup
 CITY_LOCATION_MAP: dict[str, dict] = {
     "Mumbai":    {"state": "Maharashtra",     "district": "Mumbai City",        "lat": 19.076,  "lng": 72.8777},
     "Delhi":     {"state": "Delhi",           "district": "Central Delhi",       "lat": 28.6139, "lng": 77.209},
@@ -132,7 +132,7 @@ def _resolve_location(article: dict) -> dict:
         "longitude": lng,
     }
 
-# ── Category detection via keywords ──────────────────────────────────
+# Category detection via keywords
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "Water": ["water", "supply", "pipeline", "tanker", "drought", "contaminated", "sewage", "groundwater", "drinking water"],
     "Infrastructure": ["road", "bridge", "building", "construction", "pothole", "highway", "metro", "railway", "smart city", "electricity"],
@@ -197,10 +197,10 @@ def _process_article(article: dict) -> dict:
     tier = article.get("tier", "UNKNOWN")
     source_type = article.get("source_type", "NEWS")
 
-    # ── Stage 1: NLP (sentiment, anger, entities, claims) ────────
+    # Stage 1: NLP (sentiment, anger, entities, claims)
     nlp = run_nlp_pipeline(content)
 
-    # ── Stage 2: Fake news detection ─────────────────────────────
+    # Stage 2: Fake news detection
     detection = detect_fake_news(
         text=content,
         source_credibility=credibility,
@@ -209,7 +209,7 @@ def _process_article(article: dict) -> dict:
         subjectivity=nlp.get("subjectivity", 0.5),
     )
 
-    # ── Stage 3: GRI scoring ─────────────────────────────────────
+    # Stage 3: GRI scoring
     gri = compute_gri(
         source_credibility=credibility,
         linguistic_manipulation_index=detection["features"]["linguistic_manipulation_index"],
@@ -220,7 +220,7 @@ def _process_article(article: dict) -> dict:
         word_count=nlp.get("word_count", 50),
     )
 
-    # ── Stage 4: Categorize ──────────────────────────────────────
+    # Stage 4: Categorize
     category_hint = article.get("category_hint", "General")
     category = _categorize_text(content)
     if category == "General" and category_hint != "General":
@@ -251,7 +251,7 @@ def run_pipeline() -> dict:
     logger.info("[Pipeline] ▶ Starting data ingestion pipeline...")
     logger.info("=" * 60)
 
-    # ── Step 1: Scrape from all sources ──────────────────────────
+    # Step 1: Scrape from all sources
     all_articles: list[dict] = []
 
     try:
@@ -293,7 +293,7 @@ def run_pipeline() -> dict:
             "sources": {"rss": 0, "news_api": 0, "gov": 0, "reddit": 0},
         }
 
-    # ── Step 2: Deduplicate ──────────────────────────────────────
+    # Step 2: Deduplicate
     db = SessionLocal()
     try:
         unique_articles = _deduplicate(all_articles, db)
@@ -313,7 +313,7 @@ def run_pipeline() -> dict:
                 },
             }
 
-        # ── Step 3: Process through NLP pipeline ─────────────────
+        # Step 3: Process through NLP pipeline
         processed_count = 0
         failed_count = 0
         stored_count = 0
@@ -322,7 +322,7 @@ def run_pipeline() -> dict:
             try:
                 processed = _process_article(article)
 
-                # ── Step 4: Store in database ────────────────────
+                # Step 4: Store in database
                 loc = _resolve_location(article)
                 news_record = NewsArticle(
                     title=processed["title"],
@@ -344,7 +344,7 @@ def run_pipeline() -> dict:
                     source_type=processed.get("source_type", "NEWS"),
                     tier=processed.get("tier", "UNKNOWN"),
                     scraped_at=datetime.utcnow(),
-                    # ── Location fields ────────────────────────────
+                    # Location fields
                     state=loc["state"],
                     district=loc["district"],
                     city=loc["city"],

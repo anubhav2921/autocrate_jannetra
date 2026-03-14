@@ -1,6 +1,6 @@
 """
 Reddit Complaint Scraper — Fetches governance complaints from Indian subreddits.
-═══════════════════════════════════════════════════════════════════════════════════
+
 Scrapes public Reddit posts using Reddit's JSON API (no key needed).
 
 Target subreddits:
@@ -24,7 +24,7 @@ import requests
 
 logger = logging.getLogger("jannetra.scrapers.reddit")
 
-# ── Configuration ────────────────────────────────────────────────────
+# Configuration
 TIMEOUT = 20
 MAX_RETRIES = 2
 RATE_LIMIT_DELAY = 2  # seconds between subreddit requests (Reddit rate limits)
@@ -33,7 +33,7 @@ HEADERS = {
     "User-Agent": "JanNetra/1.0 Governance-Intelligence-System (by JanNetra-Bot)"
 }
 
-# ── Subreddits to scrape ─────────────────────────────────────────────
+# Subreddits to scrape
 SUBREDDIT_CONFIG = [
     {"name": "india",             "credibility": 0.55, "sort": "new",  "limit": 25},
     {"name": "IndiaGovernance",   "credibility": 0.60, "sort": "new",  "limit": 15},
@@ -49,7 +49,7 @@ SUBREDDIT_CONFIG = [
     {"name": "pune",              "credibility": 0.55, "sort": "new",  "limit": 10},
 ]
 
-# ── Complaint / governance-related keywords ──────────────────────────
+# Complaint / governance-related keywords
 # Posts must match at least one keyword to be considered a complaint
 COMPLAINT_KEYWORDS = [
     # Governance issues
@@ -266,10 +266,10 @@ def scrape_reddit_complaints() -> list[dict]:
 
     Returns normalized article dicts compatible with the data pipeline.
     """
-    logger.info("[Reddit] ═══════════════════════════════════════════════")
+    logger.info("[Reddit] ")
     logger.info("[Reddit] Starting Reddit complaint scraper...")
     logger.info("[Reddit] Targeting %d subreddits", len(SUBREDDIT_CONFIG))
-    logger.info("[Reddit] ═══════════════════════════════════════════════")
+    logger.info("[Reddit] ")
 
     all_complaints: list[dict] = []
 
@@ -282,12 +282,12 @@ def scrape_reddit_complaints() -> list[dict]:
             time.sleep(RATE_LIMIT_DELAY)
 
     logger.info(
-        "[Reddit] ═══════════════════════════════════════════════"
+        "[Reddit] "
     )
     logger.info(
         "[Reddit] Scrape complete — %d total complaints from %d subreddits",
         len(all_complaints), len(SUBREDDIT_CONFIG),
     )
-    logger.info("[Reddit] ═══════════════════════════════════════════════")
+    logger.info("[Reddit] ")
 
     return all_complaints

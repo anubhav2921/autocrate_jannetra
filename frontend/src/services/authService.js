@@ -1,7 +1,7 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  JanNetra — Firebase Auth Service
 //  Centralized authentication functions using Firebase SDK
-// ─────────────────────────────────────────────────────────────
+// 
 
 import {
     createUserWithEmailAndPassword,
@@ -16,21 +16,21 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
 
-// ── Email Signup ─────────────────────────────────────────────
+// Email Signup
 export async function signUpWithEmail(email, password) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
 }
 
-// ── Email Login ──────────────────────────────────────────────
+// Email Login
 export async function loginWithEmail(email, password) {
     const result = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
 }
 
-// ── Phone OTP — Send ─────────────────────────────────────────
+// Phone OTP — Send
 export function setupRecaptcha(containerId) {
     const verifier = new RecaptchaVerifier(auth, containerId, {
         size: 'invisible',
@@ -47,27 +47,27 @@ export async function loginWithPhoneOTP(phoneNumber, appVerifier) {
     return confirmationResult;
 }
 
-// ── Phone OTP — Verify ───────────────────────────────────────
+// Phone OTP — Verify
 export async function verifyOTP(confirmationResult, code) {
     const result = await confirmationResult.confirm(code);
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
 }
 
-// ── Reset Password ───────────────────────────────────────────
+// Reset Password
 export async function resetPassword(email) {
     await sendPasswordResetEmail(auth, email);
     return { success: true };
 }
 
-// ── Google Sign-In ───────────────────────────────────────────
+// Google Sign-In
 export async function loginWithGoogle() {
     const result = await signInWithPopup(auth, googleProvider);
     const idToken = await result.user.getIdToken();
     return { user: result.user, idToken };
 }
 
-// ── Backend: Create/Upsert User Profile ──────────────────────
+// Backend: Create/Upsert User Profile
 export async function createUserProfile({ name, email, phone, firebase_uid }) {
     const response = await axios.post(`${API_BASE}/auth/users/create`, {
         name,
@@ -78,7 +78,7 @@ export async function createUserProfile({ name, email, phone, firebase_uid }) {
     return response.data;
 }
 
-// ── Backend: Verify Firebase Token (Google/Phone) ────────────
+// Backend: Verify Firebase Token (Google/Phone)
 export async function verifyFirebaseToken(idToken, endpoint = '/api/auth/firebase-login') {
     const response = await axios.post(
         endpoint,

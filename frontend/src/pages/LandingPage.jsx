@@ -8,10 +8,10 @@ import {
 } from 'lucide-react';
 import api from '../services/api';
 
-/* ─────────────────────────────────────────────────────────────
+/* 
    ReviewModal
    Open to ALL users — no login required (anonymous verification)
-───────────────────────────────────────────────────────────── */
+ */
 function ReviewModal({ complaint, onClose, onSubmit }) {
     const [text, setText] = useState('');
     const [verifiedAs, setVerifiedAs] = useState('unconfirmed');
@@ -124,10 +124,10 @@ function ReviewModal({ complaint, onClose, onSubmit }) {
     );
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* 
    AlertCard
    Displayed in the Verified Alerts section
-───────────────────────────────────────────────────────────── */
+ */
 function AlertCard({ complaint, onReview, onSupport, onMarkFalse }) {
     const score = complaint.confidence_score ?? 0;
     const isVerified = complaint.status === 'verified';
@@ -168,9 +168,9 @@ function AlertCard({ complaint, onReview, onSupport, onMarkFalse }) {
     );
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* 
    HOW IT WORKS — step data
-───────────────────────────────────────────────────────────── */
+ */
 const HOW_STEPS = [
     {
         icon: Database,
@@ -202,9 +202,9 @@ const HOW_STEPS = [
     },
 ];
 
-/* ─────────────────────────────────────────────────────────────
+/* 
    ABOUT — card data
-───────────────────────────────────────────────────────────── */
+ */
 const ABOUT_CARDS = [
     {
         icon: Brain,
@@ -226,18 +226,18 @@ const ABOUT_CARDS = [
     },
 ];
 
-/* ─────────────────────────────────────────────────────────────
+/* 
    LandingPage — main export
-───────────────────────────────────────────────────────────── */
+ */
 export default function LandingPage() {
     const navigate = useNavigate();
 
-    /* ── state ── */
+    /*  state  */
     const [complaints, setComplaints] = useState([]);
     const [loading, setLoading] = useState(true);
     const [reviewTarget, setReviewTarget] = useState(null);
 
-    /* ── fetch complaints ── */
+    /*  fetch complaints  */
     useEffect(() => {
         api.get('/complaints')
             .then((data) => {
@@ -250,7 +250,7 @@ export default function LandingPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    /* ── derived lists via useMemo ── */
+    /*  derived lists via useMemo  */
     const lowConfidenceIssues = useMemo(
         () => complaints.filter((c) => (c.confidence_score ?? 100) < 70).slice(0, 3),
         [complaints]
@@ -261,7 +261,7 @@ export default function LandingPage() {
         [complaints]
     );
 
-    /* ── helpers ── */
+    /*  helpers  */
     const scrollTo = (id) =>
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 
@@ -287,13 +287,13 @@ export default function LandingPage() {
         try { await api.post(`/complaints/${id}/false`); } catch { /* ignore */ }
     };
 
-    /* ────────────────────── JSX ────────────────────── */
+    /*  JSX  */
     return (
         <div className="landing-root">
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 NAVBAR
-            ══════════════════════════════════════════ */}
+             */}
             <nav className="landing-nav">
 
                 {/* Logo */}
@@ -322,9 +322,9 @@ export default function LandingPage() {
                 </div>
             </nav>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 HERO — Split layout
-            ══════════════════════════════════════════ */}
+             */}
             <section id="hero" className="landing-hero">
                 <div className="landing-hero-inner">
 
@@ -457,9 +457,9 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 ABOUT — id="about"
-            ══════════════════════════════════════════ */}
+             */}
             <section id="about" className="landing-section-alt">
                 <div className="landing-section-inner">
 
@@ -490,9 +490,9 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 HOW IT WORKS — id="how"
-            ══════════════════════════════════════════ */}
+             */}
             <section id="how" className="landing-section">
                 <div className="landing-section-inner">
 
@@ -523,9 +523,9 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 VERIFIED ALERTS — id="alerts"
-            ══════════════════════════════════════════ */}
+             */}
             <section id="alerts" className="landing-section-alt">
                 <div className="landing-section-inner">
 
@@ -577,9 +577,9 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 CTA BANNER
-            ══════════════════════════════════════════ */}
+             */}
             <section className="landing-cta-section">
                 <div className="landing-cta-card">
                     <Lock size={36} style={{ color: 'var(--accent-blue)', marginBottom: '18px' }} />
@@ -599,9 +599,9 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 FOOTER
-            ══════════════════════════════════════════ */}
+             */}
             <footer className="landing-footer">
                 <div className="landing-footer-brand">
                     <div className="landing-footer-logo">
@@ -613,9 +613,9 @@ export default function LandingPage() {
                 <span className="landing-footer-sub">AI-Powered Civic Intelligence Platform</span>
             </footer>
 
-            {/* ══════════════════════════════════════════
+            {/* 
                 REVIEW MODAL (conditional)
-            ══════════════════════════════════════════ */}
+             */}
             {reviewTarget && (
                 <ReviewModal
                     complaint={reviewTarget}

@@ -1,6 +1,6 @@
 """
 Location API — Hierarchical location filter endpoints
-══════════════════════════════════════════════════════
+
 Provides:
   GET /api/location/hierarchy      → Full State→District→City→Ward tree
   GET /api/location/states         → List of all states
@@ -22,10 +22,10 @@ from ..models import NewsArticle, SignalProblem
 
 router = APIRouter(prefix="/api/location", tags=["Location"])
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Static hierarchical India location tree
 # (State → Districts → Cities → Wards)
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 INDIA_LOCATION_TREE: dict = {
     "Uttar Pradesh": {
         "districts": {
@@ -339,7 +339,7 @@ def _build_location_filter(
     return q
 
 
-# ─── Endpoints ────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.get("/states")
 def get_states():
@@ -611,7 +611,7 @@ def get_location_map_markers(
     return {"markers": markers, "center": center, "zoom": zoom}
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# Helpers
 
 def _location_label(state, district, city, ward) -> str:
     parts = [x for x in [ward, city, district, state] if x]

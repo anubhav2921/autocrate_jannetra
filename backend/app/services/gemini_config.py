@@ -1,6 +1,6 @@
 """
 Centralized Gemini AI configuration.
-─────────────────────────────────────
+
 Loads the API key from environment variables (via .env) and
 creates a reusable google.genai Client.
 
@@ -14,7 +14,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 
-# ── Load .env (idempotent — safe to call more than once) ─────────
+# Load .env (idempotent — safe to call more than once)
 load_dotenv()
 
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
@@ -27,5 +27,5 @@ if not GEMINI_API_KEY:
         "  GEMINI_API_KEY=your-key-here"
     )
 
-# ── Create a reusable client ─────────────────────────────────────
+# Create a reusable client
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)

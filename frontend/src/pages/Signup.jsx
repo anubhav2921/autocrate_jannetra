@@ -21,10 +21,10 @@ const DEPARTMENTS = [
 export default function Signup({ onLogin }) {
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
 
-    // ── Email form state ─────────────────────────────────────
+    // Email form state
     const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', department: '' });
 
-    // ── Phone form state ─────────────────────────────────────
+    // Phone form state
     const [phoneName, setPhoneName] = useState('');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -32,7 +32,7 @@ export default function Signup({ onLogin }) {
     const [confirmationResult, setConfirmationResult] = useState(null);
     const [resendTimer, setResendTimer] = useState(0);
 
-    // ── Shared state ─────────────────────────────────────────
+    // Shared state
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
@@ -61,9 +61,9 @@ export default function Signup({ onLogin }) {
         }, 1000);
     };
 
-    // ══════════════════════════════════════════════════════════
+    
     //  EMAIL SIGNUP
-    // ══════════════════════════════════════════════════════════
+    
     const handleEmailSignup = async (e) => {
         e.preventDefault();
         setError('');
@@ -152,9 +152,9 @@ export default function Signup({ onLogin }) {
         }
     };
 
-    // ══════════════════════════════════════════════════════════
+    
     //  PHONE SIGNUP — Send OTP
-    // ══════════════════════════════════════════════════════════
+    
     const handlePhoneSendOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -227,7 +227,7 @@ export default function Signup({ onLogin }) {
         }
     };
 
-    // ── OTP handlers ─────────────────────────────────────────
+    // OTP handlers
     const handleOtpChange = (index, value) => {
         if (!/^\d*$/.test(value)) return;
         const newOtp = [...otp];
@@ -251,9 +251,9 @@ export default function Signup({ onLogin }) {
         }
     };
 
-    // ══════════════════════════════════════════════════════════
+    
     //  PHONE SIGNUP — Verify OTP
-    // ══════════════════════════════════════════════════════════
+    
     const handleVerifyPhoneOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -326,7 +326,7 @@ export default function Signup({ onLogin }) {
         }
     };
 
-    // ── Resend OTP ───────────────────────────────────────────
+    // Resend OTP
     const handleResend = async () => {
         setError('');
         setOtp(['', '', '', '', '', '']);
@@ -361,9 +361,9 @@ export default function Signup({ onLogin }) {
         }
     };
 
-    // ══════════════════════════════════════════════════════════
+    
     //  RENDER
-    // ══════════════════════════════════════════════════════════
+    
     return (
         <div className="auth-page">
             <div className="auth-card auth-card-wide">
@@ -400,7 +400,7 @@ export default function Signup({ onLogin }) {
                     </button>
                 </div>
 
-                {/* ═══ Email Signup Tab ═══ */}
+                {/*  Email Signup Tab  */}
                 {activeTab === 'email' && (
                     <form onSubmit={handleEmailSignup} className="auth-form">
                         <div className="auth-field">
@@ -473,7 +473,7 @@ export default function Signup({ onLogin }) {
                     </form>
                 )}
 
-                {/* ═══ Phone Signup Tab ═══ */}
+                {/*  Phone Signup Tab  */}
                 {activeTab === 'phone' && step === 'form' && (
                     <form onSubmit={handlePhoneSendOtp} className="auth-form">
                         <div className="auth-field">

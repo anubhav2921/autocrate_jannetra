@@ -134,12 +134,12 @@ class User(Base):
     is_active     = Column(Boolean, default=True)
     created_at    = Column(DateTime, default=datetime.utcnow)
 
-    # ── Firebase / OAuth fields ──────────────────────────────
-    google_uid    = Column(String(255), unique=True, nullable=True)   # Legacy — kept for backward compat
+    # Firebase / OAuth fields
+    google_uid    = Column(String(255), unique=True, nullable=True)   # Legacy, kept for backward compatibility
     firebase_uid  = Column(String(255), unique=True, nullable=True, index=True)  # Canonical Firebase UID
     phone_number  = Column(String(20), unique=True, nullable=True, index=True)   # E.164 format
     picture       = Column(String(500), nullable=True)                # Profile photo URL
-    auth_provider = Column(String(50), default="email")               # "email" | "google" | "phone"
+    auth_provider = Column(String(50), default="email")               # "email", "google", or "phone"
 
 
 class Resolution(Base):
@@ -253,7 +253,7 @@ class NewsArticle(Base):
     scraped_at       = Column(DateTime, default=datetime.utcnow)
     created_at       = Column(DateTime, default=datetime.utcnow)
 
-    # ── Geographic location (hierarchical) ───────────────────────────
+    # Geographic location (hierarchical)
     state            = Column(String(100), nullable=True, index=True)
     district         = Column(String(100), nullable=True, index=True)
     city             = Column(String(100), nullable=True, index=True)

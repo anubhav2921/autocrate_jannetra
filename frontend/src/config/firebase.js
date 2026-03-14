@@ -1,8 +1,8 @@
-// ─────────────────────────────────────────────────────────────
+// 
 //  JanNetra — Firebase Configuration (canonical location)
 //  Reads all values from .env via Vite's import.meta.env.
 //  No config is hardcoded here — safe to commit.
-// ─────────────────────────────────────────────────────────────
+// 
 
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
@@ -31,10 +31,10 @@ if (import.meta.env.DEV) {
     }
 }
 
-// ── Firebase app instance ──────────────────────────────────
+// Firebase app instance
 const app = initializeApp(firebaseConfig);
 
-// ── Auth exports ───────────────────────────────────────────
+// Auth exports
 export const auth = getAuth(app);
 
 // Google provider — forces account chooser on every login

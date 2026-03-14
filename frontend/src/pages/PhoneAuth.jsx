@@ -9,7 +9,7 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
 
-// ── Firebase Test Phone Numbers (development only) ──────────
+// Firebase Test Phone Numbers (development only)
 // Add these in Firebase Console → Authentication → Sign-in method
 // → Phone → Phone numbers for testing
 const TEST_PHONES = {
@@ -33,7 +33,7 @@ export default function PhoneAuth({ onLogin }) {
     const timerRef = useRef(null);
     const recaptchaContainerRef = useRef(null);
 
-    // ── Initialize reCAPTCHA ─────────────────────────────────
+    // Initialize reCAPTCHA
     const initRecaptcha = useCallback(() => {
         try {
             // Clear any existing verifier
@@ -60,7 +60,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     }, []);
 
-    // ── Cleanup on unmount ───────────────────────────────────
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -73,7 +73,7 @@ export default function PhoneAuth({ onLogin }) {
         };
     }, []);
 
-    // ── Countdown timer ──────────────────────────────────────
+    // Countdown timer
     const startResendTimer = () => {
         setResendTimer(60);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -88,7 +88,7 @@ export default function PhoneAuth({ onLogin }) {
         }, 1000);
     };
 
-    // ── Format & validate phone number ───────────────────────
+    // Format & validate phone number
     const validatePhone = (phoneNumber) => {
         const cleaned = phoneNumber.replace(/\s/g, '');
         if (!/^\+[1-9]\d{7,14}$/.test(cleaned)) {
@@ -97,7 +97,7 @@ export default function PhoneAuth({ onLogin }) {
         return { valid: true, cleaned };
     };
 
-    // ── Get user-friendly error message ──────────────────────
+    // Get user-friendly error message
     const getErrorMessage = (err) => {
         const code = err?.code || '';
         switch (code) {
@@ -123,7 +123,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     };
 
-    // ── Send OTP (Firebase-first with backend fallback) ──────
+    // Send OTP (Firebase-first with backend fallback)
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -206,7 +206,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     };
 
-    // ── OTP input handler (auto-advance) ─────────────────────
+    // OTP input handler (auto-advance)
     const handleOtpChange = (index, value) => {
         if (!/^\d*$/.test(value)) return;
         const newOtp = [...otp];
@@ -234,7 +234,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     };
 
-    // ── Verify OTP ───────────────────────────────────────────
+    // Verify OTP
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -251,7 +251,7 @@ export default function PhoneAuth({ onLogin }) {
 
         try {
             if (authMode === 'firebase' && confirmationResult) {
-                // ── Firebase OTP verification ────────────────
+                // Firebase OTP verification
                 const result = await confirmationResult.confirm(code);
                 const user = result.user;
 
@@ -273,7 +273,7 @@ export default function PhoneAuth({ onLogin }) {
                     navigate('/');
                 }, 1500);
             } else {
-                // ── Backend OTP verification ─────────────────
+                // Backend OTP verification
                 const res = await fetch(`${API_BASE}/auth/login-phone`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -326,7 +326,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     };
 
-    // ── Resend OTP ───────────────────────────────────────────
+    // Resend OTP
     const handleResend = async () => {
         setError('');
         setInfo('');
@@ -395,7 +395,7 @@ export default function PhoneAuth({ onLogin }) {
         }
     };
 
-    // ── UI ───────────────────────────────────────────────────
+    // UI
     return (
         <div className="auth-page">
             <div className="auth-card phone-auth-card">
@@ -406,7 +406,7 @@ export default function PhoneAuth({ onLogin }) {
                     <p>Governance Intelligence System</p>
                 </div>
 
-                {/* ─── Step: Phone Number Input ─── */}
+                {/* Step: Phone Number Input */}
                 {step === 'phone' && (
                     <>
                         <h2 className="auth-title">Phone Sign In</h2>
@@ -469,7 +469,7 @@ export default function PhoneAuth({ onLogin }) {
                     </>
                 )}
 
-                {/* ─── Step: OTP Verification ─── */}
+                {/* Step: OTP Verification */}
                 {step === 'otp' && (
                     <>
                         <button
@@ -574,7 +574,7 @@ export default function PhoneAuth({ onLogin }) {
                     </>
                 )}
 
-                {/* ─── Step: Success ─── */}
+                {/* Step: Success */}
                 {step === 'success' && (
                     <div className="phone-auth-success">
                         <div className="phone-auth-success-icon">

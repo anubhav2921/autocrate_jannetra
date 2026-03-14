@@ -5,7 +5,7 @@ No external NLP library dependencies (no TextBlob/NLTK needed).
 
 import re
 
-# ── Sentiment word lists ─────────────────────────────────────────────────────
+# Sentiment word lists
 POSITIVE_WORDS = {
     "success", "successful", "improved", "improvement", "excellent", "good",
     "great", "progress", "positive", "benefit", "achievement", "completed",

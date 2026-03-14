@@ -34,7 +34,7 @@ export default function Login({ onLogin }) {
     const otpRefs = useRef([]);
     const timerRef = useRef(null);
 
-    // ── Handle Google redirect result ────────────────────────
+    // Handle Google redirect result
     useEffect(() => {
         getRedirectResult(auth)
             .then(async (result) => {
@@ -65,14 +65,14 @@ export default function Login({ onLogin }) {
             });
     }, []);
 
-    // ── Cleanup timer ────────────────────────────────────────
+    // Cleanup timer
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
     }, []);
 
-    // ── Resend countdown ─────────────────────────────────────
+    // Resend countdown
     const startResendTimer = () => {
         setResendTimer(60);
         if (timerRef.current) clearInterval(timerRef.current);
@@ -84,7 +84,7 @@ export default function Login({ onLogin }) {
         }, 1000);
     };
 
-    // ── Email Login ──────────────────────────────────────────
+    // Email Login
     const handleEmailLogin = async (e) => {
         e.preventDefault();
         setError('');
@@ -186,7 +186,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── Phone OTP Send ───────────────────────────────────────
+    // Phone OTP Send
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -258,7 +258,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── OTP Input handlers ───────────────────────────────────
+    // OTP Input handlers
     const handleOtpChange = (index, value) => {
         if (!/^\d*$/.test(value)) return;
         const newOtp = [...otp];
@@ -282,7 +282,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── Verify OTP ───────────────────────────────────────────
+    // Verify OTP
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -335,7 +335,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── Resend OTP ───────────────────────────────────────────
+    // Resend OTP
     const handleResend = async () => {
         setError('');
         setOtp(['', '', '', '', '', '']);
@@ -375,7 +375,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── Google Sign-In ───────────────────────────────────────
+    // Google Sign-In
     const handleGoogleLogin = async () => {
         setError('');
         setGLoading(true);
@@ -426,7 +426,7 @@ export default function Login({ onLogin }) {
         }
     };
 
-    // ── Render ────────────────────────────────────────────────
+    // Render
     return (
         <div className="auth-page">
             <div className="auth-card auth-card-wide">
@@ -488,7 +488,7 @@ export default function Login({ onLogin }) {
                     </button>
                 </div>
 
-                {/* ─── Email Tab ─── */}
+                {/* Email Tab */}
                 {activeTab === 'email' && (
                     <form onSubmit={handleEmailLogin} className="auth-form">
                         <div className="auth-field">
@@ -529,7 +529,7 @@ export default function Login({ onLogin }) {
                     </form>
                 )}
 
-                {/* ─── Phone Tab ─── */}
+                {/* Phone Tab */}
                 {activeTab === 'phone' && step === 'input' && (
                     <form onSubmit={handleSendOtp} className="auth-form">
                         <div className="auth-field">

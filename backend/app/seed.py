@@ -1,6 +1,6 @@
 """
 Database Seeder — Populates governance.db with realistic demo data.
-──────────────────────────────────────────────────────────────────────
+
 Run:  cd backend && venv\\Scripts\\python.exe -m app.seed
 """
 
@@ -29,7 +29,7 @@ def seed():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
-    # ── Check if data already exists ─────────────────────────────
+    # Check if data already exists
     existing_articles = db.query(Article).count()
     if existing_articles > 0:
         print(f"[SEED] Database already has {existing_articles} articles. Skipping seed.")
@@ -39,7 +39,7 @@ def seed():
 
     print("[SEED] Starting database seed...")
 
-    # ── 1. Create Sources ────────────────────────────────────────
+    # 1. Create Sources
     sources_data, articles_data = get_seed_data()
     source_map = {}  # name -> Source object
 
@@ -59,7 +59,7 @@ def seed():
     db.commit()
     print(f"[SEED] Created {len(source_map)} sources")
 
-    # ── 2. Create Articles + Detection + Sentiment + GRI ─────────
+    # 2. Create Articles + Detection + Sentiment + GRI
     article_count = 0
     alert_count = 0
 
@@ -137,7 +137,7 @@ def seed():
         )
         db.add(gri_record)
 
-        # ── Generate alerts for HIGH risk articles ───────────────
+        # Generate alerts for HIGH risk articles
         if gri["risk_level"] in ("HIGH", "MODERATE") and random.random() > 0.3:
             departments = nlp.get("entities", {}).get("departments", [])
             dept = departments[0] if departments else random.choice([
@@ -174,7 +174,7 @@ def seed():
     print(f"[SEED] Created {article_count} articles with detection results, GRI scores, and sentiments")
     print(f"[SEED] Created {alert_count} alerts")
 
-    # ── 3. Create Demo Users ─────────────────────────────────────
+    # 3. Create Demo Users
     demo_users = [
         {"name": "Admin User", "email": "admin@jannetra.gov.in", "role": "ADMIN", "department": "IT Department", "password": "admin123"},
         {"name": "Rahul Sharma", "email": "rahul@jannetra.gov.in", "role": "LEADER", "department": "Water Supply Department", "password": "leader123"},
@@ -204,7 +204,7 @@ def seed():
     db.commit()
     print(f"[SEED] Created {len(users_created)} demo users")
 
-    # ── 4. Create Resolutions ────────────────────────────────────
+    # 4. Create Resolutions
     if users_created:
         resolution_titles = [
             ("Fixed water pipeline for Sector 12", "Water", "Mumbai", "RESOLVED"),
@@ -236,7 +236,7 @@ def seed():
         db.commit()
         print(f"[SEED] Created {len(resolution_titles)} resolutions")
 
-    # ── 5. Create Signal Problems ────────────────────────────────
+    # 5. Create Signal Problems
     signal_problems = [
         {"id": "SIG-001", "title": "Surge in anti-government sentiment detected on social media", "severity": "Critical", "category": "Public Sentiment", "location": "Delhi NCR — Zone 3", "detected_at": "2026-02-28T14:30:00Z", "description": "NLP Sentiment Engine detected a 340% surge in negative sentiment across 15,000+ social media posts within 6 hours. Pattern analysis suggests coordinated campaign.", "risk_score": 87.5, "source": "Sentiment Pulse Network v2.4", "status": "Pending"},
         {"id": "SIG-002", "title": "Financial misappropriation in road construction project", "severity": "High", "category": "Financial Integrity", "location": "Mumbai — Western Corridor", "detected_at": "2026-02-27T09:15:00Z", "description": "Financial Anomaly Detector flagged Rs 12.8 crore discrepancy between sanctioned vs actual expenditure in NH-48 expansion. Vendor invoices show 47% markup.", "risk_score": 72.3, "source": "Financial Anomaly Detector v3.1", "status": "Pending"},
@@ -256,7 +256,7 @@ def seed():
     db.commit()
     print(f"[SEED] Created {len(signal_problems)} signal problems")
 
-    # ── 6. Create System Metrics ─────────────────────────────────
+    # 6. Create System Metrics
     system_metrics = [
         {"id": "SYS-001", "subsystem_name": "NLP Sentiment Engine", "metric_type": "CPU Usage", "status": "Healthy", "current_value": 45.2, "threshold_value": 80.0, "unit": "%", "location": "Mumbai DC-1 Rack A7", "ai_diagnosis": "CPU utilization within normal parameters. Processing 12,000 sentiment analyses per hour efficiently.", "ai_recommendation": "No action required. Continue monitoring during peak political event periods.", "last_checked_at": "2026-02-28T15:00:00Z", "trend": "Stable"},
         {"id": "SYS-002", "subsystem_name": "Fraud Detection Cluster", "metric_type": "Memory Usage", "status": "Warning", "current_value": 78.5, "threshold_value": 75.0, "unit": "%", "location": "Delhi Central Hub", "ai_diagnosis": "Memory usage exceeding threshold due to increased transaction volume during budget season. Garbage collector running every 30 seconds.", "ai_recommendation": "Scale up memory allocation to 64GB. Consider horizontal scaling. Schedule maintenance window for cache clearing.", "last_checked_at": "2026-02-28T14:45:00Z", "trend": "Degrading"},

@@ -151,9 +151,9 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# 
 #  Google OAuth — Firebase ID Token Verification
-# ─────────────────────────────────────────────────────────────
+# 
 
 @router.post("/google")
 async def google_auth(request: Request, db: Session = Depends(get_db)):
@@ -248,9 +248,9 @@ async def google_auth(request: Request, db: Session = Depends(get_db)):
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# 
 #  Phone OTP — Firebase ID Token Verification
-# ─────────────────────────────────────────────────────────────
+# 
 
 @router.post("/firebase-login")
 async def firebase_phone_login(request: Request, db: Session = Depends(get_db)):
@@ -350,9 +350,9 @@ async def firebase_phone_login(request: Request, db: Session = Depends(get_db)):
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# 
 #  Backend-Managed Phone OTP (no Firebase billing required)
-# ─────────────────────────────────────────────────────────────
+# 
 
 class PhoneOTPRequest(BaseModel):
     phone_number: str
@@ -538,9 +538,9 @@ def login_phone(req: PhoneOTPVerify, db: Session = Depends(get_db)):
     }
 
 
-# ─────────────────────────────────────────────────────────────
+# 
 #  User Profile Creation (Firebase-based signup)
-# ─────────────────────────────────────────────────────────────
+# 
 
 class CreateUserRequest(BaseModel):
     name: str

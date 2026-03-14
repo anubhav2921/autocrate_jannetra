@@ -72,7 +72,7 @@ export default function Navbar({ user }) {
                 </div>
                 <div className="navbar-right">
 
-                    {/* ── Location Selector ─────────────────────────── */}
+                    {/* Location Selector */}
                     <div style={{ position: 'relative' }} ref={locationDropdownRef}>
                         <button
                             id="btn-location-selector"
@@ -116,7 +116,7 @@ export default function Navbar({ user }) {
                         )}
                     </div>
 
-                    {/* ── Alert Bell ────────────────────────────────── */}
+                    {/* Alert Bell */}
                     <div style={{ position: 'relative' }} ref={dropdownRef}>
                         <button className="notification-btn" title="Alerts" onClick={toggleAlertOpen}>
                             <Bell size={20} />
@@ -175,7 +175,7 @@ export default function Navbar({ user }) {
                         )}
                     </div>
 
-                    {/* ── User Avatar ───────────────────────────────── */}
+                    {/* User Avatar */}
                     <div
                         className="user-avatar"
                         title={user?.name || 'Admin'}

@@ -1,6 +1,6 @@
 """
 Governance Risk Index (GRI) Service
-────────────────────────────────────
+
 GRI = Σ(wᵢ × dᵢ) × 100
 
 Dimensions:

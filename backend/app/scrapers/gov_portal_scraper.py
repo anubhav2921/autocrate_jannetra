@@ -1,6 +1,6 @@
 """
 Government Portal Scraper — Fetches press releases from Indian gov portals.
-═══════════════════════════════════════════════════════════════════════════
+
 Stable government sources:
   • PIB (Press Information Bureau) — RSS feed
   • data.gov.in — Open Government Data
@@ -30,7 +30,7 @@ HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
-# ── data.gov.in Catalog API (free, no key needed) ───────────────────
+# data.gov.in Catalog API (free, no key needed)
 DATAGOV_CATALOG_URL = "https://data.gov.in/backend/dmspublic/v1/resources"
 
 

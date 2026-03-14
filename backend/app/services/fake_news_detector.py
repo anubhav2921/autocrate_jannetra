@@ -8,7 +8,7 @@ Fake News Detection — 3-stage pipeline:
 import re
 import math
 
-# ── Stage 1: Linguistic signal patterns ──────────────────────────────────────
+# Stage 1: Linguistic signal patterns
 
 CLICKBAIT_PATTERNS = [
     r"you won'?t believe",
@@ -96,7 +96,7 @@ def _signal_extraction(text: str) -> dict:
     }
 
 
-# ── Stage 2: Evidence Grounding ──────────────────────────────────────────────
+# Stage 2: Evidence Grounding
 
 def _evidence_grounding(source_credibility: float, source_tier: str) -> dict:
     """
@@ -118,7 +118,7 @@ def _evidence_grounding(source_credibility: float, source_tier: str) -> dict:
     }
 
 
-# ── Stage 3: Ensemble Decision ──────────────────────────────────────────────
+# Stage 3: Ensemble Decision
 
 def _ensemble_decision(
     lmi: float,
@@ -159,7 +159,7 @@ def _ensemble_decision(
     }
 
 
-# ── Public API ───────────────────────────────────────────────────────────────
+# Public API
 
 def detect_fake_news(
     text: str,

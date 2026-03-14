@@ -8,7 +8,7 @@ c = conn.cursor()
 
 sep = lambda t: print(f"\n{'='*60}\n{t}\n{'='*60}")
 
-# ─── 1. SCHEMA ───────────────────────────────────────────────────
+# 1. SCHEMA
 sep("1. news_articles SCHEMA")
 c.execute("PRAGMA table_info(news_articles)")
 na_cols = [(r["name"], r["type"]) for r in c.fetchall()]
@@ -21,7 +21,7 @@ art_cols = [(r["name"], r["type"]) for r in c.fetchall()]
 for name, typ in art_cols:
     print(f"  {name:35s} {typ}")
 
-# ─── 2. ROW COUNTS ───────────────────────────────────────────────
+# 2. ROW COUNTS
 sep("2. ROW COUNTS (all tables)")
 for tbl in ["news_articles","articles","governance_risk_scores","detection_results",
             "sentiment_records","alerts","signal_problems","sources"]:
@@ -31,7 +31,7 @@ for tbl in ["news_articles","articles","governance_risk_scores","detection_resul
     except Exception as e:
         print(f"  {tbl:35s}: ERROR — {e}")
 
-# ─── 3. LOCATION COVERAGE ────────────────────────────────────────
+# 3. LOCATION COVERAGE
 sep("3. LOCATION FIELD COVERAGE — news_articles")
 c.execute("SELECT COUNT(*) FROM news_articles")
 total_na = c.fetchone()[0]
@@ -48,7 +48,7 @@ for field in existing_loc:
     pct = round(n / max(total_na, 1) * 100, 1)
     print(f"  {field:15s}: {n:>5}/{total_na} ({pct:5.1f}%) have value")
 
-# ─── 4. STATE DISTRIBUTION ───────────────────────────────────────
+# 4. STATE DISTRIBUTION
 sep("4. STATE DISTRIBUTION — news_articles (top 20)")
 if "state" in existing_loc:
     c.execute("SELECT COALESCE(state,'<NULL>') as s, COUNT(*) n FROM news_articles GROUP BY state ORDER BY n DESC LIMIT 20")
@@ -56,7 +56,7 @@ if "state" in existing_loc:
 else:
     print("  [NO 'state' COLUMN IN news_articles]")
 
-# ─── 5. CITY DISTRIBUTION ────────────────────────────────────────
+# 5. CITY DISTRIBUTION
 sep("5. CITY DISTRIBUTION — news_articles (top 20)")
 if "city" in existing_loc:
     c.execute("SELECT COALESCE(city,'<NULL>') as ct, COUNT(*) n FROM news_articles GROUP BY city ORDER BY n DESC LIMIT 20")
@@ -64,22 +64,22 @@ if "city" in existing_loc:
 else:
     print("  [NO 'city' COLUMN IN news_articles]")
 
-# ─── 6. SOURCE DISTRIBUTION ──────────────────────────────────────
+# 6. SOURCE DISTRIBUTION
 sep("6. SOURCE DISTRIBUTION — news_articles")
 c.execute("SELECT COALESCE(source_name,'<NULL>') as s, COUNT(*) n FROM news_articles GROUP BY source_name ORDER BY n DESC LIMIT 25")
 for r in c.fetchall(): print(f"  {str(r['s']):40s}: {r['n']}")
 
-# ─── 7. FAKE NEWS LABELS ─────────────────────────────────────────
+# 7. FAKE NEWS LABELS
 sep("7. FAKE NEWS LABELS — news_articles")
 c.execute("SELECT COALESCE(fake_news_label,'<NULL>') as l, COUNT(*) n FROM news_articles GROUP BY fake_news_label ORDER BY n DESC")
 for r in c.fetchall(): print(f"  {str(r['l']):25s}: {r['n']}")
 
-# ─── 8. RISK LEVEL DISTRIBUTION ──────────────────────────────────
+# 8. RISK LEVEL DISTRIBUTION
 sep("8. RISK LEVEL — news_articles")
 c.execute("SELECT COALESCE(risk_level,'<NULL>') as l, COUNT(*) n, ROUND(AVG(risk_score),1) avg FROM news_articles GROUP BY risk_level ORDER BY n DESC")
 for r in c.fetchall(): print(f"  {str(r['l']):15s}: {r['n']} rows | avg_gri={r['avg']}")
 
-# ─── 9. PRAYAGRAJ DRILL-DOWN ─────────────────────────────────────
+# 9. PRAYAGRAJ DRILL-DOWN
 sep("9. PRAYAGRAJ RECORDS DRILL-DOWN")
 if "city" in existing_loc:
     c.execute("SELECT COUNT(*) FROM news_articles WHERE city='Prayagraj' OR district='Prayagraj'" if "district" in existing_loc else "SELECT COUNT(*) FROM news_articles WHERE city='Prayagraj'")
@@ -97,7 +97,7 @@ if "city" in existing_loc:
 else:
     print("  [NO 'city' COLUMN — cannot perform Prayagraj drill-down]")
 
-# ─── 10. PRAYAGRAJ BOUNDARY VALIDATION ──────────────────────────
+# 10. PRAYAGRAJ BOUNDARY VALIDATION
 sep("10. PRAYAGRAJ COORDINATE BOUNDARY VALIDATION")
 if "city" in existing_loc and "latitude" in existing_loc:
     LAT_MIN, LAT_MAX = 25.0, 25.7
@@ -112,14 +112,14 @@ if "city" in existing_loc and "latitude" in existing_loc:
 else:
     print("  [SKIP — city or latitude column missing]")
 
-# ─── 11. LUCKNOW DRILL-DOWN ──────────────────────────────────────
+# 11. LUCKNOW DRILL-DOWN
 sep("11. LUCKNOW RECORDS (cross-filter test data)")
 if "city" in existing_loc:
     c.execute("SELECT COUNT(*) FROM news_articles WHERE city='Lucknow'")
     lck_count = c.fetchone()[0]
     print(f"  Records with city=Lucknow: {lck_count}")
 
-# ─── 12. SAMPLE FULLY-LOCATED RECORDS ───────────────────────────
+# 12. SAMPLE FULLY-LOCATED RECORDS
 sep("12. SAMPLE RECORDS (top 10 by risk, with location)")
 if "city" in existing_loc and "state" in existing_loc:
     c.execute("""SELECT id,title,state,city,source_name,fake_news_label,risk_score,scraped_at
@@ -137,7 +137,7 @@ else:
         print(f"  [{r['id']}] {str(r['title'])[:70]}")
         print(f"       src={r['source_name']} | label={r['fake_news_label']} | score={r['risk_score']} | {r['scraped_at']}")
 
-# ─── 13. RECORDS WITH MISSING STATE ─────────────────────────────
+# 13. RECORDS WITH MISSING STATE
 sep("13. MISSING LOCATION — news_articles")
 if "state" in existing_loc:
     c.execute("SELECT COUNT(*) FROM news_articles WHERE state IS NULL OR state=''")
@@ -150,7 +150,7 @@ if "state" in existing_loc:
 else:
     print("  [No 'state' column in news_articles]")
 
-# ─── 14. LEGACY articles TABLE ──────────────────────────────────
+# 14. LEGACY articles TABLE
 sep("14. LEGACY 'articles' TABLE (seed data)")
 c.execute("SELECT COUNT(*) FROM articles")
 seed_count = c.fetchone()[0]
@@ -165,7 +165,7 @@ if seed_count > 0 and art_cols:
         for k in ['location','source','url','category']:
             if k in d: print(f"         {k}={d[k]}")
 
-# ─── 15. BACKEND FILTER LOGIC TEST ──────────────────────────────
+# 15. BACKEND FILTER LOGIC TEST
 sep("15. BACKEND FILTER LOGIC SIMULATION")
 print("  Testing: SELECT WHERE state='Uttar Pradesh' AND district='Prayagraj'")
 if "state" in existing_loc and "district" in existing_loc:
@@ -189,7 +189,7 @@ if "state" in existing_loc and "district" in existing_loc:
 else:
     print("  [SKIP — state or district column missing]")
 
-# ─── 16. DATE RANGE ─────────────────────────────────────────────
+# 16. DATE RANGE
 sep("16. DATA FRESHNESS")
 c.execute("SELECT MIN(scraped_at), MAX(scraped_at), COUNT(*) FROM news_articles")
 d = c.fetchone()
@@ -197,7 +197,7 @@ print(f"  Earliest record: {d[0]}")
 print(f"  Latest record:   {d[1]}")
 print(f"  Total records:   {d[2]}")
 
-# ─── 17. SUMMARY ────────────────────────────────────────────────
+# 17. SUMMARY
 sep("17. FINAL AUDIT SUMMARY")
 c.execute("SELECT COUNT(*) FROM news_articles")
 total = c.fetchone()[0]

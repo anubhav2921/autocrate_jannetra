@@ -9,11 +9,11 @@ router = APIRouter(prefix="/api", tags=["Dashboard"])
 
 @router.get("/dashboard")
 def get_dashboard(db: Session = Depends(get_db)):
-    # ── Primary source: NewsArticle (populated by the live scraping pipeline) ──
+    # Primary source: NewsArticle (populated by the live scraping pipeline)
     na_total = db.query(func.count(NewsArticle.id)).scalar() or 0
 
     if na_total > 0:
-        # ── All stats derived from NewsArticle ──────────────────────────────
+        # All stats derived from NewsArticle
         avg_risk = db.query(func.avg(NewsArticle.risk_score)).scalar() or 0
         avg_anger = db.query(func.avg(NewsArticle.anger_rating)).scalar() or 0
 
@@ -94,7 +94,7 @@ def get_dashboard(db: Session = Depends(get_db)):
             "critical_alerts": [],
         }
 
-    # ── Fallback: legacy seeded Article / GovernanceRiskScore tables ─────────
+    # Fallback: legacy seeded Article / GovernanceRiskScore tables
     total_articles = db.query(func.count(Article.id)).scalar() or 0
 
     fake_count = (

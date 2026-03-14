@@ -1,168 +1,117 @@
 """
-JanNetra — Predictive Governance Intelligence & Decision Support System
-═══════════════════════════════════════════════════════════════════════
-FastAPI backend entry-point.
+JanNetra Backend Entrypoint
 """
 
 import logging
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 from app.database import engine
 from app.models import Base
 
-# ── Route modules ────────────────────────────────────────────────────
+# API Routes
 from app.routes import (
-    auth,
-    dashboard,
-    articles,
-    alerts,
-    analytics,
-    sources,
-    resolutions,
-    map_route,
-    leaderboard,
-    chatbot,
-    scanner,
-    signal_problems,
-    system_monitoring,
-    reports,
-    account,
-    complaints,
-    pipeline,
-    location,
+    auth, dashboard, articles, alerts, analytics, sources, resolutions, 
+    map_route, leaderboard, chatbot, scanner, signal_problems, 
+    system_monitoring, reports, account, complaints, pipeline, location
 )
-# signals.py is superseded by signal_problems.py (which has the correct schema)
 
-# ── Logging config ───────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(name)s] %(levelname)s — %(message)s",
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("jannetra")
 
-# ── Scheduler (APScheduler) ──────────────────────────────────────────
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-
 scheduler = BackgroundScheduler(daemon=True)
 
-
-def _scheduled_pipeline_job():
-    """Run the data ingestion pipeline (called by APScheduler)."""
+def run_scheduled_pipeline():
+    """Trigger the data ingestion pipeline periodically."""
     from app.services.data_pipeline import run_pipeline
     try:
-        logger.info("[Scheduler] ⏰ Triggering scheduled data pipeline...")
+        logger.info("Triggering scheduled data pipeline...")
         result = run_pipeline()
         logger.info(
-            "[Scheduler] ✅ Pipeline complete — scraped: %d, stored: %d, elapsed: %ss",
-            result.get("total_scraped", 0),
-            result.get("total_stored", 0),
-            result.get("elapsed_seconds", "?"),
+            f"Pipeline complete - scraped: {result.get('total_scraped', 0)}, "
+            f"stored: {result.get('total_stored', 0)} in {result.get('elapsed_seconds', '?')}s"
         )
     except Exception as e:
-        logger.error("[Scheduler] ❌ Scheduled pipeline failed: %s", e)
+        logger.error(f"Scheduled pipeline failed: {e}")
 
-
-# ── Create tables ────────────────────────────────────────────────────
+# Initialize db
 Base.metadata.create_all(bind=engine)
 
-
-# ── Lifespan (startup + shutdown) ────────────────────────────────────
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Start the scheduler on startup, shut it down on exit."""
-    logger.info("=" * 60)
-    logger.info("[Startup] JanNetra backend starting...")
-    logger.info("[Startup] Registering data pipeline scheduler (every 30 min)...")
-
+async def app_lifespan(app: FastAPI):
+    logger.info("JanNetra backend starting up...")
+    
+    # Start the background pipeline scheduler (runs every 30m)
     scheduler.add_job(
-        _scheduled_pipeline_job,
+        run_scheduled_pipeline,
         trigger=IntervalTrigger(minutes=30),
         id="data_pipeline",
-        name="JanNetra Data Pipeline",
+        name="jannetra-pipeline",
         replace_existing=True,
         max_instances=1,
     )
     scheduler.start()
-    logger.info("[Startup] ✅ Scheduler started — next run in 30 minutes")
+    logger.info("Scheduler started.")
 
-    # Run pipeline once at startup (async-safe — runs in background thread)
-    import threading
+    # Kick off an initial pipeline run in background
     threading.Thread(
-        target=_scheduled_pipeline_job,
-        name="initial-pipeline",
+        target=run_scheduled_pipeline,
+        name="initial-pipeline-run",
         daemon=True,
     ).start()
-    logger.info("[Startup] ▶ Initial pipeline run triggered in background")
-    logger.info("=" * 60)
 
-    yield  # ← App is running
+    yield  
 
-    logger.info("[Shutdown] Shutting down scheduler...")
+    logger.info("Shutting down scheduler...")
     scheduler.shutdown(wait=False)
-    logger.info("[Shutdown] ✅ Scheduler stopped")
 
-
-# ── App instance (single, authoritative) ────────────────────────────
 app = FastAPI(
     title="JanNetra API",
-    description="Predictive Governance Intelligence & Decision Support System",
+    description="Predictive Governance Intelligence API",
     version="2.0.0",
-    lifespan=lifespan,
+    lifespan=app_lifespan,
 )
 
-# ── CORS — allow the Vite dev-server and production origin ───────────
+# Set up CORS for local dev
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # Vite dev server
+        "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://localhost:5174",   # Vite dev server (alternate port)
+        "http://localhost:5174",
         "http://127.0.0.1:5174",
-        "http://localhost:3000",   # fallback
+        "http://localhost:3000",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Register every router (once each) ───────────────────────────────
-app.include_router(auth.router)
-app.include_router(dashboard.router)
-app.include_router(articles.router)
-app.include_router(alerts.router)
-app.include_router(analytics.router)
-app.include_router(sources.router)
-app.include_router(resolutions.router)
-app.include_router(map_route.router)
-app.include_router(leaderboard.router)
-app.include_router(chatbot.router)
-app.include_router(scanner.router)
-app.include_router(signal_problems.router)
-app.include_router(system_monitoring.router)
-app.include_router(reports.router)
-app.include_router(account.router)
-app.include_router(complaints.router)
-app.include_router(pipeline.router)
-app.include_router(location.router)
+# Register all routes
+routers = [
+    auth.router, dashboard.router, articles.router, alerts.router, 
+    analytics.router, sources.router, resolutions.router, map_route.router, 
+    leaderboard.router, chatbot.router, scanner.router, signal_problems.router, 
+    system_monitoring.router, reports.router, account.router, 
+    complaints.router, pipeline.router, location.router
+]
 
-# ── Health-check root ────────────────────────────────────────────────
+for router in routers:
+    app.include_router(router)
+
 @app.get("/")
-def root():
+def health_check():
     return {
-        "message": "JanNetra backend is running successfully",
+        "status": "ok",
+        "message": "JanNetra API is running.",
         "version": "2.0.0",
-        "features": [
-            "Automated data pipeline (every 30 min)",
-            "RSS scraping (8 Indian news feeds)",
-            "NewsAPI + GDELT integration",
-            "Government portal scraping (PIB, data.gov.in)",
-            "Real-time NLP analysis",
-            "Fake news detection",
-            "Governance Risk Index (GRI)",
-        ],
     }

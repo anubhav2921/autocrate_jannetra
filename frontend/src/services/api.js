@@ -14,7 +14,7 @@ api.interceptors.response.use(
     }
 );
 
-// ── Generic helpers ────────────────────────────────────────────────────────────
+// Generic helpers
 export const fetchDashboard = () => api.get('/dashboard');
 export const fetchArticles = (params) => api.get('/articles', { params });
 export const fetchArticle = (id) => api.get(`/articles/${id}`);
@@ -25,7 +25,7 @@ export const fetchRiskHeatmap = () => api.get('/analytics/risk-heatmap');
 export const fetchCategoryBreakdown = () => api.get('/analytics/category-breakdown');
 export const fetchSources = () => api.get('/sources');
 
-// ── Location-aware helpers ─────────────────────────────────────────────────────
+// Location-aware helpers
 // All accept an optional `locationParams` object: { state, district, city, ward }
 
 /**

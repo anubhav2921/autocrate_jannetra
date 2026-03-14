@@ -46,7 +46,7 @@ export default function ForgotPassword() {
                 </div>
 
                 {success ? (
-                    /* ─── Success State ─── */
+                    /*  Success State  */
                     <div className="forgot-success">
                         <div className="forgot-success-icon">
                             <CheckCircle size={48} />
@@ -69,7 +69,7 @@ export default function ForgotPassword() {
                         </button>
                     </div>
                 ) : (
-                    /* ─── Form State ─── */
+                    /*  Form State  */
                     <>
                         <h2 className="auth-title">Forgot Password</h2>
                         <p className="auth-subtitle">

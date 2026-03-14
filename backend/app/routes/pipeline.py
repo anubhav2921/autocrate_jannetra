@@ -1,6 +1,6 @@
 """
 Data Pipeline API — Manual trigger + status + scraped articles endpoint.
-════════════════════════════════════════════════════════════════════════
+
 Endpoints:
   POST /api/pipeline/run           — Trigger a full scrape cycle
   GET  /api/pipeline/status        — Scheduler status + last run info

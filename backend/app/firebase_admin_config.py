@@ -1,6 +1,6 @@
 """
 Firebase Admin SDK — one-time initialization.
-──────────────────────────────────────────────
+
 Provides an `initialize_firebase()` helper that is safe to call multiple times.
 The SDK is configured using the serviceAccountKey.json located alongside this file.
 """

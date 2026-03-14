@@ -1,6 +1,6 @@
 """
 News API Scraper — Fetches governance articles from NewsAPI.org + GDELT.
-═══════════════════════════════════════════════════════════════════════════
+
 Uses external news aggregation APIs for broad coverage:
   • NewsAPI.org   — curated headlines from 150+ sources
   • GDELT API     — global events (free, no key needed)
@@ -33,7 +33,7 @@ HEADERS = {
     )
 }
 
-# ── Governance-relevant search queries ───────────────────────────────
+# Governance-relevant search queries
 GOVERNANCE_QUERIES = [
     "India governance corruption",
     "India infrastructure development",

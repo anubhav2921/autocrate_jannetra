@@ -1,6 +1,6 @@
 """
 RSS Scraper — Fetches governance & news articles from major Indian RSS feeds.
-═══════════════════════════════════════════════════════════════════════════════
+
 Stable, structured sources that rarely break:
   • NDTV India
   • The Hindu National
@@ -22,7 +22,7 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger("jannetra.scrapers.rss")
 
-# ── RSS Feed Registry ────────────────────────────────────────────────
+# RSS Feed Registry
 # Each entry: (name, url, credibility_score 0-1, source_type)
 RSS_FEEDS: list[dict] = [
     {

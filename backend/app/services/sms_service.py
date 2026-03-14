@@ -1,6 +1,6 @@
 """
 SMS Service — Sends OTP messages via Twilio (or console fallback in dev).
-──────────────────────────────────────────────────────────────────────
+
 Configuration (add to backend/.env):
   TWILIO_ACCOUNT_SID=your-account-sid
   TWILIO_AUTH_TOKEN=your-auth-token
@@ -43,7 +43,7 @@ def send_otp_sms(phone_number: str, otp: str) -> bool:
     """
     message_body = f"[JanNetra] Your verification code is: {otp}. Valid for 5 minutes. Do not share this code."
 
-    # ── Production: send via Twilio ──────────────────────────────
+    # Production: send via Twilio
     if SMS_ENABLED and TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
         client = _get_twilio_client()
         if client:
@@ -60,7 +60,7 @@ def send_otp_sms(phone_number: str, otp: str) -> bool:
                 # Fall through to console fallback
                 print(f"[SMS] Twilio send failed, falling back to console. Error: {e}")
 
-    # ── Development: print to console ────────────────────────────
+    # Development: print to console
     print(f"[OTP] Phone verification code for {phone_number}: {otp}")
     print(f"[SMS] (SMS_ENABLED={SMS_ENABLED}) — OTP printed to console only.")
     return True
