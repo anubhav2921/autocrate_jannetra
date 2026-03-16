@@ -8,7 +8,7 @@ Collections are imported directly into route handlers.
 import os
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+MONGO_URL = os.getenv("MONGO_URL")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "governance_db")
 
 client = AsyncIOMotorClient(MONGO_URL)
@@ -27,3 +27,5 @@ resolutions_collection    = db["resolutions"]
 signal_problems_collection = db["signal_problems"]
 system_metrics_collection = db["system_metrics"]
 community_reviews_collection = db["community_reviews"]
+
+
