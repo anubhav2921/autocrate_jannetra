@@ -1,10 +1,9 @@
 import re
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from fastapi import APIRouter
 from pydantic import BaseModel
-from ..database import get_db
-from ..models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord, Resolution
+from ..mongodb import (
+    news_articles_collection, alerts_collection, resolutions_collection
+)
 
 router = APIRouter(prefix="/api", tags=["Chatbot"])
 
@@ -13,8 +12,8 @@ class ChatMessage(BaseModel):
     message: str
 
 
-def _query_data(question: str, db: Session) -> str:
-    """Rule-based chatbot that queries real DB data."""
+async def _query_data(question: str) -> str:
+    """Rule-based chatbot that queries real DB data via MongoDB."""
     q = question.lower().strip()
 
     # Greeting
@@ -31,18 +30,13 @@ def _query_data(question: str, db: Session) -> str:
 
     # Top risks
     if any(w in q for w in ["top risk", "highest risk", "priority", "dangerous"]):
-        top = (
-            db.query(Article, GovernanceRiskScore)
-            .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-            .order_by(GovernanceRiskScore.gri_score.desc())
-            .limit(5)
-            .all()
-        )
+        top = await news_articles_collection.find().sort("risk_score", -1).limit(5).to_list(5)
         if not top:
             return "No risk data available yet."
         lines = ["📊 **Top 5 Risk Signals:**\n"]
-        for i, (a, g) in enumerate(top, 1):
-            lines.append(f"{i}. **{a.title}** — GRI: {g.gri_score:.0f} ({g.risk_level}) | {a.location}")
+        for i, a in enumerate(top, 1):
+            city = a.get("city") or a.get("state") or a.get("source_name") or "Unknown"
+            lines.append(f"{i}. **{a.get('title')}** — GRI: {round(a.get('risk_score') or 0)} ({a.get('risk_level')}) | {city}")
         return "\n".join(lines)
 
     # Location-specific risk
@@ -51,28 +45,31 @@ def _query_data(question: str, db: Session) -> str:
     )
     if location_match:
         loc = location_match.group(3).capitalize()
-        results = (
-            db.query(Article, GovernanceRiskScore)
-            .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-            .filter(Article.location == loc)
-            .order_by(GovernanceRiskScore.gri_score.desc())
-            .limit(3)
-            .all()
-        )
+        # Search state, district, or city
+        results = await news_articles_collection.find({
+            "$or": [
+                {"city": {"$regex": f"^{loc}$", "$options": "i"}},
+                {"district": {"$regex": f"^{loc}$", "$options": "i"}},
+                {"state": {"$regex": f"^{loc}$", "$options": "i"}},
+            ]
+        }).sort("risk_score", -1).limit(3).to_list(3)
         if results:
             lines = [f"📍 **Risks in {loc}:**\n"]
-            for a, g in results:
-                lines.append(f"• **{a.title}** — GRI: {g.gri_score:.0f} | Category: {a.category}")
-            avg_gri = sum(g.gri_score for _, g in results) / len(results)
+            total_score = 0
+            for a in results:
+                score = a.get("risk_score") or 0
+                total_score += score
+                lines.append(f"• **{a.get('title')}** — GRI: {round(score)} | Category: {a.get('category')}")
+            avg_gri = total_score / len(results)
             lines.append(f"\n📈 Average GRI for {loc}: **{avg_gri:.1f}**")
             return "\n".join(lines)
         return f"No data found for location: {loc}"
 
     # Fake news stats
     if any(w in q for w in ["fake news", "fake", "misinformation", "false"]):
-        total = db.query(func.count(DetectionResult.id)).scalar() or 0
-        fake = db.query(func.count(DetectionResult.id)).filter(DetectionResult.label == "FAKE").scalar() or 0
-        real = db.query(func.count(DetectionResult.id)).filter(DetectionResult.label == "REAL").scalar() or 0
+        total = await news_articles_collection.count_documents({})
+        fake = await news_articles_collection.count_documents({"fake_news_label": "FAKE"})
+        real = await news_articles_collection.count_documents({"fake_news_label": "REAL"})
         pct = round(fake / total * 100, 1) if total > 0 else 0
         return (
             f"🔍 **Fake News Analysis:**\n"
@@ -84,9 +81,15 @@ def _query_data(question: str, db: Session) -> str:
 
     # Alert summary
     if any(w in q for w in ["alert", "warning", "critical", "emergency"]):
-        active = db.query(func.count(Alert.id)).filter(Alert.is_active == True).scalar() or 0
-        critical = db.query(func.count(Alert.id)).filter(Alert.severity == "CRITICAL", Alert.is_active == True).scalar() or 0
-        high = db.query(func.count(Alert.id)).filter(Alert.severity == "HIGH", Alert.is_active == True).scalar() or 0
+        active = await alerts_collection.count_documents({"is_active": True})
+        critical = await alerts_collection.count_documents({"severity": "CRITICAL", "is_active": True})
+        high = await alerts_collection.count_documents({"severity": "HIGH", "is_active": True})
+
+        if active == 0:
+            active = await news_articles_collection.count_documents({"risk_level": {"$in": ["HIGH", "MODERATE"]}})
+            critical = await news_articles_collection.count_documents({"risk_score": {"$gte": 80}})
+            high = await news_articles_collection.count_documents({"risk_score": {"$gte": 60, "$lt": 80}})
+
         return (
             f"🚨 **Alert Summary:**\n"
             f"• Active alerts: **{active}**\n"
@@ -97,35 +100,51 @@ def _query_data(question: str, db: Session) -> str:
 
     # Category breakdown
     if any(w in q for w in ["category", "categories", "breakdown", "sector"]):
-        cats = (
-            db.query(Article.category, func.count(Article.id), func.avg(GovernanceRiskScore.gri_score))
-            .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-            .group_by(Article.category)
-            .all()
-        )
+        pipeline = [
+            {"$group": {
+                "_id": "$category",
+                "count": {"$sum": 1},
+                "avg_gri": {"$avg": "$risk_score"}
+            }},
+            {"$sort": {"avg_gri": -1}}
+        ]
+        cats = await news_articles_collection.aggregate(pipeline).to_list(None)
         lines = ["📋 **Category Risk Breakdown:**\n"]
-        for cat, count, avg_gri in sorted(cats, key=lambda x: -(x[2] or 0)):
-            risk = "🔴" if (avg_gri or 0) > 60 else "🟡" if (avg_gri or 0) > 30 else "🟢"
-            lines.append(f"{risk} **{cat}** — {count} signals, Avg GRI: {avg_gri:.1f}")
+        for cat in cats:
+            name = cat["_id"] or "General"
+            count = cat["count"]
+            avg_gri = cat["avg_gri"] or 0
+            risk = "🔴" if avg_gri > 60 else "🟡" if avg_gri > 30 else "🟢"
+            lines.append(f"{risk} **{name}** — {count} signals, Avg GRI: {avg_gri:.1f}")
         return "\n".join(lines)
 
     # Sentiment / anger
     if any(w in q for w in ["sentiment", "anger", "mood", "feeling"]):
-        avg_anger = db.query(func.avg(SentimentRecord.anger_rating)).scalar() or 0
-        avg_pol = db.query(func.avg(SentimentRecord.polarity)).scalar() or 0
-        neg = db.query(func.count(SentimentRecord.id)).filter(SentimentRecord.sentiment_label == "NEGATIVE").scalar() or 0
-        total = db.query(func.count(SentimentRecord.id)).scalar() or 1
+        agg = await news_articles_collection.aggregate([
+            {"$group": {
+                "_id": None,
+                "avg_anger": {"$avg": "$anger_rating"},
+                "avg_pol": {"$avg": "$sentiment_polarity"}
+            }}
+        ]).to_list(1)
+
+        total = await news_articles_collection.count_documents({})
+        neg = await news_articles_collection.count_documents({"sentiment_label": "NEGATIVE"})
+
+        avg_anger = agg[0]["avg_anger"] if agg else 0
+        avg_pol = agg[0]["avg_pol"] if agg else 0
+
         return (
             f"😊 **Sentiment Analysis:**\n"
             f"• Average polarity: **{avg_pol:.3f}** {'(positive bias)' if avg_pol > 0 else '(negative bias)'}\n"
             f"• Average anger rating: **{avg_anger:.1f}/10**\n"
-            f"• Negative signals: **{neg}/{total}** ({round(neg/total*100, 1)}%)"
+            f"• Negative signals: **{neg}/{total}** ({round(neg/max(total,1)*100, 1)}%)"
         )
 
     # Leaderboard
     if any(w in q for w in ["leaderboard", "leader", "rank", "top performer"]):
-        count = db.query(func.count(Resolution.id)).scalar() or 0
-        resolved = db.query(func.count(Resolution.id)).filter(Resolution.status == "RESOLVED").scalar() or 0
+        count = await resolutions_collection.count_documents({})
+        resolved = await resolutions_collection.count_documents({"status": "RESOLVED"})
         return (
             f"🏆 **Resolution Stats:**\n"
             f"• Total resolutions submitted: **{count}**\n"
@@ -136,15 +155,25 @@ def _query_data(question: str, db: Session) -> str:
 
     # GRI overview
     if any(w in q for w in ["gri", "governance risk", "overall", "summary", "overview"]):
-        avg_gri = db.query(func.avg(GovernanceRiskScore.gri_score)).scalar() or 0
-        max_gri = db.query(func.max(GovernanceRiskScore.gri_score)).scalar() or 0
-        high_count = db.query(func.count(GovernanceRiskScore.id)).filter(GovernanceRiskScore.gri_score > 60).scalar() or 0
-        total = db.query(func.count(GovernanceRiskScore.id)).scalar() or 1
+        agg = await news_articles_collection.aggregate([
+            {"$group": {
+                "_id": None,
+                "avg_gri": {"$avg": "$risk_score"},
+                "max_gri": {"$max": "$risk_score"}
+            }}
+        ]).to_list(1)
+
+        total = await news_articles_collection.count_documents({})
+        high_count = await news_articles_collection.count_documents({"risk_score": {"$gt": 60}})
+
+        avg_gri = agg[0]["avg_gri"] if agg else 0
+        max_gri = agg[0]["max_gri"] if agg else 0
+
         return (
             f"📊 **Governance Risk Index Overview:**\n"
             f"• Average GRI: **{avg_gri:.1f}**/100\n"
             f"• Highest GRI: **{max_gri:.1f}**\n"
-            f"• High-risk signals: **{high_count}/{total}** ({round(high_count/total*100, 1)}%)"
+            f"• High-risk signals: **{high_count}/{total}** ({round(high_count/max(total,1)*100, 1)}%)"
         )
 
     return (
@@ -160,6 +189,6 @@ def _query_data(question: str, db: Session) -> str:
 
 
 @router.post("/chatbot")
-def chat(msg: ChatMessage, db: Session = Depends(get_db)):
-    response = _query_data(msg.message, db)
+async def chat(msg: ChatMessage):
+    response = await _query_data(msg.message)
     return {"response": response}

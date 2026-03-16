@@ -1,19 +1,6 @@
-"""
-Data Pipeline API — Manual trigger + status + scraped articles endpoint.
-
-Endpoints:
-  POST /api/pipeline/run           — Trigger a full scrape cycle
-  GET  /api/pipeline/status        — Scheduler status + last run info
-  GET  /api/news-articles          — List scraped & analyzed articles
-  GET  /api/news-articles/{id}     — Single article detail
-  GET  /api/news-articles/stats    — Aggregated statistics
-"""
-
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from ..database import get_db
-from ..models import NewsArticle
+from fastapi import APIRouter, Query, HTTPException
+from datetime import datetime
+from ..mongodb import news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Data Pipeline"])
 
@@ -30,86 +17,69 @@ def trigger_pipeline():
 
 
 @router.get("/pipeline/status")
-def pipeline_status(db: Session = Depends(get_db)):
-    """Return pipeline status and statistics."""
-    total = db.query(func.count(NewsArticle.id)).scalar() or 0
-    latest = (
-        db.query(NewsArticle)
-        .order_by(NewsArticle.scraped_at.desc())
-        .first()
-    )
+async def pipeline_status():
+    total = await news_articles_collection.count_documents({})
+    latest = await news_articles_collection.find({}).sort("scraped_at", -1).limit(1).to_list(1)
+    latest = latest[0] if latest else None
 
-    # Source breakdown
-    sources = (
-        db.query(NewsArticle.source_name, func.count(NewsArticle.id))
-        .group_by(NewsArticle.source_name)
-        .all()
-    )
+    source_pipeline = [
+        {"$group": {"_id": "$source_name", "count": {"$sum": 1}}}
+    ]
+    sources = await news_articles_collection.aggregate(source_pipeline).to_list(None)
 
-    # Risk breakdown
-    risk_counts = dict(
-        db.query(NewsArticle.risk_level, func.count(NewsArticle.id))
-        .group_by(NewsArticle.risk_level)
-        .all()
-    )
+    risk_pipeline = [
+        {"$group": {"_id": "$risk_level", "count": {"$sum": 1}}}
+    ]
+    risk_res = await news_articles_collection.aggregate(risk_pipeline).to_list(None)
+    risk_counts = {r["_id"]: r["count"] for r in risk_res}
+
+    scraped_at = latest.get("scraped_at") if latest else None
 
     return {
         "total_articles": total,
-        "last_scraped_at": latest.scraped_at.isoformat() if latest else None,
-        "last_article_title": latest.title if latest else None,
-        "source_breakdown": {name: count for name, count in sources},
+        "last_scraped_at": scraped_at.isoformat() if isinstance(scraped_at, datetime) else scraped_at,
+        "last_article_title": latest.get("title") if latest else None,
+        "source_breakdown": {r["_id"]: r["count"] for r in sources},
         "risk_breakdown": risk_counts,
         "scheduler": "APScheduler — every 30 minutes",
     }
 
 
 @router.get("/news-articles/stats")
-def news_article_stats(db: Session = Depends(get_db)):
-    """Aggregated statistics for scraped articles."""
-    total = db.query(func.count(NewsArticle.id)).scalar() or 0
-    avg_risk = db.query(func.avg(NewsArticle.risk_score)).scalar() or 0
-    avg_anger = db.query(func.avg(NewsArticle.anger_rating)).scalar() or 0
-    fake_count = (
-        db.query(func.count(NewsArticle.id))
-        .filter(NewsArticle.fake_news_label == "FAKE")
-        .scalar() or 0
-    )
+async def news_article_stats():
+    total = await news_articles_collection.count_documents({})
 
-    # By category
-    categories = (
-        db.query(
-            NewsArticle.category,
-            func.count(NewsArticle.id),
-            func.avg(NewsArticle.risk_score),
-        )
-        .group_by(NewsArticle.category)
-        .order_by(func.avg(NewsArticle.risk_score).desc())
-        .all()
-    )
+    agg = await news_articles_collection.aggregate([
+        {"$group": {"_id": None, "avg_risk": {"$avg": "$risk_score"}, "avg_anger": {"$avg": "$anger_rating"}}}
+    ]).to_list(1)
+    avg_risk = agg[0]["avg_risk"] if agg else 0
+    avg_anger = agg[0]["avg_anger"] if agg else 0
 
-    # By sentiment
-    sentiments = dict(
-        db.query(NewsArticle.sentiment_label, func.count(NewsArticle.id))
-        .group_by(NewsArticle.sentiment_label)
-        .all()
-    )
+    fake_count = await news_articles_collection.count_documents({"fake_news_label": "FAKE"})
+
+    cat_pipeline = [
+        {"$group": {"_id": "$category", "count": {"$sum": 1}, "avg_gri": {"$avg": "$risk_score"}}},
+        {"$sort": {"avg_gri": -1}},
+    ]
+    categories = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
+
+    sent_pipeline = [{"$group": {"_id": "$sentiment_label", "count": {"$sum": 1}}}]
+    sentiments = await news_articles_collection.aggregate(sent_pipeline).to_list(None)
 
     return {
-        # Dashboard-compatible field names
         "overall_gri": round(avg_risk, 1),
         "total_articles": total,
         "fake_news_percentage": round(fake_count / max(total, 1) * 100, 1),
         "average_anger": round(avg_anger, 2),
         "active_alerts": 0,
-        "sentiment_distribution": sentiments,
+        "sentiment_distribution": {r["_id"]: r["count"] for r in sentiments},
         "category_risk": [
-            {"category": c or "General", "avg_gri": round(g or 0, 1), "count": n}
-            for c, n, g in categories
+            {"category": r["_id"] or "General", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
+            for r in categories
         ],
         "location_risk": [],
         "top_risks": [],
         "critical_alerts": [],
-        # Legacy fields kept for backward compatibility
         "total": total,
         "avg_risk_score": round(avg_risk, 1),
         "avg_anger_rating": round(avg_anger, 2),
@@ -119,31 +89,24 @@ def news_article_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/news-articles")
-def list_news_articles(
+async def list_news_articles(
     category: str = Query(None),
     risk_level: str = Query(None),
     label: str = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
 ):
-    """List scraped & analyzed articles with filters."""
-    query = db.query(NewsArticle)
-
+    match = {}
     if category:
-        query = query.filter(NewsArticle.category == category)
+        match["category"] = category
     if risk_level:
-        query = query.filter(NewsArticle.risk_level == risk_level)
+        match["risk_level"] = risk_level
     if label:
-        query = query.filter(NewsArticle.fake_news_label == label)
+        match["fake_news_label"] = label
 
-    total = query.count()
-    results = (
-        query.order_by(NewsArticle.scraped_at.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+    total = await news_articles_collection.count_documents(match)
+    cursor = news_articles_collection.find(match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
+    results = await cursor.to_list(None)
 
     return {
         "total": total,
@@ -151,20 +114,20 @@ def list_news_articles(
         "limit": limit,
         "articles": [
             {
-                "id": a.id,
-                "title": a.title,
-                "source_name": a.source_name,
-                "url": a.url,
-                "published_at": a.published_at.isoformat() if a.published_at else None,
-                "category": a.category,
-                "risk_score": a.risk_score,
-                "risk_level": a.risk_level,
-                "sentiment": a.sentiment_label,
-                "anger_rating": a.anger_rating,
-                "fake_label": a.fake_news_label,
-                "fake_confidence": a.fake_news_confidence,
-                "credibility": a.credibility_score,
-                "scraped_at": a.scraped_at.isoformat() if a.scraped_at else None,
+                "id": a["id"],
+                "title": a.get("title"),
+                "source_name": a.get("source_name"),
+                "url": a.get("url"),
+                "published_at": a["published_at"].isoformat() if isinstance(a.get("published_at"), datetime) else a.get("published_at"),
+                "category": a.get("category"),
+                "risk_score": a.get("risk_score"),
+                "risk_level": a.get("risk_level"),
+                "sentiment": a.get("sentiment_label"),
+                "anger_rating": a.get("anger_rating"),
+                "fake_label": a.get("fake_news_label"),
+                "fake_confidence": a.get("fake_news_confidence"),
+                "credibility": a.get("credibility_score"),
+                "scraped_at": a["scraped_at"].isoformat() if isinstance(a.get("scraped_at"), datetime) else a.get("scraped_at"),
             }
             for a in results
         ],
@@ -172,33 +135,32 @@ def list_news_articles(
 
 
 @router.get("/news-articles/{article_id}")
-def get_news_article(article_id: str, db: Session = Depends(get_db)):
-    """Return a single scraped article with full analysis."""
-    a = db.query(NewsArticle).filter(NewsArticle.id == article_id).first()
+async def get_news_article(article_id: str):
+    a = await news_articles_collection.find_one({"id": article_id})
     if not a:
         raise HTTPException(status_code=404, detail="Article not found")
 
     return {
-        "id": a.id,
-        "title": a.title,
-        "content": a.content,
-        "source_name": a.source_name,
-        "source_url": a.source_url,
-        "url": a.url,
-        "published_at": a.published_at.isoformat() if a.published_at else None,
-        "category": a.category,
-        "source_type": a.source_type,
-        "tier": a.tier,
+        "id": a["id"],
+        "title": a.get("title"),
+        "content": a.get("content"),
+        "source_name": a.get("source_name"),
+        "source_url": a.get("source_url"),
+        "url": a.get("url"),
+        "published_at": a["published_at"].isoformat() if isinstance(a.get("published_at"), datetime) else a.get("published_at"),
+        "category": a.get("category"),
+        "source_type": a.get("source_type"),
+        "tier": a.get("tier"),
         "analysis": {
-            "risk_score": a.risk_score,
-            "risk_level": a.risk_level,
-            "credibility_score": a.credibility_score,
-            "sentiment_label": a.sentiment_label,
-            "sentiment_polarity": a.sentiment_polarity,
-            "anger_rating": a.anger_rating,
-            "fake_news_label": a.fake_news_label,
-            "fake_news_confidence": a.fake_news_confidence,
+            "risk_score": a.get("risk_score"),
+            "risk_level": a.get("risk_level"),
+            "credibility_score": a.get("credibility_score"),
+            "sentiment_label": a.get("sentiment_label"),
+            "sentiment_polarity": a.get("sentiment_polarity"),
+            "anger_rating": a.get("anger_rating"),
+            "fake_news_label": a.get("fake_news_label"),
+            "fake_news_confidence": a.get("fake_news_confidence"),
         },
-        "scraped_at": a.scraped_at.isoformat() if a.scraped_at else None,
-        "created_at": a.created_at.isoformat() if a.created_at else None,
+        "scraped_at": a["scraped_at"].isoformat() if isinstance(a.get("scraped_at"), datetime) else a.get("scraped_at"),
+        "created_at": a["created_at"].isoformat() if isinstance(a.get("created_at"), datetime) else a.get("created_at"),
     }

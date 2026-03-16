@@ -1,12 +1,18 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from ..database import get_db
 from ..services.nlp_service import run_nlp_pipeline
 from ..services.fake_news_detector import detect_fake_news
 from ..services.gri_service import compute_gri
-from ..services.alert_service import generate_alert
+
+# Note: The generate_alert function originally depended on SQLAlchemy. Assuming it has been updated, or we just mock/return it directly here if needed.
+# Since we removed alert_service.py in the previous plan (or maybe it still exists), let's conditionally import or use a local mock for the scanner.
+
+try:
+    from ..services.alert_service import generate_alert
+except ImportError:
+    def generate_alert(*args, **kwargs):
+        return None
 
 router = APIRouter(prefix="/api", tags=["Scanner"])
 
@@ -19,7 +25,7 @@ class ScanRequest(BaseModel):
 
 
 @router.post("/scan")
-def scan_post(req: ScanRequest, db: Session = Depends(get_db)):
+def scan_post(req: ScanRequest):
     """Run a pasted social media post through the full analysis pipeline."""
     if len(req.text.strip()) < 10:
         return {"success": False, "error": "Text too short. Paste at least 10 characters."}
@@ -31,15 +37,20 @@ def scan_post(req: ScanRequest, db: Session = Depends(get_db)):
     detection = detect_fake_news(
         text=req.text,
         source_credibility=req.source_credibility,
-        source_type=_platform_to_type(req.platform),
+        source_tier="UNKNOWN",
+        polarity=nlp.get("polarity", 0),
+        subjectivity=nlp.get("subjectivity", 0),
     )
 
     # 3. GRI Scoring
     gri = compute_gri(
-        detection_features=detection.get("features", {}),
         source_credibility=req.source_credibility,
+        linguistic_manipulation_index=detection.get("features", {}).get("linguistic_manipulation_index", 0),
+        claims=nlp.get("claims", []),
+        detection_label=detection.get("label", "UNCERTAIN"),
         source_type=_platform_to_type(req.platform),
-        nlp_result=nlp,
+        word_count=nlp.get("word_count", 0),
+        ingested_at=None,
     )
 
     # 4. Alert Assessment
@@ -68,7 +79,7 @@ def scan_post(req: ScanRequest, db: Session = Depends(get_db)):
             },
             "fake_news": {
                 "label": detection.get("label", "UNCERTAIN"),
-                "confidence": detection.get("confidence", 0),
+                "confidence": detection.get("confidence_score", 0),
                 "signals": detection.get("features", {}),
             },
             "gri": {

@@ -10,7 +10,7 @@ Pipeline stages:
   4. Run NLP pipeline (sentiment, anger, entities, claims)
   5. Run fake news detection
   6. Compute Governance Risk Index (GRI)
-  7. Store results in the news_articles table
+  7. Store results in the news_articles MongoDB collection
 
 Called by:
   • APScheduler (every 30 minutes)
@@ -19,10 +19,8 @@ Called by:
 
 import time
 import logging
+import uuid
 from datetime import datetime
-
-from app.database import SessionLocal
-from app.models import NewsArticle
 
 # Scrapers
 from app.scrapers.rss_scraper import scrape_rss_feeds
@@ -73,28 +71,18 @@ CITY_LOCATION_MAP: dict[str, dict] = {
     "Madurai":   {"state": "Tamil Nadu",      "district": "Madurai",             "lat": 9.9252,  "lng": 78.1198},
     "India":     {"state": None,              "district": None,                   "lat": 22.5,    "lng": 78.5},
 }
-# Create lowercase lookup map for robust matching
 CITY_LOCATION_MAP_LOWER = {k.lower(): v for k, v in CITY_LOCATION_MAP.items()}
 
 
 def _resolve_location(article: dict) -> dict:
-    """
-    Resolve structured location fields from a scraped article.
-    Checks: article['location'] (set by scrapers) -> match to city map.
-    Returns dict with state, district, city, latitude, longitude.
-    """
     raw_location = article.get("location", "") or ""
-    
-    # Check if a city matched case-insensitively using CITY_LOCATION_MAP_LOWER
     city_candidate = raw_location.split(",")[0].strip().lower()
-    
-    # Default geography
+
     geo = {"state": None, "district": None, "lat": None, "lng": None}
-    
+
     if city_candidate in CITY_LOCATION_MAP_LOWER:
         geo = CITY_LOCATION_MAP_LOWER[city_candidate]
     else:
-        # Try full match case-insensitive
         full_candidate = raw_location.strip().lower()
         if full_candidate in CITY_LOCATION_MAP_LOWER:
             geo = CITY_LOCATION_MAP_LOWER[full_candidate]
@@ -102,25 +90,19 @@ def _resolve_location(article: dict) -> dict:
         else:
             city_candidate = None
 
-    # Handle randomize point placement around the bounds to prevent marker stacking
     lat = geo["lat"]
     lng = geo["lng"]
     if lat is not None and lng is not None:
         import random
-        # Base jitter +/- 0.02 degrees (roughly +/- 2km)
         lat += random.uniform(-0.02, 0.02)
         lng += random.uniform(-0.02, 0.02)
 
-    # Note: restore original casing logic where we can
     original_city_case = None
     if city_candidate and city_candidate != "india":
-        # Find original case
         for k in CITY_LOCATION_MAP.keys():
             if k.lower() == city_candidate:
                 original_city_case = k
                 break
-        
-        # Ensure fallback for Prayagraj if Allahabad matched
         if original_city_case == "Allahabad":
             original_city_case = "Prayagraj"
 
@@ -132,7 +114,7 @@ def _resolve_location(article: dict) -> dict:
         "longitude": lng,
     }
 
-# Category detection via keywords
+
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "Water": ["water", "supply", "pipeline", "tanker", "drought", "contaminated", "sewage", "groundwater", "drinking water"],
     "Infrastructure": ["road", "bridge", "building", "construction", "pothole", "highway", "metro", "railway", "smart city", "electricity"],
@@ -148,30 +130,54 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
 
 
 def _categorize_text(text: str) -> str:
-    """Assign a governance category based on keyword analysis."""
     text_lower = text.lower()
     scores: dict[str, int] = {}
-
     for category, keywords in CATEGORY_KEYWORDS.items():
         score = sum(1 for kw in keywords if kw in text_lower)
         if score > 0:
             scores[category] = score
-
     if scores:
         return max(scores, key=scores.get)
     return "General"
 
 
-def _deduplicate(articles: list[dict], db) -> list[dict]:
-    """Remove articles whose content_hash already exists in the database."""
+def _get_existing_hashes() -> set:
+    """Synchronously fetch existing content hashes from MongoDB."""
+    # Use pymongo directly for sync pipeline context
+    from pymongo import MongoClient
+    import os
+    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    client = MongoClient(mongo_url)
+    db = client[mongo_db_name]
+    hashes = {doc["content_hash"] for doc in db["news_articles"].find({}, {"content_hash": 1}) if "content_hash" in doc}
+    client.close()
+    return hashes
+
+
+def _store_articles_sync(records: list[dict]) -> int:
+    """Synchronously store article documents to MongoDB."""
+    if not records:
+        return 0
+    from pymongo import MongoClient
+    import os
+    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    client = MongoClient(mongo_url)
+    db = client[mongo_db_name]
+    try:
+        result = db["news_articles"].insert_many(records, ordered=False)
+        return len(result.inserted_ids)
+    except Exception as e:
+        logger.warning(f"[Pipeline] Partial insert error (possible duplicate): {e}")
+        return 0
+    finally:
+        client.close()
+
+
+def _deduplicate(articles: list[dict], existing_hashes: set) -> list[dict]:
     if not articles:
         return []
-
-    existing_hashes = {
-        row[0]
-        for row in db.query(NewsArticle.content_hash).all()
-    }
-
     unique = []
     seen_hashes = set()
     for art in articles:
@@ -179,7 +185,6 @@ def _deduplicate(articles: list[dict], db) -> list[dict]:
         if h and h not in existing_hashes and h not in seen_hashes:
             unique.append(art)
             seen_hashes.add(h)
-
     logger.info(
         "[Pipeline] Dedup: %d input → %d unique (removed %d duplicates)",
         len(articles), len(unique), len(articles) - len(unique),
@@ -188,19 +193,12 @@ def _deduplicate(articles: list[dict], db) -> list[dict]:
 
 
 def _process_article(article: dict) -> dict:
-    """
-    Run the full NLP analysis pipeline on a single article.
-    Returns the article dict enriched with NLP results.
-    """
     content = article.get("content", "")
     credibility = article.get("credibility", 0.5)
     tier = article.get("tier", "UNKNOWN")
     source_type = article.get("source_type", "NEWS")
 
-    # Stage 1: NLP (sentiment, anger, entities, claims)
     nlp = run_nlp_pipeline(content)
-
-    # Stage 2: Fake news detection
     detection = detect_fake_news(
         text=content,
         source_credibility=credibility,
@@ -208,8 +206,6 @@ def _process_article(article: dict) -> dict:
         polarity=nlp.get("polarity", 0.0),
         subjectivity=nlp.get("subjectivity", 0.5),
     )
-
-    # Stage 3: GRI scoring
     gri = compute_gri(
         source_credibility=credibility,
         linguistic_manipulation_index=detection["features"]["linguistic_manipulation_index"],
@@ -220,13 +216,11 @@ def _process_article(article: dict) -> dict:
         word_count=nlp.get("word_count", 50),
     )
 
-    # Stage 4: Categorize
     category_hint = article.get("category_hint", "General")
     category = _categorize_text(content)
     if category == "General" and category_hint != "General":
         category = category_hint
 
-    # Enrich the article dict
     article["sentiment_label"] = nlp.get("sentiment_label", "NEUTRAL")
     article["sentiment_polarity"] = nlp.get("polarity", 0.0)
     article["anger_rating"] = nlp.get("anger_rating", 0.0)
@@ -241,17 +235,12 @@ def _process_article(article: dict) -> dict:
 
 
 def run_pipeline() -> dict:
-    """
-    Execute the full data ingestion pipeline.
-
-    Returns a summary dict with counts and timing.
-    """
+    """Execute the full data ingestion pipeline (sync, for APScheduler)."""
     start_time = time.time()
     logger.info("=" * 60)
-    logger.info("[Pipeline] ▶ Starting data ingestion pipeline...")
+    logger.info("[Pipeline] ▶ Starting data ingestion pipeline (MongoDB)...")
     logger.info("=" * 60)
 
-    # Step 1: Scrape from all sources
     all_articles: list[dict] = []
 
     try:
@@ -284,112 +273,86 @@ def run_pipeline() -> dict:
 
     if not all_articles:
         elapsed = round(time.time() - start_time, 2)
-        logger.warning("[Pipeline] ⚠ No articles collected from any source. Elapsed: %ss", elapsed)
-        return {
-            "status": "empty",
-            "total_scraped": 0,
-            "total_stored": 0,
-            "elapsed_seconds": elapsed,
-            "sources": {"rss": 0, "news_api": 0, "gov": 0, "reddit": 0},
-        }
+        logger.warning("[Pipeline] ⚠ No articles collected. Elapsed: %ss", elapsed)
+        return {"status": "empty", "total_scraped": 0, "total_stored": 0, "elapsed_seconds": elapsed}
 
-    # Step 2: Deduplicate
-    db = SessionLocal()
-    try:
-        unique_articles = _deduplicate(all_articles, db)
+    # Deduplicate
+    existing_hashes = _get_existing_hashes()
+    unique_articles = _deduplicate(all_articles, existing_hashes)
 
-        if not unique_articles:
-            elapsed = round(time.time() - start_time, 2)
-            logger.info("[Pipeline] All articles are duplicates — nothing new to store. Elapsed: %ss", elapsed)
-            return {
-                "status": "no_new",
-                "total_scraped": len(all_articles),
-                "total_stored": 0,
-                "elapsed_seconds": elapsed,
-                "sources": {
-                    "rss": len([a for a in all_articles if "RSS" not in a.get("source_name", "")]),
-                    "news_api": len([a for a in all_articles if "NewsAPI" in a.get("source_name", "") or "GDELT" in a.get("source_name", "")]),
-                    "gov": len([a for a in all_articles if "PIB" in a.get("source_name", "") or "data.gov" in a.get("source_name", "")]),
-                },
-            }
-
-        # Step 3: Process through NLP pipeline
-        processed_count = 0
-        failed_count = 0
-        stored_count = 0
-
-        for article in unique_articles:
-            try:
-                processed = _process_article(article)
-
-                # Step 4: Store in database
-                loc = _resolve_location(article)
-                news_record = NewsArticle(
-                    title=processed["title"],
-                    content=processed["content"],
-                    source_name=processed["source_name"],
-                    source_url=processed.get("source_url", ""),
-                    url=processed.get("url", ""),
-                    published_at=processed.get("published_at"),
-                    content_hash=processed["content_hash"],
-                    credibility_score=processed.get("credibility_score", 0.5),
-                    risk_score=processed.get("risk_score", 0.0),
-                    risk_level=processed.get("risk_level", "LOW"),
-                    sentiment_label=processed.get("sentiment_label", "NEUTRAL"),
-                    sentiment_polarity=processed.get("sentiment_polarity", 0.0),
-                    anger_rating=processed.get("anger_rating", 0.0),
-                    fake_news_label=processed.get("fake_news_label", "UNCERTAIN"),
-                    fake_news_confidence=processed.get("fake_news_confidence", 0.0),
-                    category=processed.get("category", "General"),
-                    source_type=processed.get("source_type", "NEWS"),
-                    tier=processed.get("tier", "UNKNOWN"),
-                    scraped_at=datetime.utcnow(),
-                    # Location fields
-                    state=loc["state"],
-                    district=loc["district"],
-                    city=loc["city"],
-                    latitude=loc["latitude"],
-                    longitude=loc["longitude"],
-                )
-
-                db.add(news_record)
-                stored_count += 1
-                processed_count += 1
-
-            except Exception as e:
-                failed_count += 1
-                logger.error(
-                    "[Pipeline] ❌ Failed to process article '%s': %s",
-                    article.get("title", "???")[:80], e,
-                )
-
-        db.commit()
+    if not unique_articles:
         elapsed = round(time.time() - start_time, 2)
+        return {"status": "no_new", "total_scraped": len(all_articles), "total_stored": 0, "elapsed_seconds": elapsed}
 
-        logger.info("=" * 60)
-        logger.info("[Pipeline] ✅ Pipeline complete!")
-        logger.info("[Pipeline]    Total scraped:    %d", len(all_articles))
-        logger.info("[Pipeline]    After dedup:      %d", len(unique_articles))
-        logger.info("[Pipeline]    NLP processed:    %d", processed_count)
-        logger.info("[Pipeline]    Failed:           %d", failed_count)
-        logger.info("[Pipeline]    Stored in DB:     %d", stored_count)
-        logger.info("[Pipeline]    Elapsed:          %ss", elapsed)
-        logger.info("=" * 60)
+    processed_count = 0
+    failed_count = 0
+    records_to_store = []
+    now = datetime.utcnow()
 
-        return {
-            "status": "success",
-            "total_scraped": len(all_articles),
-            "after_dedup": len(unique_articles),
-            "total_processed": processed_count,
-            "total_stored": stored_count,
-            "total_failed": failed_count,
-            "elapsed_seconds": elapsed,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
+    for article in unique_articles:
+        try:
+            processed = _process_article(article)
+            loc = _resolve_location(article)
 
-    except Exception as e:
-        db.rollback()
-        logger.error("[Pipeline] ❌ Pipeline failed with DB error: %s", e)
-        raise
-    finally:
-        db.close()
+            record = {
+                "id": str(uuid.uuid4()),
+                "title": processed["title"],
+                "content": processed["content"],
+                "source_name": processed["source_name"],
+                "source_url": processed.get("source_url", ""),
+                "url": processed.get("url", ""),
+                "published_at": processed.get("published_at"),
+                "content_hash": processed["content_hash"],
+                "credibility_score": processed.get("credibility_score", 0.5),
+                "risk_score": processed.get("risk_score", 0.0),
+                "risk_level": processed.get("risk_level", "LOW"),
+                "sentiment_label": processed.get("sentiment_label", "NEUTRAL"),
+                "sentiment_polarity": processed.get("sentiment_polarity", 0.0),
+                "anger_rating": processed.get("anger_rating", 0.0),
+                "fake_news_label": processed.get("fake_news_label", "UNCERTAIN"),
+                "fake_news_confidence": processed.get("fake_news_confidence", 0.0),
+                "category": processed.get("category", "General"),
+                "source_type": processed.get("source_type", "NEWS"),
+                "tier": processed.get("tier", "UNKNOWN"),
+                "occurrence_count": 1,
+                "priority_score": 1.0,
+                "priority_level": "LOW",
+                "scraped_at": now,
+                "created_at": now,
+                # Location fields
+                "state": loc["state"],
+                "district": loc["district"],
+                "city": loc["city"],
+                "latitude": loc["latitude"],
+                "longitude": loc["longitude"],
+            }
+            records_to_store.append(record)
+            processed_count += 1
+
+        except Exception as e:
+            failed_count += 1
+            logger.error("[Pipeline] ❌ Failed to process article '%s': %s", article.get("title", "???")[:80], e)
+
+    stored_count = _store_articles_sync(records_to_store)
+    elapsed = round(time.time() - start_time, 2)
+
+    logger.info("=" * 60)
+    logger.info("[Pipeline] ✅ Pipeline complete!")
+    logger.info("[Pipeline]    Total scraped:    %d", len(all_articles))
+    logger.info("[Pipeline]    After dedup:      %d", len(unique_articles))
+    logger.info("[Pipeline]    NLP processed:    %d", processed_count)
+    logger.info("[Pipeline]    Failed:           %d", failed_count)
+    logger.info("[Pipeline]    Stored in DB:     %d", stored_count)
+    logger.info("[Pipeline]    Elapsed:          %ss", elapsed)
+    logger.info("=" * 60)
+
+    return {
+        "status": "success",
+        "total_scraped": len(all_articles),
+        "after_dedup": len(unique_articles),
+        "total_processed": processed_count,
+        "total_stored": stored_count,
+        "total_failed": failed_count,
+        "elapsed_seconds": elapsed,
+        "timestamp": datetime.utcnow().isoformat(),
+    }

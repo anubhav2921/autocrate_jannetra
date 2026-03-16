@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import Optional
-from ..database import get_db
-from ..models import Resolution, User
+from datetime import datetime
+
+from ..mongodb import resolutions_collection, users_collection
+from ..utils import gen_uuid
 
 router = APIRouter(prefix="/api", tags=["Resolutions"])
 
@@ -22,61 +23,60 @@ class ResolutionCreate(BaseModel):
 
 
 @router.post("/resolutions")
-def create_resolution(req: ResolutionCreate, db: Session = Depends(get_db)):
-    resolution = Resolution(
-        alert_id=req.alert_id,
-        resolved_by=req.user_id,
-        title=req.title,
-        category=req.category,
-        location=req.location,
-        problem_description=req.problem_description,
-        action_taken=req.action_taken,
-        resources_used=req.resources_used,
-        people_benefited=req.people_benefited,
-        status=req.status,
-    )
-    db.add(resolution)
-    db.commit()
-    db.refresh(resolution)
-
+async def create_resolution(req: ResolutionCreate):
+    now = datetime.utcnow()
+    resolution = {
+        "id": gen_uuid(),
+        "alert_id": req.alert_id,
+        "resolved_by": req.user_id,
+        "title": req.title,
+        "category": req.category,
+        "location": req.location,
+        "problem_description": req.problem_description,
+        "action_taken": req.action_taken,
+        "resources_used": req.resources_used,
+        "people_benefited": req.people_benefited,
+        "status": req.status,
+        "created_at": now,
+        "resolved_at": now,
+        "submitted_at": now,
+    }
+    await resolutions_collection.insert_one(resolution)
     return {
         "success": True,
         "resolution": {
-            "id": resolution.id,
-            "title": resolution.title,
-            "status": resolution.status,
-            "resolved_at": resolution.resolved_at.isoformat() if resolution.resolved_at else None,
+            "id": resolution["id"],
+            "title": resolution["title"],
+            "status": resolution["status"],
+            "resolved_at": resolution["resolved_at"].isoformat(),
         },
     }
 
 
 @router.get("/resolutions")
-def list_resolutions(db: Session = Depends(get_db)):
-    results = (
-        db.query(Resolution, User)
-        .join(User, User.id == Resolution.resolved_by)
-        .order_by(Resolution.submitted_at.desc())
-        .all()
-    )
+async def list_resolutions():
+    cursor = resolutions_collection.find({}).sort("submitted_at", -1)
+    res_docs = await cursor.to_list(None)
 
-    return {
-        "resolutions": [
-            {
-                "id": r.id,
-                "title": r.title,
-                "category": r.category,
-                "location": r.location,
-                "problem_description": r.problem_description,
-                "action_taken": r.action_taken,
-                "resources_used": r.resources_used,
-                "people_benefited": r.people_benefited,
-                "status": r.status,
-                "resolved_at": r.resolved_at.isoformat() if r.resolved_at else None,
-                "leader": {
-                    "name": u.name,
-                    "department": u.department,
-                },
-            }
-            for r, u in results
-        ]
-    }
+    results = []
+    for r in res_docs:
+        user = await users_collection.find_one({"id": r.get("resolved_by")}) or {}
+        resolved_at = r.get("resolved_at")
+        results.append({
+            "id": r["id"],
+            "title": r.get("title"),
+            "category": r.get("category"),
+            "location": r.get("location"),
+            "problem_description": r.get("problem_description"),
+            "action_taken": r.get("action_taken"),
+            "resources_used": r.get("resources_used"),
+            "people_benefited": r.get("people_benefited"),
+            "status": r.get("status"),
+            "resolved_at": resolved_at.isoformat() if isinstance(resolved_at, datetime) else resolved_at,
+            "leader": {
+                "name": user.get("name"),
+                "department": user.get("department"),
+            },
+        })
+
+    return {"resolutions": results}

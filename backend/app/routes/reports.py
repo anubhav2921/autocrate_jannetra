@@ -1,66 +1,43 @@
 import io
 from datetime import datetime
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from ..database import get_db
-from ..models import Article, GovernanceRiskScore, Alert, DetectionResult, SentimentRecord
-
+from ..mongodb import (
+    articles_collection, gri_scores_collection, alerts_collection,
+    detection_results_collection, sentiment_records_collection, news_articles_collection
+)
 
 router = APIRouter(prefix="/api", tags=["Reports"])
 
 
-def _build_text_report(db: Session) -> str:
-    """Generate a comprehensive governance report as formatted text."""
+async def _build_text_report() -> str:
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
-    # Stats
-    total = db.query(func.count(Article.id)).scalar() or 0
-    avg_gri = db.query(func.avg(GovernanceRiskScore.gri_score)).scalar() or 0
-    max_gri = db.query(func.max(GovernanceRiskScore.gri_score)).scalar() or 0
-    fake = db.query(func.count(DetectionResult.id)).filter(DetectionResult.label == "FAKE").scalar() or 0
-    active_alerts = db.query(func.count(Alert.id)).filter(Alert.is_active == True).scalar() or 0
-    critical_alerts = db.query(func.count(Alert.id)).filter(Alert.severity == "CRITICAL", Alert.is_active == True).scalar() or 0
-    avg_anger = db.query(func.avg(SentimentRecord.anger_rating)).scalar() or 0
+    # Use news_articles as primary source
+    total = await news_articles_collection.count_documents({})
+    gri_agg = await news_articles_collection.aggregate([
+        {"$group": {"_id": None, "avg": {"$avg": "$risk_score"}, "max": {"$max": "$risk_score"}}}
+    ]).to_list(1)
+    avg_gri = gri_agg[0]["avg"] if gri_agg else 0
+    max_gri = gri_agg[0]["max"] if gri_agg else 0
 
-    # Category breakdown
-    cats = (
-        db.query(Article.category, func.count(Article.id), func.avg(GovernanceRiskScore.gri_score))
-        .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-        .group_by(Article.category)
-        .order_by(func.avg(GovernanceRiskScore.gri_score).desc())
-        .all()
-    )
+    fake = await news_articles_collection.count_documents({"fake_news_label": "FAKE"})
+    active_alerts = await alerts_collection.count_documents({"is_active": True})
+    if active_alerts == 0:
+        active_alerts = await news_articles_collection.count_documents({"risk_level": {"$in": ["HIGH", "MODERATE"]}})
+    critical_alerts = await alerts_collection.count_documents({"severity": "CRITICAL", "is_active": True})
 
-    # Location breakdown
-    locs = (
-        db.query(Article.location, func.count(Article.id), func.avg(GovernanceRiskScore.gri_score))
-        .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-        .group_by(Article.location)
-        .order_by(func.avg(GovernanceRiskScore.gri_score).desc())
-        .all()
-    )
+    anger_agg = await news_articles_collection.aggregate([
+        {"$group": {"_id": None, "avg": {"$avg": "$anger_rating"}}}
+    ]).to_list(1)
+    avg_anger = anger_agg[0]["avg"] if anger_agg else 0
 
-    # Top 10 risks
-    top_risks = (
-        db.query(Article, GovernanceRiskScore, DetectionResult)
-        .join(GovernanceRiskScore, GovernanceRiskScore.article_id == Article.id)
-        .join(DetectionResult, DetectionResult.article_id == Article.id)
-        .order_by(GovernanceRiskScore.gri_score.desc())
-        .limit(10)
-        .all()
-    )
+    cats = await news_articles_collection.aggregate([
+        {"$group": {"_id": "$category", "count": {"$sum": 1}, "avg_gri": {"$avg": "$risk_score"}}},
+        {"$sort": {"avg_gri": -1}},
+    ]).to_list(None)
 
-    # Active alerts
-    alerts = (
-        db.query(Alert, Article)
-        .join(Article, Article.id == Alert.article_id)
-        .filter(Alert.is_active == True)
-        .order_by(Alert.severity.desc())
-        .limit(15)
-        .all()
-    )
+    top_risks = await news_articles_collection.find({}).sort("risk_score", -1).limit(10).to_list(10)
 
     sep = "=" * 72
     line = "-" * 72
@@ -71,7 +48,7 @@ def _build_text_report(db: Session) -> str:
    Predictive Risk Assessment & Decision Support
 {sep}
    Generated: {now}
-   System: Governance Intelligence DSS v1.0
+   System: Governance Intelligence DSS v3.0 (MongoDB Backend)
 {sep}
 
 1. EXECUTIVE SUMMARY
@@ -88,61 +65,37 @@ def _build_text_report(db: Session) -> str:
 {"   Category":<30} {"Signals":>8} {"Avg GRI":>10} {"Risk Level":>12}
 {line}
 """
-    for cat, count, agri in cats:
-        level = "HIGH" if (agri or 0) > 60 else "MODERATE" if (agri or 0) > 30 else "LOW"
-        report += f"   {cat:<28} {count:>8} {agri:>10.1f} {level:>12}\n"
+    for cat in cats:
+        agri = cat.get("avg_gri") or 0
+        count = cat.get("count") or 0
+        level = "HIGH" if agri > 60 else "MODERATE" if agri > 30 else "LOW"
+        cat_name = (cat.get("_id") or "General")[:28]
+        report += f"   {cat_name:<28} {count:>8} {agri:>10.1f} {level:>12}\n"
 
     report += f"""
-3. RISK ASSESSMENT BY LOCATION
-{line}
-{"   Location":<30} {"Signals":>8} {"Avg GRI":>10} {"Risk Level":>12}
+3. TOP 10 PRIORITY RISKS
 {line}
 """
-    for loc, count, agri in locs:
-        level = "HIGH" if (agri or 0) > 60 else "MODERATE" if (agri or 0) > 30 else "LOW"
-        report += f"   {loc:<28} {count:>8} {agri:>10.1f} {level:>12}\n"
-
-    report += f"""
-4. TOP 10 PRIORITY RISKS
-{line}
-"""
-    for i, (a, g, d) in enumerate(top_risks, 1):
-        report += f"""   #{i}. {a.title}
-       Location: {a.location} | Category: {a.category}
-       GRI: {g.gri_score:.0f} | Veracity: {d.label} | Confidence: {d.confidence_score:.0%}
-"""
-
-    report += f"""
-5. ACTIVE ALERTS & RECOMMENDATIONS
-{line}
-"""
-    for alert, article in alerts:
-        report += f"""   [{alert.severity}] {article.title}
-       Department: {alert.department}
-       Recommendation: {alert.recommendation}
-       Urgency: {alert.urgency}
-       Response: {alert.response_strategy}
+    for i, a in enumerate(top_risks, 1):
+        report += f"""   #{i}. {a.get('title', '')}
+       Category: {a.get('category', '')} | GRI: {round(a.get('risk_score') or 0, 1)} | Label: {a.get('fake_news_label', '')}
 """
 
     report += f"""
 {sep}
    END OF REPORT
    This report was auto-generated by the Governance Intelligence DSS.
-   For questions, contact the system administrator.
 {sep}
 """
     return report
 
 
 @router.get("/report/download")
-def download_report(db: Session = Depends(get_db)):
-    """Generate and download a governance intelligence report."""
-    report_text = _build_text_report(db)
+async def download_report():
+    report_text = await _build_text_report()
     buffer = io.BytesIO(report_text.encode("utf-8"))
     buffer.seek(0)
-
     filename = f"governance_report_{datetime.utcnow().strftime('%Y%m%d_%H%M')}.txt"
-
     return StreamingResponse(
         buffer,
         media_type="text/plain",
@@ -151,17 +104,19 @@ def download_report(db: Session = Depends(get_db)):
 
 
 @router.get("/report/preview")
-def preview_report(db: Session = Depends(get_db)):
-    """Preview the report content as JSON."""
-    total = db.query(func.count(Article.id)).scalar() or 0
-    avg_gri = db.query(func.avg(GovernanceRiskScore.gri_score)).scalar() or 0
-    fake = db.query(func.count(DetectionResult.id)).filter(DetectionResult.label == "FAKE").scalar() or 0
-    active_alerts = db.query(func.count(Alert.id)).filter(Alert.is_active == True).scalar() or 0
+async def preview_report():
+    total = await news_articles_collection.count_documents({})
+    gri_agg = await news_articles_collection.aggregate([
+        {"$group": {"_id": None, "avg": {"$avg": "$risk_score"}}}
+    ]).to_list(1)
+    avg_gri = round(gri_agg[0]["avg"] if gri_agg else 0, 1)
+    fake = await news_articles_collection.count_documents({"fake_news_label": "FAKE"})
+    active_alerts = await alerts_collection.count_documents({"is_active": True})
 
     return {
         "summary": {
             "total_signals": total,
-            "avg_gri": round(avg_gri, 1),
+            "avg_gri": avg_gri,
             "fake_news": fake,
             "active_alerts": active_alerts,
         },

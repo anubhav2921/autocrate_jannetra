@@ -1,143 +1,113 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
-from ..database import get_db
-from ..models import Alert, Article, NewsArticle
+from fastapi import APIRouter, Query
+from datetime import datetime
+from ..mongodb import alerts_collection, news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Alerts"])
 
+DEPT_MAP = {
+    "Corruption": "Anti-Corruption Bureau",
+    "Infrastructure": "Public Works Department",
+    "Healthcare": "Ministry of Health",
+    "Education": "Ministry of Education",
+    "Agriculture": "Ministry of Agriculture",
+    "Environment": "Ministry of Environment",
+    "Economy": "Ministry of Finance",
+    "Law & Order": "Ministry of Home Affairs",
+    "Water": "Jal Shakti Ministry",
+    "Transport": "Ministry of Transport",
+    "Energy": "Ministry of Power",
+    "General": "District Administration",
+    "Politics": "Election Commission",
+    "Security": "Ministry of Defence",
+    "Social": "Ministry of Social Justice",
+}
+
 
 @router.get("/alerts")
-def list_alerts(
+async def list_alerts(
     severity: str = Query(None),
     active_only: bool = Query(True),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
 ):
-    # Check if legacy Alert table has data
-    alert_count = db.query(Alert).count()
+    alert_count = await alerts_collection.count_documents({})
 
     if alert_count > 0:
-        # Use legacy Alert + Article join
-        query = db.query(Alert, Article).join(Article, Article.id == Alert.article_id)
-
+        match_filter = {}
         if active_only:
-            query = query.filter(Alert.is_active == True)
+            match_filter["is_active"] = True
         if severity:
-            query = query.filter(Alert.severity == severity)
+            match_filter["severity"] = severity
 
-        total = query.count()
-        results = (
-            query.order_by(Alert.created_at.desc())
-            .offset((page - 1) * limit)
-            .limit(limit)
-            .all()
-        )
+        total = await alerts_collection.count_documents(match_filter)
+        cursor = alerts_collection.find(match_filter).sort("created_at", -1).skip((page - 1) * limit).limit(limit)
+        alert_docs = await cursor.to_list(None)
 
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
-        sorted_results = sorted(results, key=lambda x: severity_order.get(x[0].severity, 4))
+        alert_docs.sort(key=lambda x: severity_order.get(x.get("severity", "LOW"), 4))
 
-        return {
-            "total": total,
-            "page": page,
-            "alerts": [
-                {
-                    "id": alert.id,
-                    "severity": alert.severity,
-                    "department": alert.department,
-                    "recommendation": alert.recommendation,
-                    "urgency": alert.urgency,
-                    "response_strategy": alert.response_strategy,
-                    "is_active": alert.is_active,
-                    "created_at": alert.created_at.isoformat() if alert.created_at else None,
-                    "article": {
-                        "id": art.id,
-                        "title": art.title,
-                        "category": art.category,
-                        "location": art.location,
-                    },
-                }
-                for alert, art in sorted_results
-            ],
-        }
+        result = []
+        for alert in alert_docs:
+            art = await news_articles_collection.find_one({"id": alert.get("article_id")}) or {}
+            result.append({
+                "id": alert["id"],
+                "severity": alert.get("severity"),
+                "department": alert.get("department"),
+                "recommendation": alert.get("recommendation"),
+                "urgency": alert.get("urgency"),
+                "response_strategy": alert.get("response_strategy"),
+                "is_active": alert.get("is_active"),
+                "created_at": alert["created_at"].isoformat() if isinstance(alert.get("created_at"), datetime) else alert.get("created_at"),
+                "article": {
+                    "id": art.get("id"),
+                    "title": art.get("title"),
+                    "category": art.get("category"),
+                    "location": None,
+                },
+            })
+
+        return {"total": total, "page": page, "alerts": result}
 
     # Fallback: synthesize alerts from high-risk NewsArticle entries
-    DEPT_MAP = {
-        "Corruption": "Anti-Corruption Bureau",
-        "Infrastructure": "Public Works Department",
-        "Healthcare": "Ministry of Health",
-        "Education": "Ministry of Education",
-        "Agriculture": "Ministry of Agriculture",
-        "Environment": "Ministry of Environment",
-        "Economy": "Ministry of Finance",
-        "Law & Order": "Ministry of Home Affairs",
-        "Water": "Jal Shakti Ministry",
-        "Transport": "Ministry of Transport",
-        "Energy": "Ministry of Power",
-        "General": "District Administration",
-        "Politics": "Election Commission",
-        "Security": "Ministry of Defence",
-        "Social": "Ministry of Social Justice",
-    }
-
-    query = db.query(NewsArticle).filter(
-        NewsArticle.risk_level.in_(["HIGH", "MODERATE"])
-    )
-
+    match = {"risk_level": {"$in": ["HIGH", "MODERATE"]}}
     if severity:
-        # Map frontend severity to risk_level
         sev_map = {"CRITICAL": "HIGH", "HIGH": "HIGH", "MEDIUM": "MODERATE", "LOW": "LOW"}
-        mapped = sev_map.get(severity, severity)
-        query = query.filter(NewsArticle.risk_level == mapped)
+        match["risk_level"] = sev_map.get(severity, severity)
 
-    total = query.count()
-    articles = (
-        query.order_by(NewsArticle.risk_score.desc())
-        .offset((page - 1) * limit)
-        .limit(limit)
-        .all()
-    )
+    total = await news_articles_collection.count_documents(match)
+    cursor = news_articles_collection.find(match).sort("risk_score", -1).skip((page - 1) * limit).limit(limit)
+    articles = await cursor.to_list(None)
 
     synthesized = []
     for i, a in enumerate(articles):
-        is_high = (a.risk_score or 0) >= 70
-        sev = "CRITICAL" if (a.risk_score or 0) >= 80 else "HIGH" if is_high else "MEDIUM"
-        dept = DEPT_MAP.get(a.category or "General", "District Administration")
+        score = a.get("risk_score", 0) or 0
+        sev = "CRITICAL" if score >= 80 else "HIGH" if score >= 70 else "MEDIUM"
+        dept = DEPT_MAP.get(a.get("category") or "General", "District Administration")
+        scraped_at = a.get("scraped_at")
         synthesized.append({
-            "id": f"alert-{a.id[:8]}",
+            "id": f"alert-{a['id'][:8]}",
             "severity": sev,
             "department": dept,
-            "recommendation": f"Immediate review required: {a.title[:120]}",
+            "recommendation": f"Immediate review required: {(a.get('title') or '')[:120]}",
             "urgency": "Immediate" if sev == "CRITICAL" else "Within 24h",
             "response_strategy": (
                 f"Deploy {dept} field team to investigate. "
-                f"Risk score: {round(a.risk_score or 0, 1)}/100. "
-                f"Fake news confidence: {round(a.fake_news_confidence or 0, 1)*100:.0f}%."
+                f"Risk score: {round(score, 1)}/100. "
+                f"Fake news confidence: {round((a.get('fake_news_confidence') or 0) * 100, 0):.0f}%."
             ),
             "is_active": True,
-            "created_at": a.scraped_at.isoformat() if a.scraped_at else None,
-            "article": {
-                "id": a.id,
-                "title": a.title,
-                "category": a.category,
-                "location": None,
-            },
+            "created_at": scraped_at.isoformat() if isinstance(scraped_at, datetime) else scraped_at,
+            "article": {"id": a["id"], "title": a.get("title"), "category": a.get("category"), "location": None},
         })
 
-    return {
-        "total": total,
-        "page": page,
-        "alerts": synthesized,
-    }
+    return {"total": total, "page": page, "alerts": synthesized}
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-def acknowledge_alert(alert_id: str, db: Session = Depends(get_db)):
-    alert = db.query(Alert).filter(Alert.id == alert_id).first()
+async def acknowledge_alert(alert_id: str):
+    alert = await alerts_collection.find_one({"id": alert_id})
     if not alert:
-        # For synthesized alerts derived from NewsArticle, just return success
         return {"status": "acknowledged", "alert_id": alert_id}
 
-    alert.is_active = False
-    db.commit()
+    await alerts_collection.update_one({"id": alert_id}, {"$set": {"is_active": False}})
     return {"status": "acknowledged", "alert_id": alert_id}

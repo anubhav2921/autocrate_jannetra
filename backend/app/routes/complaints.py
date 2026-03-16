@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-from ..database import get_db
-from ..models import Article, Source, DetectionResult, CommunityReview, User
-import uuid
+from typing import Optional
+from datetime import datetime
+
+from ..mongodb import articles_collection, sources_collection, detection_results_collection, community_reviews_collection
+from ..utils import gen_uuid
 
 router = APIRouter(prefix="/api", tags=["Complaints"])
+
 
 class ReviewCreate(BaseModel):
     complaint_id: str
@@ -14,67 +15,56 @@ class ReviewCreate(BaseModel):
     verified_as: str  # real, false, needs_more_info
     user_id: Optional[str] = None
 
+
 @router.get("/complaints")
-def list_complaints(db: Session = Depends(get_db)):
-    """
-    Returns articles that originate from 'COMPLAINT' sources.
-    Joined with detection results to provide confidence scores.
-    """
-    results = (
-        db.query(Article, DetectionResult)
-        .join(Source, Article.source_id == Source.id)
-        .outerjoin(DetectionResult, Article.id == DetectionResult.article_id)
-        .filter(Source.source_type == "COMPLAINT")
-        .all()
-    )
+async def list_complaints():
+    """Returns articles from COMPLAINT sources joined with detection results."""
+    # Get all source IDs that are COMPLAINT type
+    complaint_sources = await sources_collection.find({"source_type": "COMPLAINT"}, {"id": 1}).to_list(None)
+    source_ids = [s["id"] for s in complaint_sources]
+
+    art_cursor = articles_collection.find({"source_id": {"$in": source_ids}})
+    art_docs = await art_cursor.to_list(None)
 
     complaints = []
-    for art, det in results:
+    for art in art_docs:
+        det = await detection_results_collection.find_one({"article_id": art["id"]})
+        ingested = art.get("ingested_at")
         complaints.append({
-            "id": art.id,
-            "title": art.title,
-            "location": art.location,
-            "category": art.category,
-            "confidence_score": det.confidence_score if det else 0.0,
-            "status": "verified" if (det and det.label == "REAL" and det.confidence_score > 0.8) else "pending",
-            "ingested_at": art.ingested_at.isoformat() if art.ingested_at else None
+            "id": art["id"],
+            "title": art.get("title"),
+            "location": art.get("location"),
+            "category": art.get("category"),
+            "confidence_score": det.get("confidence_score", 0.0) if det else 0.0,
+            "status": "verified" if (det and det.get("label") == "REAL" and (det.get("confidence_score") or 0) > 0.8) else "pending",
+            "ingested_at": ingested.isoformat() if isinstance(ingested, datetime) else ingested,
         })
-    
     return complaints
 
+
 @router.post("/reviews")
-def create_review(req: ReviewCreate, db: Session = Depends(get_db)):
-    """
-    Submit a community review for an AI-flagged issue.
-    """
-    # Verify article exists
-    article = db.query(Article).filter(Article.id == req.complaint_id).first()
+async def create_review(req: ReviewCreate):
+    article = await articles_collection.find_one({"id": req.complaint_id})
     if not article:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
-    review = CommunityReview(
-        article_id=req.complaint_id,
-        user_id=req.user_id,
-        review_text=req.review_text,
-        verdict=req.verified_as
-    )
-    db.add(review)
-    db.commit()
-    db.refresh(review)
-
+    review = {
+        "id": gen_uuid(),
+        "article_id": req.complaint_id,
+        "user_id": req.user_id,
+        "review_text": req.review_text,
+        "verdict": req.verified_as,
+        "created_at": datetime.utcnow(),
+    }
+    await community_reviews_collection.insert_one(review)
     return {"success": True, "message": "Review submitted successfully"}
 
+
 @router.post("/complaints/{id}/support")
-def support_complaint(id: str, db: Session = Depends(get_db)):
-    """
-    Placeholder for support/upvote logic.
-    In a real app, this would increment a counter or track user votes.
-    """
+async def support_complaint(id: str):
     return {"success": True, "message": "Support recorded"}
 
+
 @router.post("/complaints/{id}/false")
-def mark_false(id: str, db: Session = Depends(get_db)):
-    """
-    Placeholder for marking an issue as false.
-    """
+async def mark_false(id: str):
     return {"success": True, "message": "Voted as false"}

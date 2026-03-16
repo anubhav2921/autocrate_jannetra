@@ -11,13 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.database import engine
-from app.models import Base
-
 # API Routes
 from app.routes import (
-    auth, dashboard, articles, alerts, analytics, sources, resolutions, 
-    map_route, leaderboard, chatbot, scanner, signal_problems, 
+    auth, dashboard, articles, alerts, analytics, sources, resolutions,
+    map_route, leaderboard, chatbot, scanner, signal_problems,
     system_monitoring, reports, account, complaints, pipeline, location
 )
 
@@ -29,6 +26,7 @@ logging.basicConfig(
 logger = logging.getLogger("jannetra")
 
 scheduler = BackgroundScheduler(daemon=True)
+
 
 def run_scheduled_pipeline():
     """Trigger the data ingestion pipeline periodically."""
@@ -43,13 +41,11 @@ def run_scheduled_pipeline():
     except Exception as e:
         logger.error(f"Scheduled pipeline failed: {e}")
 
-# Initialize db
-Base.metadata.create_all(bind=engine)
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
-    logger.info("JanNetra backend starting up...")
-    
+    logger.info("JanNetra backend starting up (MongoDB mode)...")
+
     # Start the background pipeline scheduler (runs every 30m)
     scheduler.add_job(
         run_scheduled_pipeline,
@@ -69,15 +65,16 @@ async def app_lifespan(app: FastAPI):
         daemon=True,
     ).start()
 
-    yield  
+    yield
 
     logger.info("Shutting down scheduler...")
     scheduler.shutdown(wait=False)
 
+
 app = FastAPI(
     title="JanNetra API",
     description="Predictive Governance Intelligence API",
-    version="2.0.0",
+    version="3.0.0",
     lifespan=app_lifespan,
 )
 
@@ -98,20 +95,21 @@ app.add_middleware(
 
 # Register all routes
 routers = [
-    auth.router, dashboard.router, articles.router, alerts.router, 
-    analytics.router, sources.router, resolutions.router, map_route.router, 
-    leaderboard.router, chatbot.router, scanner.router, signal_problems.router, 
-    system_monitoring.router, reports.router, account.router, 
+    auth.router, dashboard.router, articles.router, alerts.router,
+    analytics.router, sources.router, resolutions.router, map_route.router,
+    leaderboard.router, chatbot.router, scanner.router, signal_problems.router,
+    system_monitoring.router, reports.router, account.router,
     complaints.router, pipeline.router, location.router
 ]
 
 for router in routers:
     app.include_router(router)
 
+
 @app.get("/")
 def health_check():
     return {
         "status": "ok",
-        "message": "JanNetra API is running.",
-        "version": "2.0.0",
+        "message": "JanNetra API is running (MongoDB backend).",
+        "version": "3.0.0",
     }

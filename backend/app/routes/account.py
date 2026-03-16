@@ -1,11 +1,10 @@
 import hashlib
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from ..database import get_db
-from ..models import User, Resolution
+from datetime import datetime
+
+from ..mongodb import users_collection, resolutions_collection
 
 router = APIRouter(prefix="/api/account", tags=["Account"])
 
@@ -24,7 +23,7 @@ class UpdateProfileRequest(BaseModel):
     user_id: str
     name: Optional[str] = None
     department: Optional[str] = None
-    profile_picture: Optional[str] = None  # base64 or URL
+    profile_picture: Optional[str] = None
 
 
 class DeleteAccountRequest(BaseModel):
@@ -33,91 +32,91 @@ class DeleteAccountRequest(BaseModel):
 
 
 @router.get("/profile/{user_id}")
-def get_profile(user_id: str, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
+async def get_profile(user_id: str):
+    user = await users_collection.find_one({"id": user_id})
     if not user:
         return {"success": False, "error": "User not found"}
 
-    resolution_count = db.query(func.count(Resolution.id)).filter(
-        Resolution.resolved_by == user_id
-    ).scalar() or 0
-
-    resolved_count = db.query(func.count(Resolution.id)).filter(
-        Resolution.resolved_by == user_id,
-        Resolution.status == "RESOLVED"
-    ).scalar() or 0
-
-    in_progress_count = db.query(func.count(Resolution.id)).filter(
-        Resolution.resolved_by == user_id,
-        Resolution.status == "IN_PROGRESS"
-    ).scalar() or 0
+    total_res = await resolutions_collection.count_documents({"resolved_by": user_id})
+    resolved = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "RESOLVED"})
+    in_progress = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "IN_PROGRESS"})
 
     return {
         "success": True,
         "profile": {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "department": user.department,
-            "profile_picture": getattr(user, 'profile_picture', None),
-            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "id": user["id"],
+            "name": user["name"],
+            "email": user.get("email"),
+            "role": user.get("role"),
+            "department": user.get("department"),
+            "profile_picture": user.get("picture"),
+            "created_at": user["created_at"].isoformat() if isinstance(user.get("created_at"), datetime) else user.get("created_at"),
         },
         "stats": {
-            "total_resolutions": resolution_count,
-            "resolved": resolved_count,
-            "in_progress": in_progress_count,
+            "total_resolutions": total_res,
+            "resolved": resolved,
+            "in_progress": in_progress,
         },
     }
 
 
 @router.post("/update-password")
-def update_password(req: UpdatePasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == req.user_id).first()
+async def update_password(req: UpdatePasswordRequest):
+    user = await users_collection.find_one({"id": req.user_id})
     if not user:
         return {"success": False, "error": "User not found"}
 
-    if user.password_hash != _hash_password(req.current_password):
+    if user.get("password_hash") != _hash_password(req.current_password):
         return {"success": False, "error": "Current password is incorrect"}
 
     if len(req.new_password) < 6:
         return {"success": False, "error": "New password must be at least 6 characters"}
 
-    user.password_hash = _hash_password(req.new_password)
-    db.commit()
+    await users_collection.update_one(
+        {"id": req.user_id},
+        {"$set": {"password_hash": _hash_password(req.new_password)}}
+    )
     return {"success": True, "message": "Password updated successfully"}
 
 
 @router.post("/update-profile")
-def update_profile(req: UpdateProfileRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == req.user_id).first()
+async def update_profile(req: UpdateProfileRequest):
+    user = await users_collection.find_one({"id": req.user_id})
     if not user:
         return {"success": False, "error": "User not found"}
 
+    update = {}
     if req.name:
-        user.name = req.name
+        update["name"] = req.name
     if req.department:
-        user.department = req.department
+        update["department"] = req.department
+    if req.profile_picture:
+        update["picture"] = req.profile_picture
 
-    db.commit()
-    db.refresh(user)
+    if update:
+        await users_collection.update_one({"id": req.user_id}, {"$set": update})
+        user.update(update)
 
-    updated_user = {
-        "id": user.id, "name": user.name, "email": user.email,
-        "role": user.role, "department": user.department,
+    return {
+        "success": True,
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": user.get("email"),
+            "role": user.get("role"),
+            "department": user.get("department"),
+        }
     }
-    return {"success": True, "user": updated_user}
 
 
 @router.post("/delete")
-def delete_account(req: DeleteAccountRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == req.user_id).first()
+async def delete_account(req: DeleteAccountRequest):
+    user = await users_collection.find_one({"id": req.user_id})
     if not user:
         return {"success": False, "error": "User not found"}
 
-    if user.password_hash != _hash_password(req.password):
+    if user.get("password_hash") != _hash_password(req.password):
         return {"success": False, "error": "Incorrect password"}
 
-    db.delete(user)
-    db.commit()
+    await users_collection.delete_one({"id": req.user_id})
     return {"success": True, "message": "Account deleted successfully"}
