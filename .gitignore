@@ -31,6 +31,13 @@ audit*.py
 !status.json
 serviceAccountKey.json
 # Additional items to ignore
+REPAIR_VERIFICATION*
+*.json
+!package.json
+!package-lock.json
+!status.json
+!repair_verification.json
+!repair_verification_mongodb.json
 .vscode/
 .idea/
 .DS_Store
@@ -88,3 +95,5 @@ backend/mock_data.py
 !frontend/vite.config.js
 !frontend/index.html
 !README.md
+repair_verification_mongodb.json
+repair_verification.json
