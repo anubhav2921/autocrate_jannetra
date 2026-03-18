@@ -3,6 +3,8 @@ import {
     LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe, Shield,
     LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan, Activity,
 } from 'lucide-react';
+import { useState } from 'react';
+import ExportReportModal from './ExportReportModal';
 
 const navLinks = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,19 +22,10 @@ const navLinks = [
 ];
 
 export default function Sidebar({ user, onLogout }) {
-    const handleDownloadReport = async () => {
-        try {
-            const res = await fetch('/api/report/download');
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `governance_report.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error('Report download failed:', err);
-        }
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+
+    const handleOpenExportModal = () => {
+        setIsExportModalOpen(true);
     };
 
     return (
@@ -58,15 +51,15 @@ export default function Sidebar({ user, onLogout }) {
                     </NavLink>
                 ))}
 
-                <button onClick={handleDownloadReport} style={{
+                <button onClick={handleOpenExportModal} style={{
                     display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px',
                     color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500,
                     background: 'none', border: 'none', cursor: 'pointer', width: '100%',
                     textAlign: 'left', fontFamily: 'var(--font-family)', borderLeft: '3px solid transparent',
                     transition: 'all 0.2s ease',
                 }}
-                    onMouseEnter={(e) => { e.target.style.background = 'var(--bg-glass-hover)'; e.target.style.color = 'var(--text-primary)'; }}
-                    onMouseLeave={(e) => { e.target.style.background = 'none'; e.target.style.color = 'var(--text-secondary)'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-glass-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <Download size={18} />
                     Export Report
@@ -96,6 +89,7 @@ export default function Sidebar({ user, onLogout }) {
                 <span className="status-dot" />
                 <span>System Online — All Services Active</span>
             </div>
+            <ExportReportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
         </aside>
     );
 }

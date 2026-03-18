@@ -3,6 +3,7 @@ import {
     User, Mail, Building2, Lock, Trash2, Camera, Award, CheckCircle2,
     Clock, Shield, Save, Moon, Sun, Monitor, Palette
 } from 'lucide-react';
+import api from '../services/api';
 
 export default function Account({ user, onLogin, onLogout }) {
     const [profile, setProfile] = useState(null);
@@ -23,8 +24,7 @@ export default function Account({ user, onLogin, onLogout }) {
 
     useEffect(() => {
         if (!user?.id) return;
-        fetch(`/api/account/profile/${user.id}`)
-            .then((r) => r.json())
+        api.get(`/account/profile/${user.id}`)
             .then((data) => {
                 if (data.success) {
                     setProfile(data.profile);
@@ -43,39 +43,46 @@ export default function Account({ user, onLogin, onLogout }) {
     };
 
     const handleUpdateProfile = async () => {
-        const res = await fetch('/api/account/update-profile', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: user.id, name: editName, department: editDept }),
-        });
-        const data = await res.json();
-        if (data.success) {
-            showMsg('Profile updated!');
-            localStorage.setItem('user', JSON.stringify(data.user));
-            onLogin(data.user);
-        } else showMsg(data.error, 'error');
+        try {
+            const data = await api.post('/account/update-profile', {
+                user_id: user.id, name: editName, department: editDept
+            });
+            if (data.success) {
+                showMsg('Profile updated!');
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('token', data.token);
+                onLogin(data.user);
+            } else showMsg(data.error, 'error');
+        } catch (err) {
+            showMsg('Update failed', 'error');
+        }
     };
 
     const handleChangePassword = async () => {
         if (newPwd !== confirmPwd) { showMsg('Passwords do not match', 'error'); return; }
-        const res = await fetch('/api/account/update-password', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: user.id, current_password: currentPwd, new_password: newPwd }),
-        });
-        const data = await res.json();
-        if (data.success) {
-            showMsg('Password changed!');
-            setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
-        } else showMsg(data.error, 'error');
+        try {
+            const data = await api.post('/account/update-password', {
+                user_id: user.id, current_password: currentPwd, new_password: newPwd
+            });
+            if (data.success) {
+                showMsg('Password changed!');
+                setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
+            } else showMsg(data.error, 'error');
+        } catch (err) {
+            showMsg('Password change failed', 'error');
+        }
     };
 
     const handleDeleteAccount = async () => {
-        const res = await fetch('/api/account/delete', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: user.id, password: deletePwd }),
-        });
-        const data = await res.json();
-        if (data.success) onLogout();
-        else showMsg(data.error, 'error');
+        try {
+            const data = await api.post('/account/delete', {
+                user_id: user.id, password: deletePwd
+            });
+            if (data.success) onLogout();
+            else showMsg(data.error, 'error');
+        } catch (err) {
+            showMsg('Delete failed', 'error');
+        }
     };
 
     const handleAvatarChange = (e) => {

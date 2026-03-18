@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, AlertTriangle, MapPin, Clock, Shield, Zap, CheckCircle2,
-    Circle, FileText, Radio, Target,
+    Circle, FileText, Radio, Target, Flame
 } from 'lucide-react';
 
 const SEVERITY_CONFIG = {
@@ -12,6 +12,8 @@ const SEVERITY_CONFIG = {
     Low: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
 };
 
+import api from '../services/api';
+
 export default function ProblemDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -19,29 +21,49 @@ export default function ProblemDetail() {
     const [loading, setLoading] = useState(true);
     const [resolving, setResolving] = useState(false);
     const [resolved, setResolved] = useState(false);
+    const [showResolveForm, setShowResolveForm] = useState(false);
+    const [report, setReport] = useState('');
+    const [proofFile, setProofFile] = useState(null);
 
     useEffect(() => {
-        fetch(`/api/signal-problems/${id}`)
-            .then((r) => r.json())
+        setLoading(true);
+        api.get(`/signal-problems/${id}`)
             .then((data) => {
                 setProblem(data);
-                if (data.status === 'Problem Resolved') setResolved(true);
+                if (data?.status === 'Problem Resolved') setResolved(true);
             })
-            .catch(console.error)
+            .catch((err) => {
+                console.error('Failed to fetch problem detail:', err);
+            })
             .finally(() => setLoading(false));
     }, [id]);
 
     const handleResolve = async () => {
+        if (!report) {
+            alert('Please provide a resolution report/details.');
+            return;
+        }
+
         setResolving(true);
         try {
-            const res = await fetch(`/api/signal-problems/${id}/resolve`, { method: 'PATCH' });
-            const data = await res.json();
+            const formData = new FormData();
+            formData.append('report', report);
+            if (proofFile) {
+                formData.append('proof', proofFile);
+            }
+
+            const data = await api.patch(`/signal-problems/${id}/resolve`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             if (data.success) {
                 setResolved(true);
                 setProblem((prev) => ({ ...prev, status: 'Problem Resolved' }));
+                setShowResolveForm(false);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Failed to resolve signal problem:', err);
+            alert('Failed to submit resolution. Please try again.');
         } finally {
             setResolving(false);
         }
@@ -51,13 +73,15 @@ export default function ProblemDetail() {
         return <div className="loading-container"><div className="spinner" /></div>;
     }
 
-    if (!problem) {
+    if (!problem || problem.detail) {
         return (
             <div className="page-container">
                 <div className="glass-card" style={{ textAlign: 'center', padding: '48px' }}>
                     <AlertTriangle size={40} style={{ color: '#ef4444', marginBottom: '12px' }} />
                     <h2 style={{ color: 'var(--text-primary)' }}>Signal Not Found</h2>
-                    <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>The signal "{id}" does not exist.</p>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
+                        {problem?.detail || `The signal "${id}" does not exist.`}
+                    </p>
                     <button onClick={() => navigate('/signal-monitor')} className="btn btn-primary" style={{ marginTop: '16px' }}>
                         <ArrowLeft size={14} /> Back to Signal Monitor
                     </button>
@@ -120,7 +144,7 @@ export default function ProblemDetail() {
                             </h1>
                         </div>
 
-                        {/* Risk Score Circle */}
+                        {/* Priority Score Circle */}
                         <div style={{ textAlign: 'center' }}>
                             <div style={{
                                 position: 'relative', width: '80px', height: '80px',
@@ -128,19 +152,19 @@ export default function ProblemDetail() {
                                 <svg viewBox="0 0 36 36" style={{ transform: 'rotate(-90deg)', width: '80px', height: '80px' }}>
                                     <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
                                     <circle cx="18" cy="18" r="15.9" fill="none"
-                                        stroke={problem.riskScore > 80 ? '#ef4444' : problem.riskScore > 50 ? '#f59e0b' : '#10b981'}
-                                        strokeWidth="3" strokeDasharray={`${problem.riskScore} ${100 - problem.riskScore}`}
+                                        stroke={(problem.priorityScore || problem.riskScore) > 80 ? '#ef4444' : (problem.priorityScore || problem.riskScore) > 50 ? '#f59e0b' : '#10b981'}
+                                        strokeWidth="3" strokeDasharray={`${problem.priorityScore || problem.riskScore} ${100 - (problem.priorityScore || problem.riskScore)}`}
                                         strokeLinecap="round"
                                         style={{ transition: 'stroke-dasharray 0.8s ease' }} />
                                 </svg>
                                 <div style={{
                                     position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontSize: '1.1rem', fontWeight: 800,
-                                    color: problem.riskScore > 80 ? '#ef4444' : problem.riskScore > 50 ? '#f59e0b' : '#10b981',
-                                }}>{problem.riskScore}</div>
+                                    color: (problem.priorityScore || problem.riskScore) > 80 ? '#ef4444' : (problem.priorityScore || problem.riskScore) > 50 ? '#f59e0b' : '#10b981',
+                                }}>{problem.priorityScore || problem.riskScore}</div>
                             </div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 600 }}>
-                                RISK SCORE
+                                PRIORITY SCORE
                             </div>
                         </div>
                     </div>
@@ -157,7 +181,8 @@ export default function ProblemDetail() {
                             <Clock size={13} /> Detected: {problem.detectedAt ? new Date(problem.detectedAt).toLocaleString() : 'N/A'}
                         </span>
                         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <Radio size={13} /> Source: {problem.source}
+                            <Flame size={13} style={{ color: problem.frequency > 1 ? '#f97316' : 'inherit' }} /> 
+                            <strong>{problem.frequency || 1}</strong> Reported Signals
                         </span>
                     </div>
                 </div>
@@ -165,17 +190,49 @@ export default function ProblemDetail() {
 
             <div className="grid-2">
                 {/* Problem Description */}
-                <div className="glass-card animate-in" style={{ gridColumn: '1 / -1' }}>
+                <div className="glass-card animate-in">
                     <div className="section-title" style={{ marginBottom: '16px' }}>
-                        <FileText size={18} /> Problem Description
+                        <FileText size={18} /> Problem Summary
                     </div>
                     <p style={{
                         fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8,
                         background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '10px',
-                        border: '1px solid var(--border-color)',
+                        border: '1px solid var(--border-color)', minHeight: '120px'
                     }}>
-                        {problem.description}
+                        {problem.description || problem.title}
                     </p>
+                </div>
+
+                {/* Signals Cluster Evidence */}
+                <div className="glass-card animate-in">
+                    <div className="section-title" style={{ marginBottom: '16px' }}>
+                        <Zap size={18} /> Signal Cluster Evidence
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {problem.sampleRecords && problem.sampleRecords.length > 0 ? (
+                            problem.sampleRecords.map((rec, i) => (
+                                <div key={i} style={{
+                                    padding: '12px 16px', borderRadius: '8px', background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>{rec.title}</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>Source: {rec.source}</div>
+                                    </div>
+                                    <div style={{
+                                        fontSize: '0.75rem', fontWeight: 700, color: rec.risk > 70 ? '#ef4444' : '#f59e0b',
+                                        background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px'
+                                    }}>
+                                        {rec.risk}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                                No individual source signals listed for this cluster.
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -205,25 +262,86 @@ export default function ProblemDetail() {
                         </h2>
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px' }}>
                             Review the problem details above. If this issue has been addressed and resolved,
-                            click the button below to confirm resolution. The status will remain <strong style={{ color: '#f59e0b' }}>Pending</strong> until confirmed.
+                            please provide the resolution details below. The status will remain <strong style={{ color: '#f59e0b' }}>Pending</strong> until confirmed.
                         </p>
-                        <button
-                            onClick={handleResolve}
-                            disabled={resolving}
-                            className="btn btn-primary"
-                            style={{
-                                padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
-                                display: 'inline-flex', alignItems: 'center', gap: '10px',
-                                background: 'linear-gradient(135deg, #10b981, #059669)',
-                                border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
-                                transition: 'all 0.3s ease',
-                            }}
-                            onMouseEnter={(e) => { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 28px rgba(16,185,129,0.4)'; }}
-                            onMouseLeave={(e) => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 20px rgba(16,185,129,0.3)'; }}
-                        >
-                            <CheckCircle2 size={20} />
-                            {resolving ? 'Confirming...' : 'Confirm Problem Resolved'}
-                        </button>
+
+                        {!showResolveForm ? (
+                            <button
+                                onClick={() => setShowResolveForm(true)}
+                                className="btn btn-primary"
+                                style={{
+                                    padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
+                                    display: 'inline-flex', alignItems: 'center', gap: '10px',
+                                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                                    border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                                    transition: 'all 0.3s ease',
+                                }}
+                            >
+                                <CheckCircle2 size={20} />
+                                Start Resolution Process
+                            </button>
+                        ) : (
+                            <div className="animate-in" style={{
+                                maxWidth: '600px', margin: '0 auto', background: 'rgba(255,255,255,0.03)',
+                                padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)',
+                                textAlign: 'left'
+                            }}>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                        Resolution Report / Details *
+                                    </label>
+                                    <textarea
+                                        value={report}
+                                        onChange={(e) => setReport(e.target.value)}
+                                        placeholder="Describe what steps were taken to resolve this issue..."
+                                        style={{
+                                            width: '100%', height: '120px', padding: '12px', borderRadius: '8px',
+                                            background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
+                                            color: 'var(--text-primary)', fontSize: '0.9rem', resize: 'none'
+                                        }}
+                                    />
+                                </div>
+                                
+                                <div style={{ marginBottom: '24px' }}>
+                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                        Proof of Resolution (Photo)
+                                    </label>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => setProofFile(e.target.files[0])}
+                                        style={{
+                                            width: '100%', padding: '10px', borderRadius: '8px',
+                                            background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
+                                            color: 'var(--text-muted)', fontSize: '0.85rem'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '12px' }}>
+                                    <button
+                                        onClick={handleResolve}
+                                        disabled={resolving}
+                                        className="btn btn-primary"
+                                        style={{
+                                            flex: 1, padding: '12px', fontWeight: 700,
+                                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                                            border: 'none'
+                                        }}
+                                    >
+                                        {resolving ? 'Confirming...' : 'Complete & Confirm Resolution'}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowResolveForm(false)}
+                                        disabled={resolving}
+                                        className="btn btn-ghost"
+                                        style={{ padding: '12px 24px' }}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </>
                 )}
             </div>

@@ -13,9 +13,7 @@ import {
 } from '../services/authService';
 
 const DEPARTMENTS = [
-    'Water Supply Department', 'Public Works Department', 'Health Department',
-    'Education Department', 'Police Department', 'Municipal Corporation',
-    'Transport Department', 'Anti-Corruption Bureau', 'General Administration',
+    'health', 'police', 'municipal', 'electricity', 'water', 'education', 'transport'
 ];
 
 export default function Signup({ onLogin }) {
@@ -93,13 +91,15 @@ export default function Signup({ onLogin }) {
 
             if (profileRes.success) {
                 localStorage.setItem('user', JSON.stringify(profileRes.user));
+                localStorage.setItem('token', profileRes.token);
                 onLogin(profileRes.user);
                 navigate('/');
             } else {
                 // Fallback: still log them in via Firebase token
                 const fbRes = await verifyFirebaseToken(idToken);
-                const { user } = fbRes;
+                const { user, token } = fbRes;
                 localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('token', token);
                 onLogin(user);
                 navigate('/');
             }
@@ -138,6 +138,7 @@ export default function Signup({ onLogin }) {
                         setSuccess('Account created! Check backend console for OTP.');
                     } else {
                         localStorage.setItem('user', JSON.stringify(data.user));
+                        localStorage.setItem('token', data.token);
                         onLogin(data.user);
                         navigate('/');
                     }
@@ -282,6 +283,7 @@ export default function Signup({ onLogin }) {
 
                     if (profileRes.success) {
                         localStorage.setItem('user', JSON.stringify(profileRes.user));
+                        localStorage.setItem('token', profileRes.token);
                         onLogin(profileRes.user);
                         navigate('/');
                         return;
@@ -290,8 +292,9 @@ export default function Signup({ onLogin }) {
 
                 // Fallback: verify via firebase-login endpoint
                 const fbRes = await verifyFirebaseToken(idToken);
-                const { user } = fbRes;
+                const { user, token } = fbRes;
                 localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('token', token);
                 onLogin(user);
                 navigate('/');
             } else {
@@ -304,6 +307,7 @@ export default function Signup({ onLogin }) {
                 const data = await res.json();
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
                     onLogin(data.user);
                     navigate('/');
                 } else {

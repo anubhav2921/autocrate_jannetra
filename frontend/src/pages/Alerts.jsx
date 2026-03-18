@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import {
     AlertTriangle, MapPin, Building2, Clock, CheckCircle2, ChevronRight,
 } from 'lucide-react';
-import { fetchAlerts, acknowledgeAlert } from '../services/api';
+import { fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
+import { useLocation } from '../context/LocationContext';
 
 export default function Alerts() {
+    const { location } = useLocation();
     const [alerts, setAlerts] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -12,11 +14,11 @@ export default function Alerts() {
 
     useEffect(() => {
         loadAlerts();
-    }, [filter]);
+    }, [filter, location.state, location.district, location.city, location.ward]);
 
     const loadAlerts = () => {
         setLoading(true);
-        const params = { active_only: true };
+        const params = buildLocationParams(location, { active_only: true });
         if (filter) params.severity = filter;
         fetchAlerts(params)
             .then((data) => {

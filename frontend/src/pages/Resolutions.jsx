@@ -5,6 +5,8 @@ import {
     Circle, AlertTriangle, Radio, Zap,
 } from 'lucide-react';
 
+import api from '../services/api';
+
 const CATEGORIES = ['Water', 'Infrastructure', 'Healthcare', 'Education', 'Law & Order', 'Corruption', 'Environment', 'Housing', 'Sanitation', 'Transport'];
 const LOCATIONS = [
     'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata',
@@ -27,15 +29,20 @@ export default function Resolutions({ user }) {
     const update = (field, value) => setForm({ ...form, [field]: value });
 
     useEffect(() => {
+        setLoading(true);
         Promise.all([
-            fetch('/api/resolutions').then((r) => r.json()),
-            fetch('/api/signal-problems').then((r) => r.json()),
+            api.get('/resolutions'),
+            api.get('/signal-problems'),
         ])
             .then(([resData, sigData]) => {
-                setResolutions(resData.resolutions || []);
-                setSignalProblems(sigData || []);
+                setResolutions(resData?.resolutions || []);
+                setSignalProblems(Array.isArray(sigData) ? sigData : []);
             })
-            .catch(console.error)
+            .catch((err) => {
+                console.error('Failed to fetch resolutions data:', err);
+                setResolutions([]);
+                setSignalProblems([]);
+            })
             .finally(() => setLoading(false));
     }, []);
 
@@ -44,12 +51,7 @@ export default function Resolutions({ user }) {
         setSubmitting(true);
         setSuccess('');
         try {
-            const res = await fetch('/api/resolutions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...form, user_id: user?.id }),
-            });
-            const data = await res.json();
+            const data = await api.post('/resolutions', { ...form, user_id: user?.id });
             if (data.success) {
                 setSuccess('Resolution submitted successfully!');
                 setShowForm(false);
@@ -58,12 +60,11 @@ export default function Resolutions({ user }) {
                     action_taken: '', resources_used: '', people_benefited: '', status: 'RESOLVED',
                 });
                 // Refresh list
-                const listRes = await fetch('/api/resolutions');
-                const listData = await listRes.json();
-                setResolutions(listData.resolutions || []);
+                const listData = await api.get('/resolutions');
+                setResolutions(listData?.resolutions || []);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Submit failed:', err);
         } finally {
             setSubmitting(false);
         }
@@ -205,46 +206,56 @@ export default function Resolutions({ user }) {
             )}
 
             {/* Signal Problem Status Showcase */}
-            {signalProblems.length > 0 && (
+            {signalProblems.filter(sp => sp.status === 'Problem Resolved' && sp.resolutionReport).length > 0 && (
                 <div className="glass-card animate-in" style={{ marginBottom: '24px' }}>
                     <div className="section-title" style={{ marginBottom: '16px' }}>
-                        <Radio size={18} /> Signal Problem Status
+                        <CheckCircle2 size={18} style={{ color: '#10b981' }} /> Confirmed Signal Resolutions
                     </div>
-                    <div style={{ display: 'grid', gap: '10px' }}>
-                        {signalProblems.map((sp) => {
-                            const isResolved = sp.status === 'Problem Resolved';
-                            return (
-                                <div key={sp.id} style={{
-                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                    padding: '12px 16px', borderRadius: '10px',
-                                    background: 'rgba(255,255,255,0.02)',
-                                    border: '1px solid var(--border-color)',
-                                    transition: 'all 0.2s ease',
-                                }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                                        <span style={{
-                                            fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)',
-                                            background: 'rgba(59,130,246,0.1)', padding: '3px 8px', borderRadius: '4px',
-                                            minWidth: '60px', textAlign: 'center',
-                                        }}>{sp.id}</span>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                                            {sp.title}
-                                        </span>
-                                    </div>
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                        padding: '5px 14px', borderRadius: '20px', fontSize: '0.75rem',
-                                        fontWeight: 700, whiteSpace: 'nowrap',
-                                        background: isResolved ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
-                                        color: isResolved ? '#10b981' : '#f59e0b',
-                                        border: `1px solid ${isResolved ? 'rgba(16,185,129,0.35)' : 'rgba(245,158,11,0.35)'}`,
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                        {signalProblems
+                            .filter(sp => sp.status === 'Problem Resolved' && sp.resolutionReport)
+                            .map((sp) => {
+                                return (
+                                    <div key={sp.id} style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '12px 16px', borderRadius: '10px',
+                                        background: 'rgba(16, 185, 129, 0.05)',
+                                        border: '1px solid rgba(16, 185, 129, 0.2)',
+                                        transition: 'all 0.2s ease',
                                     }}>
-                                        {isResolved ? <CheckCircle2 size={12} /> : <Circle size={12} />}
-                                        {isResolved ? 'Problem Resolved' : 'Pending'}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                                            <span style={{
+                                                fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)',
+                                                background: 'rgba(59,130,246,0.1)', padding: '3px 8px', borderRadius: '4px',
+                                                minWidth: '60px', textAlign: 'center',
+                                            }}>{sp.id}</span>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                                                {sp.title}
+                                            </span>
+                                        </div>
+                                        <div style={{ padding: '8px 40px', fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                            {sp.resolutionReport}
+                                            {sp.proof_url && (
+                                                <a href={sp.proof_url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
+                                                    (View Proof)
+                                                </a>
+                                            )}
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                                padding: '5px 14px', borderRadius: '20px', fontSize: '0.75rem',
+                                                fontWeight: 700, whiteSpace: 'nowrap',
+                                                background: 'rgba(16,185,129,0.15)',
+                                                color: '#10b981',
+                                                border: '1px solid rgba(16, 185, 129, 0.35)',
+                                            }}>
+                                                <CheckCircle2 size={12} /> Resolved
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                     </div>
                 </div>
             )}

@@ -3,7 +3,7 @@ import {
     Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2,
     MapPin, Clock, Globe, ChevronDown,
 } from 'lucide-react';
-import { fetchDashboard, fetchAlerts, acknowledgeAlert } from '../services/api';
+import { fetchLocationDashboard, fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../context/LocationContext';
 import LocationFilter from './LocationFilter';
@@ -21,10 +21,10 @@ export default function Navbar({ user }) {
     const { hasLocation, locationLabel } = useLocation();
 
     useEffect(() => {
-        fetchDashboard()
+        fetchLocationDashboard(location)
             .then((data) => setAlertCount(data.active_alerts || 0))
             .catch(() => { });
-    }, []);
+    }, [location.state, location.district, location.city, location.ward]);
 
     // Close both dropdowns on outside click
     useEffect(() => {
@@ -47,7 +47,7 @@ export default function Navbar({ user }) {
         if (nextState) {
             setAlertCount(0);
             setLoadingAlerts(true);
-            fetchAlerts({ active_only: true, limit: 10 })
+            fetchAlerts(buildLocationParams(location, { active_only: true, limit: 10 }))
                 .then(data => setAlertsData(data.alerts || []))
                 .catch(console.error)
                 .finally(() => setLoadingAlerts(false));

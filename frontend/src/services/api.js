@@ -6,9 +6,21 @@ const api = axios.create({
     headers: { 'Content-Type': 'application/json' },
 });
 
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
 api.interceptors.response.use(
     (res) => res.data,
     (err) => {
+        if (err.response?.status === 401) {
+            // Optional: Handle unauthorized (e.g., logout)
+            console.error('Session expired or unauthorized');
+        }
         console.error('API Error:', err.message);
         return Promise.reject(err);
     }
@@ -20,9 +32,9 @@ export const fetchArticles = (params) => api.get('/articles', { params });
 export const fetchArticle = (id) => api.get(`/articles/${id}`);
 export const fetchAlerts = (params) => api.get('/alerts', { params });
 export const acknowledgeAlert = (id) => api.post(`/alerts/${id}/acknowledge`);
-export const fetchSentimentTrend = () => api.get('/analytics/sentiment-trend');
-export const fetchRiskHeatmap = () => api.get('/analytics/risk-heatmap');
-export const fetchCategoryBreakdown = () => api.get('/analytics/category-breakdown');
+export const fetchSentimentTrend = (locationParams = {}) => api.get('/analytics/sentiment-trend', { params: buildLocationParams(locationParams) });
+export const fetchRiskHeatmap = (locationParams = {}) => api.get('/analytics/risk-heatmap', { params: buildLocationParams(locationParams) });
+export const fetchCategoryBreakdown = (locationParams = {}) => api.get('/analytics/category-breakdown', { params: buildLocationParams(locationParams) });
 export const fetchSources = () => api.get('/sources');
 
 // Location-aware helpers

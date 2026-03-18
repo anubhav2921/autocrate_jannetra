@@ -47,8 +47,9 @@ export default function Login({ onLogin }) {
                         {},
                         { headers: { Authorization: `Bearer ${idToken}` } }
                     );
-                    const { user } = response.data;
+                    const { user, token } = response.data;
                     localStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('token', token);
                     onLogin(user);
                     navigate('/');
                 } catch (err) {
@@ -96,8 +97,9 @@ export default function Login({ onLogin }) {
 
             // Verify with backend
             const response = await verifyFirebaseToken(idToken, '/api/auth/firebase-login');
-            const { user } = response;
+            const { user, token } = response;
             localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('token', token);
             onLogin(user);
             navigate('/');
         } catch (err) {
@@ -114,6 +116,7 @@ export default function Login({ onLogin }) {
                     const data = await res.json();
                     if (data.success) {
                         localStorage.setItem('user', JSON.stringify(data.user));
+                        localStorage.setItem('token', data.token);
                         onLogin(data.user);
                         navigate('/');
                         return;
@@ -138,6 +141,7 @@ export default function Login({ onLogin }) {
                     const data = await res.json();
                     if (data.success) {
                         localStorage.setItem('user', JSON.stringify(data.user));
+                        localStorage.setItem('token', data.token);
                         onLogin(data.user);
                         navigate('/');
                         return;
@@ -298,8 +302,9 @@ export default function Login({ onLogin }) {
                 // Firebase OTP verification
                 const { idToken } = await verifyOTP(confirmationResult, code);
                 const response = await verifyFirebaseToken(idToken);
-                const { user } = response;
+                const { user, token } = response;
                 localStorage.setItem('user', JSON.stringify(user));
+                localStorage.setItem('token', token);
                 onLogin(user);
                 navigate('/');
             } else {
@@ -389,8 +394,9 @@ export default function Login({ onLogin }) {
                 {},
                 { headers: { Authorization: `Bearer ${idToken}` } }
             );
-            const { user } = response.data;
+            const { user, token } = response.data;
             localStorage.setItem('user', JSON.stringify(user));
+            localStorage.setItem('token', token);
             onLogin(user);
             navigate('/');
         } catch (err) {

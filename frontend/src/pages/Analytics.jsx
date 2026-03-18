@@ -5,20 +5,23 @@ import {
 } from 'recharts';
 import { TrendingUp, MapPin, Layers, Flame } from 'lucide-react';
 import { fetchSentimentTrend, fetchRiskHeatmap, fetchCategoryBreakdown } from '../services/api';
+import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 
 export default function Analytics() {
+    const { location } = useLocation();
     const [sentiment, setSentiment] = useState([]);
     const [heatmap, setHeatmap] = useState([]);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        setLoading(true);
         Promise.all([
-            fetchSentimentTrend(),
-            fetchRiskHeatmap(),
-            fetchCategoryBreakdown(),
+            fetchSentimentTrend(location),
+            fetchRiskHeatmap(location),
+            fetchCategoryBreakdown(location),
         ])
             .then(([sTrend, hMap, cBreak]) => {
                 let trendData = sTrend.trend || [];
@@ -39,7 +42,7 @@ export default function Analytics() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [location.state, location.district, location.city, location.ward]);
 
     if (loading) {
         return <div className="loading-container"><div className="spinner" /></div>;

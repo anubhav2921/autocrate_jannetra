@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     AlertTriangle, Shield, MapPin, Clock, Zap, Eye,
-    CheckCircle2, Circle, Filter, Search,
+    CheckCircle2, Circle, Filter, Search, Flame
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
+import api from '../services/api';
 
 const SEVERITY_CONFIG = {
     Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
@@ -24,8 +25,8 @@ export default function SignalMonitor() {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`/api/signal-problems?${locationParams()}`)
-            .then((r) => r.json())
+        // Using common API service instead of raw fetch for consistency
+        api.get(`/signal-problems?${locationParams()}`)
             .then((data) => {
                 const formatted = data.map((p) => ({
                     ...p,
@@ -75,22 +76,22 @@ export default function SignalMonitor() {
                 <div className="glass-card stat-card blue">
                     <div className="stat-icon"><Zap size={22} /></div>
                     <div className="stat-value">{stats.total}</div>
-                    <div className="stat-label">Total Signals</div>
+                    <div className="stat-label">Problem Clusters</div>
                 </div>
                 <div className="glass-card stat-card red">
                     <div className="stat-icon"><AlertTriangle size={22} /></div>
                     <div className="stat-value" style={{ color: '#ef4444' }}>{stats.critical}</div>
-                    <div className="stat-label">Critical</div>
+                    <div className="stat-label">Critical Issues</div>
                 </div>
                 <div className="glass-card stat-card amber">
                     <div className="stat-icon"><Clock size={22} /></div>
                     <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.pending}</div>
-                    <div className="stat-label">Pending</div>
+                    <div className="stat-label">Actions Pending</div>
                 </div>
                 <div className="glass-card stat-card green">
                     <div className="stat-icon"><CheckCircle2 size={22} /></div>
                     <div className="stat-value" style={{ color: '#10b981' }}>{stats.resolved}</div>
-                    <div className="stat-label">Resolved</div>
+                    <div className="stat-label">Issues Resolved</div>
                 </div>
             </div>
 
@@ -105,7 +106,7 @@ export default function SignalMonitor() {
                     border: '1px solid var(--border-color)',
                 }}>
                     <Search size={16} style={{ color: 'var(--text-muted)' }} />
-                    <input type="text" placeholder="Search signals..." value={search}
+                    <input type="text" placeholder="Search issues..." value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         style={{
                             background: 'transparent', border: 'none', color: 'var(--text-primary)',
@@ -144,7 +145,7 @@ export default function SignalMonitor() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
                     <thead>
                         <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            {['ID', 'Title', 'Severity', 'Category', 'Location', 'Risk', 'Status', 'Action'].map((h) => (
+                            {['ID', 'Title', 'Frequency', 'Severity', 'Category', 'Location', 'Priority', 'Status', 'Action'].map((h) => (
                                 <th key={h} style={{
                                     padding: '14px 12px', textAlign: 'left', fontSize: '0.72rem',
                                     fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase',
@@ -169,8 +170,16 @@ export default function SignalMonitor() {
                                         {p.id}
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             {p.title}
+                                            {p.frequency > 5 && <Zap size={14} style={{ color: '#ef4444' }} />}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '14px 12px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.frequency || 1}</span>
+                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>signals</span>
+                                            {p.frequency > 2 && <Flame size={12} style={{ color: '#f97316' }} />}
                                         </div>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
@@ -198,15 +207,15 @@ export default function SignalMonitor() {
                                                 background: 'rgba(255,255,255,0.06)', overflow: 'hidden',
                                             }}>
                                                 <div style={{
-                                                    width: `${p.riskScore}%`, height: '100%', borderRadius: '3px',
-                                                    background: p.riskScore > 80 ? '#ef4444' : p.riskScore > 50 ? '#f59e0b' : '#10b981',
+                                                    width: `${p.priorityScore || p.riskScore}%`, height: '100%', borderRadius: '3px',
+                                                    background: (p.priorityScore || p.riskScore) > 80 ? '#ef4444' : (p.priorityScore || p.riskScore) > 50 ? '#f59e0b' : '#10b981',
                                                     transition: 'width 0.6s ease',
                                                 }} />
                                             </div>
                                             <span style={{
                                                 fontSize: '0.78rem', fontWeight: 700,
-                                                color: p.riskScore > 80 ? '#ef4444' : p.riskScore > 50 ? '#f59e0b' : '#10b981',
-                                            }}>{p.riskScore}</span>
+                                                color: (p.priorityScore || p.riskScore) > 80 ? '#ef4444' : (p.priorityScore || p.riskScore) > 50 ? '#f59e0b' : '#10b981',
+                                            }}>{p.priorityScore || p.riskScore}</span>
                                         </div>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
