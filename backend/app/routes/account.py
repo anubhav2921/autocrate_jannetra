@@ -5,6 +5,7 @@ from typing import Optional
 from datetime import datetime
 
 from ..mongodb import users_collection, resolutions_collection
+from ..utils import create_access_token
 
 router = APIRouter(prefix="/api/account", tags=["Account"])
 
@@ -97,8 +98,11 @@ async def update_profile(req: UpdateProfileRequest):
         await users_collection.update_one({"id": req.user_id}, {"$set": update})
         user.update(update)
 
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
+
     return {
         "success": True,
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -107,6 +111,7 @@ async def update_profile(req: UpdateProfileRequest):
             "department": user.get("department"),
         }
     }
+
 
 
 @router.post("/delete")

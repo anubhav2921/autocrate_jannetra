@@ -22,6 +22,8 @@ from typing import Optional
 
 import requests
 
+from app.services.location_service import resolve_location_from_text
+
 logger = logging.getLogger("jannetra.scrapers.reddit")
 
 # Configuration
@@ -104,46 +106,15 @@ def _is_complaint_post(title: str, selftext: str) -> bool:
 
 def _extract_location(title: str, selftext: str, subreddit: str) -> Optional[str]:
     """Try to extract a location from the post or infer from subreddit."""
-    # Check if subreddit maps to a city
-    if subreddit.lower() in SUBREDDIT_LOCATION_MAP:
-        return SUBREDDIT_LOCATION_MAP[subreddit.lower()]
+    subreddit_lower = subreddit.lower()
+    
+    # Check if subreddit maps to a city (highest priority)
+    if subreddit_lower in SUBREDDIT_LOCATION_MAP:
+        return SUBREDDIT_LOCATION_MAP[subreddit_lower]
 
-    # Basic keyword-based location extraction
-    combined = (title + " " + selftext).lower()
-    cities = {
-        "mumbai": "Mumbai, Maharashtra",
-        "delhi": "Delhi, NCR",
-        "bangalore": "Bangalore, Karnataka",
-        "bengaluru": "Bangalore, Karnataka",
-        "hyderabad": "Hyderabad, Telangana",
-        "chennai": "Chennai, Tamil Nadu",
-        "kolkata": "Kolkata, West Bengal",
-        "pune": "Pune, Maharashtra",
-        "ahmedabad": "Ahmedabad, Gujarat",
-        "jaipur": "Jaipur, Rajasthan",
-        "lucknow": "Lucknow, Uttar Pradesh",
-        "chandigarh": "Chandigarh",
-        "bhopal": "Bhopal, Madhya Pradesh",
-        "patna": "Patna, Bihar",
-        "gurgaon": "Gurgaon, Haryana",
-        "noida": "Noida, Uttar Pradesh",
-        "kochi": "Kochi, Kerala",
-        "indore": "Indore, Madhya Pradesh",
-        "nagpur": "Nagpur, Maharashtra",
-        "surat": "Surat, Gujarat",
-        "prayagraj": "Prayagraj, Uttar Pradesh",
-        "allahabad": "Allahabad, Uttar Pradesh",
-        "kanpur": "Kanpur, Uttar Pradesh",
-        "varanasi": "Varanasi, Uttar Pradesh",
-        "agra": "Agra, Uttar Pradesh",
-        "ghaziabad": "Ghaziabad, Uttar Pradesh"
-    }
-
-    for city_kw, city_name in cities.items():
-        if city_kw in combined:
-            return city_name
-
-    return "India"
+    # Use centralized LocationService to scan text
+    loc = resolve_location_from_text(title, selftext)
+    return loc["city"]
 
 
 def _scrape_subreddit(config: dict) -> list[dict]:
@@ -239,6 +210,7 @@ def _scrape_subreddit(config: dict) -> list[dict]:
                 "tier": "UNKNOWN",
                 "category_hint": flair if flair else "General",
                 "content_hash": _content_hash(title + content),
+                "source_domain": "reddit.com",
                 # Extra metadata for complaints
                 "location": location,
                 "reddit_score": score,

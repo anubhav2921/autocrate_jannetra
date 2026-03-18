@@ -31,96 +31,40 @@ CATEGORY_CITY_MAP = {
 @router.get("/map/markers")
 async def get_map_markers():
     """Get problem location markers with risk data for the map."""
-    # Try legacy articles first (has real city locations)
-    article_count = await articles_collection.count_documents({})
-    if article_count > 0:
-        pipeline = [
-            {"$group": {
-                "_id": "$location",
-                "avg_gri": {"$avg": "$gri_score"},
-                "max_gri": {"$max": "$gri_score"},
-                "count": {"$sum": 1},
-                "avg_anger": {"$avg": "$anger_rating"},
-            }}
-        ]
-        # Use articles joined info from gri_scores
-        art_pipeline = [
-            {"$group": {
-                "_id": "$location",
-                "count": {"$sum": 1},
-            }}
-        ]
-        locs = await articles_collection.aggregate(art_pipeline).to_list(None)
-
-        markers = []
-        for loc in locs:
-            city = loc["_id"]
-            coords = CITY_COORDS.get(city)
-            if not coords:
-                continue
-
-            top_article = await news_articles_collection.find_one(
-                {"category": {"$exists": True}},
-                sort=[("risk_score", -1)]
-            )
-
-            markers.append({
-                "location": city,
-                "lat": coords[0],
-                "lng": coords[1],
-                "avg_gri": 50.0,
-                "max_gri": 70.0,
-                "signal_count": loc["count"],
-                "avg_anger": 0,
-                "risk_level": "MODERATE",
-                "top_problem": {
-                    "title": top_article.get("title") if top_article else None,
-                    "category": top_article.get("category") if top_article else None,
-                    "label": top_article.get("fake_news_label") if top_article else None,
-                    "gri": round(top_article.get("risk_score") or 0, 1) if top_article else None,
-                } if top_article else None,
-            })
-
-        return {"markers": markers, "center": [22.5, 78.5], "zoom": 5}
-
-    # Fallback: NewsArticle grouped by category → mapped to cities
+    # Use actual city data from NewsArticle collection
     pipeline = [
+        {"$match": {"city": {"$ne": None}, "latitude": {"$ne": None}, "longitude": {"$ne": None}}},
         {"$group": {
-            "_id": "$category",
+            "_id": "$city",
             "avg_gri": {"$avg": "$risk_score"},
             "max_gri": {"$max": "$risk_score"},
             "count": {"$sum": 1},
             "avg_anger": {"$avg": "$anger_rating"},
+            "lat": {"$first": "$latitude"},
+            "lng": {"$first": "$longitude"},
         }},
-        {"$sort": {"avg_gri": -1}},
+        {"$sort": {"count": -1}},
+        {"$limit": 50}
     ]
+    
     results = await news_articles_collection.aggregate(pipeline).to_list(None)
 
     markers = []
-    used_cities = set()
-
     for r in results:
-        city = CATEGORY_CITY_MAP.get(r["_id"] or "General", "Delhi")
-        if city in used_cities:
-            continue
-        used_cities.add(city)
-
-        coords = CITY_COORDS.get(city)
-        if not coords:
-            continue
-
-        top_article = await news_articles_collection.find_one(
-            {"category": r["_id"]},
-            sort=[("risk_score", -1)]
-        )
-
+        city = r["_id"]
         avg_gri = r.get("avg_gri") or 0
         risk_level = "HIGH" if avg_gri > 60 else "MODERATE" if avg_gri > 30 else "LOW"
 
+        # Find the most relevant article for this city
+        top_article = await news_articles_collection.find_one(
+            {"city": city},
+            sort=[("risk_score", -1)]
+        )
+
         markers.append({
             "location": city,
-            "lat": coords[0],
-            "lng": coords[1],
+            "lat": r["lat"],
+            "lng": r["lng"],
             "avg_gri": round(avg_gri, 1),
             "max_gri": round(r.get("max_gri") or 0, 1),
             "signal_count": r["count"],
@@ -128,10 +72,16 @@ async def get_map_markers():
             "risk_level": risk_level,
             "top_problem": {
                 "title": top_article.get("title") if top_article else None,
-                "category": r["_id"],
-                "label": top_article.get("fake_news_label") if top_article else None,
+                "category": top_article.get("category") if top_article else "General",
+                "label": top_article.get("fake_news_label") if top_article else "UNCERTAIN",
                 "gri": round(top_article.get("risk_score") or 0, 1) if top_article else None,
             } if top_article else None,
         })
 
-    return {"markers": markers, "center": [22.5, 78.5], "zoom": 5}
+    # If no markers found, fall back to a default center
+    return {
+        "markers": markers, 
+        "center": [22.5, 78.5], 
+        "zoom": 5,
+        "total_active": len(markers)
+    }

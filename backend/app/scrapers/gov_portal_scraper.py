@@ -86,6 +86,7 @@ def scrape_pib_releases(max_articles: int = 15) -> list[dict]:
                 "tier": "VERIFIED",
                 "category_hint": "General",
                 "content_hash": _content_hash(title + href),
+                "source_domain": "pib.gov.in",
             })
             count += 1
 
@@ -154,6 +155,7 @@ def scrape_datagov_datasets(max_items: int = 10) -> list[dict]:
                             "tier": "VERIFIED",
                             "category_hint": "General",
                             "content_hash": _content_hash(title),
+                            "source_domain": "data.gov.in",
                         })
 
             except ValueError:

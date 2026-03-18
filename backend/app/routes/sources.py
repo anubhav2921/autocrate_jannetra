@@ -1,20 +1,20 @@
-from fastapi import APIRouter
-from ..mongodb import sources_collection, articles_collection, detection_results_collection
+from fastapi import APIRouter, Depends
+from ..mongodb import sources_collection, news_articles_collection, detection_results_collection
+from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Sources"])
 
 
 @router.get("/sources")
-async def list_sources():
+async def list_sources(current_user: dict = Depends(get_current_user)):
     sources = await sources_collection.find({}).to_list(None)
     result = []
     for s in sources:
-        article_count = await articles_collection.count_documents({"source_id": s["id"]})
-        fake_count = await detection_results_collection.count_documents({
-            "label": "FAKE",
-            "article_id": {"$in": [
-                a["id"] async for a in articles_collection.find({"source_id": s["id"]}, {"id": 1})
-            ]}
+        domain = s.get("domain")
+        article_count = await news_articles_collection.count_documents({"source_domain": domain})
+        fake_count = await news_articles_collection.count_documents({
+            "source_domain": domain,
+            "fake_news_label": "FAKE"
         })
         last_audited = s.get("last_audited_at")
         result.append({

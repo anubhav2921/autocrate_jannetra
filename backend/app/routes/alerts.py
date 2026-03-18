@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Query
+from typing import Optional
 from datetime import datetime
 from ..mongodb import alerts_collection, news_articles_collection
 
@@ -27,13 +28,20 @@ DEPT_MAP = {
 async def list_alerts(
     severity: str = Query(None),
     active_only: bool = Query(True),
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
+    from .location import _build_location_match
+    loc_match = _build_location_match(state, district, city, ward)
+    
     alert_count = await alerts_collection.count_documents({})
 
     if alert_count > 0:
-        match_filter = {}
+        match_filter = {**loc_match}
         if active_only:
             match_filter["is_active"] = True
         if severity:
@@ -69,7 +77,7 @@ async def list_alerts(
         return {"total": total, "page": page, "alerts": result}
 
     # Fallback: synthesize alerts from high-risk NewsArticle entries
-    match = {"risk_level": {"$in": ["HIGH", "MODERATE"]}}
+    match = {"risk_level": {"$in": ["HIGH", "MODERATE"]}, **loc_match}
     if severity:
         sev_map = {"CRITICAL": "HIGH", "HIGH": "HIGH", "MEDIUM": "MODERATE", "LOW": "LOW"}
         match["risk_level"] = sev_map.get(severity, severity)

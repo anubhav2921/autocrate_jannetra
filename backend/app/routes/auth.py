@@ -9,9 +9,11 @@ from datetime import datetime
 
 from ..mongodb import users_collection
 from ..services.sms_service import send_otp_sms, send_email_otp
-from ..utils import gen_uuid
+from ..utils import gen_uuid, create_access_token
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+DEPARTMENTS = ["health", "police", "municipal", "electricity", "water", "education", "transport"]
 
 # In-memory OTP stores
 _otp_store: Dict[str, Dict[str, Any]] = {}
@@ -99,10 +101,13 @@ async def verify_otp(req: OTPVerifyRequest):
     }
     await users_collection.insert_one(user_doc)
     _otp_store.pop(req.email, None)
-    print(f"[AUTH] User {data.get('email', 'unknown')} registered successfully")
+    
+    # Create JWT token
+    token = create_access_token(data={"user_id": user_doc["id"], "department": user_doc["department"]})
 
     return {
         "success": True,
+        "token": token,
         "user": {
             "id": user_doc["id"],
             "name": user_doc["name"],
@@ -130,8 +135,11 @@ async def login(req: LoginRequest):
     if not user.get("is_active", True):
         return {"success": False, "error": "Account is deactivated"}
 
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
+
     return {
         "success": True,
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -183,7 +191,6 @@ async def google_auth(request: Request):
         user["google_uid"] = uid
         user["picture"] = picture
         user["auth_provider"] = "google"
-        print(f"[AUTH] Google login: existing user {email}")
     else:
         user = {
             "id": gen_uuid(),
@@ -191,7 +198,7 @@ async def google_auth(request: Request):
             "email": email,
             "password_hash": "",
             "role": "LEADER",
-            "department": "",
+            "department": "", # Default empty
             "google_uid": uid,
             "picture": picture,
             "auth_provider": "google",
@@ -199,10 +206,12 @@ async def google_auth(request: Request):
             "created_at": datetime.utcnow(),
         }
         await users_collection.insert_one(user)
-        print(f"[AUTH] Google login: new user created for {email}")
+
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
 
     return {
         "message": "Authentication successful",
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -213,6 +222,7 @@ async def google_auth(request: Request):
             "auth_provider": user.get("auth_provider"),
         },
     }
+
 
 
 @router.post("/firebase-login")
@@ -275,8 +285,11 @@ async def firebase_phone_login(request: Request):
         await users_collection.insert_one(user)
         print(f"[AUTH] Firebase phone login: new user created for {phone_number}")
 
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
+
     return {
         "message": "Login successful",
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -288,6 +301,7 @@ async def firebase_phone_login(request: Request):
             "auth_provider": user.get("auth_provider"),
         },
     }
+
 
 
 class PhoneOTPRequest(BaseModel):
@@ -336,9 +350,11 @@ async def register_phone(req: PhoneOTPVerify):
     existing = await users_collection.find_one({"phone_number": phone})
     if existing:
         _phone_otp_store.pop(phone, None)
+        token = create_access_token(data={"user_id": existing["id"], "department": existing.get("department", "")})
         return {
             "success": True,
             "message": "Phone number already registered. Logged in.",
+            "token": token,
             "user": {
                 "id": existing["id"],
                 "name": existing["name"],
@@ -350,6 +366,7 @@ async def register_phone(req: PhoneOTPVerify):
                 "auth_provider": existing.get("auth_provider"),
             },
         }
+
 
     phone_str = str(phone)
     phone_suffix = phone_str[-4:] if len(phone_str) >= 4 else "0000"
@@ -368,11 +385,12 @@ async def register_phone(req: PhoneOTPVerify):
     }
     await users_collection.insert_one(user)
     _phone_otp_store.pop(phone, None)
-    print(f"[AUTH] Phone registration: new user created for {phone}")
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
 
     return {
         "success": True,
         "message": "Registration successful",
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -384,6 +402,7 @@ async def register_phone(req: PhoneOTPVerify):
             "auth_provider": user.get("auth_provider"),
         },
     }
+
 
 
 @router.post("/login-phone")
@@ -408,9 +427,11 @@ async def login_phone(req: PhoneOTPVerify):
         return {"success": False, "error": "Account is deactivated."}
 
     _phone_otp_store.pop(phone, None)
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
     return {
         "success": True,
         "message": "Login successful",
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],
@@ -422,6 +443,7 @@ async def login_phone(req: PhoneOTPVerify):
             "auth_provider": user.get("auth_provider"),
         },
     }
+
 
 
 class CreateUserRequest(BaseModel):
@@ -487,9 +509,13 @@ async def create_user_profile(req: CreateUserRequest):
         await users_collection.insert_one(user)
         print(f"[AUTH] New user profile created for {email or phone_number}")
 
+    # Create token for the user profile
+    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
+
     return {
         "success": True,
         "message": "User profile created successfully",
+        "token": token,
         "user": {
             "id": user["id"],
             "name": user["name"],

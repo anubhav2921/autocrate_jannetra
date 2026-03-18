@@ -16,9 +16,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import requests
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
+from app.services.location_service import resolve_location_from_text
 logger = logging.getLogger("jannetra.scrapers.news")
 
 NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "")
@@ -43,6 +45,8 @@ GOVERNANCE_QUERIES = [
     "India law enforcement",
     "India environmental pollution",
 ]
+
+# Location extraction is now handled by app.services.location_service
 
 
 def _content_hash(text: str) -> str:
@@ -117,7 +121,9 @@ def scrape_newsapi(max_articles: int = 30) -> list[dict]:
                     "source_type": "NEWS",
                     "tier": "UNKNOWN",
                     "category_hint": "General",
+                    "location": resolve_location_from_text(title, content)["city"],
                     "content_hash": _content_hash(title + content),
+                    "source_domain": urlparse(item.get("url", "")).netloc.replace("www.", "") if item.get("url") else "unknown",
                 })
 
             logger.info("[NewsAPI] ✅ '%s' — %d articles", query, len(data.get("articles", [])))
@@ -184,7 +190,9 @@ def scrape_gdelt(max_articles: int = 20) -> list[dict]:
                 "source_type": "NEWS",
                 "tier": "UNKNOWN",
                 "category_hint": "General",
+                "location": resolve_location_from_text(title, content)["city"],
                 "content_hash": _content_hash(title + url),
+                "source_domain": source_name.lower().replace("www.", ""),
             })
 
         logger.info("[GDELT] ✅ Collected %d articles", len(articles))

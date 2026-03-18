@@ -5,43 +5,59 @@ from ..mongodb import (
     alerts_collection, gri_scores_collection,
     detection_results_collection, sentiment_records_collection
 )
+from fastapi import Depends
+from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Dashboard"])
 
 
 @router.get("/dashboard")
-async def get_dashboard():
-    na_total = await news_articles_collection.count_documents({})
+async def get_dashboard(current_user: dict = Depends(get_current_user)):
+    user_dept = current_user.get("department")
+    user_role = current_user.get("role")
+
+    match_filter = {}
+    if user_role != "ADMIN" and user_dept:
+        match_filter["department"] = user_dept
+
+    na_total = await news_articles_collection.count_documents(match_filter)
 
     if na_total > 0:
         # Aggregate stats from news_articles
-        pipeline_avg = [{"$group": {"_id": None, "avg_risk": {"$avg": "$risk_score"}, "avg_anger": {"$avg": "$anger_rating"}}}]
+        pipeline_avg = [
+            {"$match": match_filter},
+            {"$group": {"_id": None, "avg_risk": {"$avg": "$risk_score"}, "avg_anger": {"$avg": "$anger_rating"}}}
+        ]
         avg_res = await news_articles_collection.aggregate(pipeline_avg).to_list(1)
         avg_risk = avg_res[0]["avg_risk"] if avg_res else 0
         avg_anger = avg_res[0]["avg_anger"] if avg_res else 0
 
-        fake_count = await news_articles_collection.count_documents({"fake_news_label": "FAKE"})
+        fake_count = await news_articles_collection.count_documents({**match_filter, "fake_news_label": "FAKE"})
         fake_pct = round((fake_count / max(na_total, 1)) * 100, 1)
 
         # Sentiment distribution
-        sent_pipeline = [{"$group": {"_id": "$sentiment_label", "count": {"$sum": 1}}}]
+        sent_pipeline = [
+            {"$match": match_filter},
+            {"$group": {"_id": "$sentiment_label", "count": {"$sum": 1}}}
+        ]
         sent_res = await news_articles_collection.aggregate(sent_pipeline).to_list(None)
         sentiment_dist = {r["_id"]: r["count"] for r in sent_res if r["_id"]}
 
         # Category risk
         cat_pipeline = [
+            {"$match": match_filter},
             {"$group": {"_id": "$category", "avg_gri": {"$avg": "$risk_score"}, "count": {"$sum": 1}}},
             {"$sort": {"avg_gri": -1}},
         ]
         cat_res = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
 
         # Top risk articles
-        top_articles = await news_articles_collection.find({}).sort("risk_score", -1).limit(10).to_list(10)
+        top_articles = await news_articles_collection.find(match_filter).sort("risk_score", -1).limit(10).to_list(10)
 
         # Active alerts
-        active_alerts = await alerts_collection.count_documents({"is_active": True})
+        active_alerts = await alerts_collection.count_documents({**match_filter, "is_active": True})
         if active_alerts == 0:
-            active_alerts = await news_articles_collection.count_documents({"risk_level": {"$in": ["HIGH", "MODERATE"]}})
+            active_alerts = await news_articles_collection.count_documents({**match_filter, "risk_level": {"$in": ["HIGH", "MODERATE"]}})
 
         return {
             "overall_gri": round(avg_risk, 1),

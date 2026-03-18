@@ -20,6 +20,7 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 
+from app.services.location_service import resolve_location_from_text
 logger = logging.getLogger("jannetra.scrapers.rss")
 
 # RSS Feed Registry
@@ -28,6 +29,7 @@ RSS_FEEDS: list[dict] = [
     {
         "name": "NDTV India",
         "url": "https://feeds.feedburner.com/ndtvnews-india-news",
+        "domain": "ndtv.com",
         "credibility": 0.88,
         "source_type": "NEWS",
         "tier": "VERIFIED",
@@ -36,6 +38,7 @@ RSS_FEEDS: list[dict] = [
     {
         "name": "The Hindu — National",
         "url": "https://www.thehindu.com/news/national/feeder/default.rss",
+        "domain": "thehindu.com",
         "credibility": 0.90,
         "source_type": "NEWS",
         "tier": "VERIFIED",
@@ -44,6 +47,7 @@ RSS_FEEDS: list[dict] = [
     {
         "name": "Times of India — India",
         "url": "https://timesofindia.indiatimes.com/rssfeeds/-2128936835.cms",
+        "domain": "indiatimes.com",
         "credibility": 0.85,
         "source_type": "NEWS",
         "tier": "VERIFIED",
@@ -52,6 +56,7 @@ RSS_FEEDS: list[dict] = [
     {
         "name": "Hindustan Times — India",
         "url": "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+        "domain": "hindustantimes.com",
         "credibility": 0.84,
         "source_type": "NEWS",
         "tier": "VERIFIED",
@@ -142,40 +147,7 @@ def _content_hash(text: str) -> str:
     """SHA-256 hash for deduplication."""
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-def _extract_location(title: str, text: str) -> Optional[str]:
-    combined = (title + " " + text).lower()
-    cities = {
-        "mumbai": "Mumbai, Maharashtra",
-        "delhi": "Delhi, NCR",
-        "bangalore": "Bangalore, Karnataka",
-        "bengaluru": "Bangalore, Karnataka",
-        "hyderabad": "Hyderabad, Telangana",
-        "chennai": "Chennai, Tamil Nadu",
-        "kolkata": "Kolkata, West Bengal",
-        "pune": "Pune, Maharashtra",
-        "ahmedabad": "Ahmedabad, Gujarat",
-        "jaipur": "Jaipur, Rajasthan",
-        "lucknow": "Lucknow, Uttar Pradesh",
-        "chandigarh": "Chandigarh",
-        "bhopal": "Bhopal, Madhya Pradesh",
-        "patna": "Patna, Bihar",
-        "gurgaon": "Gurgaon, Haryana",
-        "noida": "Noida, Uttar Pradesh",
-        "kochi": "Kochi, Kerala",
-        "indore": "Indore, Madhya Pradesh",
-        "nagpur": "Nagpur, Maharashtra",
-        "surat": "Surat, Gujarat",
-        "prayagraj": "Prayagraj, Uttar Pradesh",
-        "allahabad": "Allahabad, Uttar Pradesh",
-        "kanpur": "Kanpur, Uttar Pradesh",
-        "varanasi": "Varanasi, Uttar Pradesh",
-        "agra": "Agra, Uttar Pradesh",
-        "ghaziabad": "Ghaziabad, Uttar Pradesh"
-    }
-    for city_kw, city_name in cities.items():
-        if city_kw in combined:
-            return city_name
-    return "India"
+# Location extraction is now handled by app.services.location_service
 
 
 def scrape_rss_feeds(feeds: list[dict] | None = None) -> list[dict]:
@@ -195,6 +167,7 @@ def scrape_rss_feeds(feeds: list[dict] | None = None) -> list[dict]:
             "tier": str,
             "category_hint": str,
             "content_hash": str,
+            "source_domain": str,
         }
     """
     feeds = feeds or RSS_FEEDS
@@ -256,7 +229,8 @@ def scrape_rss_feeds(feeds: list[dict] | None = None) -> list[dict]:
                     "tier": feed_info["tier"],
                     "category_hint": feed_info["category_hint"],
                     "content_hash": c_hash,
-                    "location": _extract_location(title, content),
+                    "source_domain": feed_info.get("domain", ""),
+                    "location": resolve_location_from_text(title, content)["city"],
                 })
                 feed_count += 1
 

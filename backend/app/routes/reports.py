@@ -1,10 +1,12 @@
 import io
 from datetime import datetime
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
+from xhtml2pdf import pisa
 from ..mongodb import (
     articles_collection, gri_scores_collection, alerts_collection,
-    detection_results_collection, sentiment_records_collection, news_articles_collection
+    detection_results_collection, sentiment_records_collection, news_articles_collection,
+    signal_problems_collection
 )
 
 router = APIRouter(prefix="/api", tags=["Reports"])
@@ -122,3 +124,245 @@ async def preview_report():
         },
         "download_url": "/api/report/download",
     }
+
+
+def _get_severity_color(severity: str) -> str:
+    s = str(severity).upper()
+    if s == "CRITICAL" or s == "HIGH": return "#EF4444"
+    if s == "MEDIUM" or s == "MODERATE": return "#F59E0B"
+    if s == "LOW": return "#10B981"
+    return "#3B82F6"
+
+
+def _generate_insights(issue: dict):
+    cat = issue.get("category", "General")
+    sev = str(issue.get("severity", "Low")).upper()
+    
+    insights = [
+        f"This {cat} issue demonstrates a high level of public concern, with significant signal clustering detected via social monitoring.",
+        f"The {sev} severity indicates a pressing need for administrative intervention to prevent further escalation in {issue.get('location', 'the region')}."
+    ]
+    
+    actions = [
+        "Initiate immediate field verification to assess ground-level impact.",
+        "Coordinate with relevant municipal departments for resource allocation.",
+        "Maintain active surveillance on social media channels for sentiment shifts.",
+        "Brief stakeholders on predictive risk scores to prioritize response timelines."
+    ]
+    
+    return insights, actions
+
+
+@router.get("/export-report")
+async def export_issue_report(issue_id: str = Query(...)):
+    # 1. Fetch Issue
+    issue = await signal_problems_collection.find_one({"id": issue_id})
+    if not issue:
+        raise HTTPException(status_code=404, detail="Issue not found")
+    
+    # 2. Ensure Active
+    status = str(issue.get("status", "")).lower()
+    if status in ["resolved", "closed", "archived"]:
+        raise HTTPException(status_code=400, detail="Report generation is only available for active issues")
+
+    # 3. Preparation
+    now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+    sev_color = _get_severity_color(issue.get("severity", "Low"))
+    insights, actions_list = _generate_insights(issue)
+    
+    actions_html = "".join([f"<li style='margin-bottom: 8px;'>{a}</li>" for a in actions_list])
+
+    # 4. HTML Template
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <style>
+            @page {{
+                size: A4;
+                margin: 20mm;
+            }}
+            body {{
+                font-family: Arial, sans-serif;
+                color: #111827;
+                background-color: #F9FAFB;
+                line-height: 1.5;
+            }}
+            .header {{
+                background-color: #2563EB;
+                color: white;
+                padding: 30px;
+                border-radius: 8px 8px 0 0;
+                text-align: center;
+            }}
+            .header h1 {{ margin: 0; font-size: 26px; }}
+            .header p {{ margin: 5px 0 0; opacity: 0.8; font-size: 14px; }}
+            
+            .meta {{
+                background: white;
+                padding: 10px 30px;
+                border-bottom: 1px solid #E5E7EB;
+                font-size: 11px;
+                color: #6B7280;
+            }}
+            
+            .summary-table {{
+                width: 100%;
+                margin: 20px 0;
+                border-collapse: separate;
+                border-spacing: 15px 0;
+            }}
+            .card {{
+                background: white;
+                padding: 15px;
+                border-radius: 12px;
+                text-align: center;
+                border: 1px solid #F3F4F6;
+            }}
+            .card-label {{ font-size: 9px; font-weight: bold; color: #9CA3AF; text-transform: uppercase; }}
+            .card-value {{ font-size: 20px; font-weight: 800; margin-top: 5px; }}
+
+            .section {{
+                margin-top: 25px;
+                background: white;
+                padding: 25px;
+                border-radius: 12px;
+                border: 1px solid #F3F4F6;
+            }}
+            .section-title {{
+                font-size: 16px;
+                font-weight: 700;
+                color: #111827;
+                border-bottom: 2px solid #F3F4F6;
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+            }}
+            
+            .field {{ margin-bottom: 10px; }}
+            .field-label {{ font-weight: bold; color: #4B5563; font-size: 13px; }}
+            .field-value {{ color: #1F2937; font-size: 13px; }}
+            
+            .risk-bar-bg {{ background: #E5E7EB; height: 10px; border-radius: 5px; margin: 10px 0; }}
+            .risk-bar-fill {{ height: 10px; border-radius: 5px; }}
+            
+            .insight {{
+                background: #F0F7FF;
+                border-left: 4px solid #2563EB;
+                padding: 12px;
+                margin-bottom: 10px;
+                font-size: 13px;
+                color: #1E40AF;
+                border-radius: 0 6px 6px 0;
+            }}
+            
+            .footer {{
+                margin-top: 50px;
+                text-align: center;
+                border-top: 1px solid #E5E7EB;
+                padding-top: 15px;
+                font-size: 10px;
+                color: #9CA3AF;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Governance Intelligence Report</h1>
+            <p>Predictive Risk Assessment & Decision Support</p>
+        </div>
+        
+        <div class="meta">
+            <table width="100%">
+                <tr>
+                    <td>ISSUE ID: <strong>{issue['id']}</strong></td>
+                    <td align="right">GENERATED: <strong>{now_str}</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <table class="summary-table">
+            <tr>
+                <td width="25%">
+                    <div class="card">
+                        <div class="card-label">Risk Level</div>
+                        <div class="card-value" style="color: {sev_color}">{issue.get('severity', 'Low')}</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="card">
+                        <div class="card-label">Priority Score</div>
+                        <div class="card-value" style="color: {sev_color}">{issue.get('priority_score', 0)}</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="card">
+                        <div class="card-label">Signals Count</div>
+                        <div class="card-value">{issue.get('frequency', 1)}</div>
+                    </div>
+                </td>
+                <td width="25%">
+                    <div class="card">
+                        <div class="card-label">Status</div>
+                        <div class="card-value" style="color: #F59E0B">{issue.get('status', 'Pending')}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div class="section">
+            <div class="section-title">Issue Overview</div>
+            <div class="field"><span class="field-label">Title:</span> <span class="field-value">{issue.get('title')}</span></div>
+            <div class="field"><span class="field-label">Category:</span> <span class="field-value">{issue.get('category')}</span></div>
+            <div class="field"><span class="field-label">Location:</span> <span class="field-value">{issue.get('location') or 'Not Specified'}</span></div>
+            <div class="field" style="margin-top: 10px;">
+                <div class="field-label">Description:</div>
+                <div class="field-value" style="margin-top: 5px; line-height: 1.6;">{issue.get('description') or issue.get('title')}</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Risk Assessment</div>
+            <div class="field-value">Based on signal frequency and category weight, this issue carries a <strong>{issue.get('priority_score', 0)}%</strong> priority weight.</div>
+            <div class="risk-bar-bg">
+                <div class="risk-bar-fill" style="width: {issue.get('priority_score', 0)}%; background-color: {sev_color};"></div>
+            </div>
+            <div style="font-size: 11px; color: #6B7280;">Severity Index: {issue.get('severity', 'Low')}</div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">AI Insights & Recommended Actions</div>
+            <div class="insight"><strong>Impact Assessment:</strong> {insights[0]}</div>
+            <div class="insight"><strong>System Analysis:</strong> {insights[1]}</div>
+            
+            <div style="margin-top: 15px; font-weight: bold; font-size: 13px; color: #111827;">Actionable Steps:</div>
+            <ul style="font-size: 12px; color: #374151; margin-top: 8px;">
+                {actions_html}
+            </ul>
+        </div>
+
+        <div class="footer">
+            Governance Intelligence DSS — AI-generated report for administrative decision support
+        </div>
+    </body>
+    </html>
+    """
+
+    # 5. Generate PDF
+    pdf_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(html_content, dest=pdf_buffer)
+    
+    if pisa_status.err:
+        raise HTTPException(status_code=500, detail="PDF generation failed")
+    
+    pdf_buffer.seek(0)
+    filename = f"Issue_Report_{issue_id}.pdf"
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={filename}",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
+    )

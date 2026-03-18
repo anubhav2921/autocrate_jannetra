@@ -1,20 +1,15 @@
 """
-Data Pipeline Service — Orchestrates: Scrape → Clean → NLP → Store
+Data Pipeline Service — Orchestrates: Scrape → Clean → NLP → Aggregation → Store
 
-The central pipeline that ties all scrapers and NLP services together.
+The central pipeline that ties all scrapers and NLP services together with signal clustering.
 
 Pipeline stages:
   1. Collect articles from all scrapers (RSS, NewsAPI, GDELT, Gov portals, Reddit)
-  2. Deduplicate by content_hash
-  3. Categorize articles by keyword analysis
-  4. Run NLP pipeline (sentiment, anger, entities, claims)
-  5. Run fake news detection
-  6. Compute Governance Risk Index (GRI)
-  7. Store results in the news_articles MongoDB collection
-
-Called by:
-  • APScheduler (every 30 minutes)
-  • Manual trigger via POST /api/pipeline/run
+  2. Filter out exact signals already in DB (by content_hash)
+  3. Process new signals with NLP pipeline
+  4. Group signals into Issue Clusters using semantic similarity
+  5. Calculate Priority Scores based on frequency, source, and sentiment
+  6. Store/Update clusters in 'signal_problems' and raw articles in 'news_articles'
 """
 
 import time
@@ -32,88 +27,10 @@ from app.scrapers.reddit_scraper import scrape_reddit_complaints
 from app.services.nlp_service import run_nlp_pipeline
 from app.services.fake_news_detector import detect_fake_news
 from app.services.gri_service import compute_gri
+from app.services.location_service import resolve_location_from_text
+from app.utils import calculate_similarity, clean_text_simple
 
 logger = logging.getLogger("jannetra.pipeline")
-
-# City → (State, District, lat, lng) lookup
-CITY_LOCATION_MAP: dict[str, dict] = {
-    "Mumbai":    {"state": "Maharashtra",     "district": "Mumbai City",        "lat": 19.076,  "lng": 72.8777},
-    "Delhi":     {"state": "Delhi",           "district": "Central Delhi",       "lat": 28.6139, "lng": 77.209},
-    "Bangalore": {"state": "Karnataka",       "district": "Bangalore Urban",     "lat": 12.9716, "lng": 77.5946},
-    "Bengaluru": {"state": "Karnataka",       "district": "Bangalore Urban",     "lat": 12.9716, "lng": 77.5946},
-    "Hyderabad": {"state": "Telangana",       "district": "Hyderabad",           "lat": 17.385,  "lng": 78.4867},
-    "Chennai":   {"state": "Tamil Nadu",      "district": "Chennai",             "lat": 13.0827, "lng": 80.2707},
-    "Kolkata":   {"state": "West Bengal",     "district": "Kolkata",             "lat": 22.5726, "lng": 88.3639},
-    "Pune":      {"state": "Maharashtra",     "district": "Pune",                "lat": 18.5204, "lng": 73.8567},
-    "Jaipur":    {"state": "Rajasthan",       "district": "Jaipur",              "lat": 26.9124, "lng": 75.7873},
-    "Lucknow":   {"state": "Uttar Pradesh",   "district": "Lucknow",             "lat": 26.8467, "lng": 80.9462},
-    "Ahmedabad": {"state": "Gujarat",         "district": "Ahmedabad",           "lat": 23.0225, "lng": 72.5714},
-    "Patna":     {"state": "Bihar",           "district": "Patna",               "lat": 25.6093, "lng": 85.1376},
-    "Bhopal":    {"state": "Madhya Pradesh",  "district": "Bhopal",              "lat": 23.2599, "lng": 77.4126},
-    "Chandigarh":{"state": "Punjab",          "district": "Chandigarh",          "lat": 30.7333, "lng": 76.7794},
-    "Varanasi":  {"state": "Uttar Pradesh",   "district": "Varanasi",            "lat": 25.3176, "lng": 82.9739},
-    "Nagpur":    {"state": "Maharashtra",     "district": "Nagpur",              "lat": 21.1458, "lng": 79.0882},
-    "Indore":    {"state": "Madhya Pradesh",  "district": "Indore",              "lat": 22.7196, "lng": 75.8577},
-    "Surat":     {"state": "Gujarat",         "district": "Surat",               "lat": 21.1702, "lng": 72.8311},
-    "Noida":     {"state": "Uttar Pradesh",   "district": "Gautam Buddh Nagar",  "lat": 28.5355, "lng": 77.391},
-    "Gurgaon":   {"state": "Haryana",         "district": "Gurugram",            "lat": 28.4595, "lng": 77.0266},
-    "Ranchi":    {"state": "Jharkhand",       "district": "Ranchi",              "lat": 23.3441, "lng": 85.3096},
-    "Kochi":     {"state": "Kerala",          "district": "Ernakulam",           "lat": 9.9312,  "lng": 76.2673},
-    "Prayagraj": {"state": "Uttar Pradesh",   "district": "Prayagraj",           "lat": 25.4358, "lng": 81.8463},
-    "Allahabad": {"state": "Uttar Pradesh",   "district": "Prayagraj",           "lat": 25.4358, "lng": 81.8463},
-    "Kanpur":    {"state": "Uttar Pradesh",   "district": "Kanpur Nagar",        "lat": 26.4499, "lng": 80.3319},
-    "Agra":      {"state": "Uttar Pradesh",   "district": "Agra",                "lat": 27.1767, "lng": 78.0081},
-    "Ghaziabad": {"state": "Uttar Pradesh",   "district": "Ghaziabad",           "lat": 28.6692, "lng": 77.4538},
-    "Mysuru":    {"state": "Karnataka",       "district": "Mysuru",              "lat": 12.2958, "lng": 76.6394},
-    "Amritsar":  {"state": "Punjab",          "district": "Amritsar",            "lat": 31.634,  "lng": 74.8723},
-    "Ludhiana":  {"state": "Punjab",          "district": "Ludhiana",            "lat": 30.9009, "lng": 75.8573},
-    "Coimbatore":{"state": "Tamil Nadu",      "district": "Coimbatore",          "lat": 11.0168, "lng": 76.9558},
-    "Madurai":   {"state": "Tamil Nadu",      "district": "Madurai",             "lat": 9.9252,  "lng": 78.1198},
-    "India":     {"state": None,              "district": None,                   "lat": 22.5,    "lng": 78.5},
-}
-CITY_LOCATION_MAP_LOWER = {k.lower(): v for k, v in CITY_LOCATION_MAP.items()}
-
-
-def _resolve_location(article: dict) -> dict:
-    raw_location = article.get("location", "") or ""
-    city_candidate = raw_location.split(",")[0].strip().lower()
-
-    geo = {"state": None, "district": None, "lat": None, "lng": None}
-
-    if city_candidate in CITY_LOCATION_MAP_LOWER:
-        geo = CITY_LOCATION_MAP_LOWER[city_candidate]
-    else:
-        full_candidate = raw_location.strip().lower()
-        if full_candidate in CITY_LOCATION_MAP_LOWER:
-            geo = CITY_LOCATION_MAP_LOWER[full_candidate]
-            city_candidate = full_candidate
-        else:
-            city_candidate = None
-
-    lat = geo["lat"]
-    lng = geo["lng"]
-    if lat is not None and lng is not None:
-        import random
-        lat += random.uniform(-0.02, 0.02)
-        lng += random.uniform(-0.02, 0.02)
-
-    original_city_case = None
-    if city_candidate and city_candidate != "india":
-        for k in CITY_LOCATION_MAP.keys():
-            if k.lower() == city_candidate:
-                original_city_case = k
-                break
-        if original_city_case == "Allahabad":
-            original_city_case = "Prayagraj"
-
-    return {
-        "state": geo["state"],
-        "district": geo["district"],
-        "city": original_city_case,
-        "latitude": lat,
-        "longitude": lng,
-    }
-
 
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "Water": ["water", "supply", "pipeline", "tanker", "drought", "contaminated", "sewage", "groundwater", "drinking water"],
@@ -126,6 +43,19 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
     "Sanitation": ["sanitation", "sewer", "drain", "toilet", "clean", "garbage", "waste management"],
     "Transport": ["traffic", "transport", "bus", "metro", "railway", "airport", "commute", "congestion"],
     "Housing": ["housing", "slum", "homeless", "real estate", "rent", "eviction", "demolition"],
+}
+
+CATEGORY_TO_DEPARTMENT: dict[str, str] = {
+    "Water": "water",
+    "Infrastructure": "municipal",
+    "Healthcare": "health",
+    "Education": "municipal",
+    "Law & Order": "police",
+    "Corruption": "police",
+    "Environment": "municipal",
+    "Sanitation": "municipal",
+    "Transport": "municipal",
+    "Housing": "municipal",
 }
 
 
@@ -141,9 +71,81 @@ def _categorize_text(text: str) -> str:
     return "General"
 
 
+def _get_existing_clusters() -> list[dict]:
+    """Fetch active issues from signal_problems collection."""
+    from pymongo import MongoClient
+    import os
+    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    client = MongoClient(mongo_url)
+    db = client[mongo_db_name]
+    # Fetch clusters to keep grouping consistent across runs
+    clusters = list(db["signal_problems"].find({}))
+    client.close()
+    return clusters
+
+
+def _calculate_priority(cluster: dict) -> float:
+    """
+    Calculate Priority Score based on Frequency, Sources, and Sentiment.
+    Formula: (frequency * 3.0) + source_weight + sentiment_weight + recency_weight
+    """
+    frequency = cluster.get("frequency", 1)
+    
+    # Source weights
+    sources = set([s.lower() for s in cluster.get("sources", [])])
+    source_weight = 0
+    if "reddit" in sources:
+        source_weight += 20  # High visibility for community complaints
+    if any(s in ["newsapi", "gdelt"] for s in sources):
+        source_weight += 10 # Official news aggregator
+    if any(s in ["rss", "government"] for s in sources):
+        source_weight += 5
+        
+    # Sentiment/Anger weight
+    anger_avg = cluster.get("anger_avg", 0.0)
+    sentiment_weight = anger_avg * 3.5 # High collective anger indicates severity
+    
+    # Recency weight (boost for trending signals)
+    recency_weight = 15 
+    
+    score = (frequency * 3.0) + source_weight + sentiment_weight + recency_weight
+    return round(min(score, 100.0), 1)
+
+
+def _store_aggregated_clusters(clusters: list[dict]):
+    """Upsert clusters into the signal_problems collection."""
+    if not clusters:
+        return
+    from pymongo import MongoClient
+    import os
+    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    client = MongoClient(mongo_url)
+    db = client[mongo_db_name]
+    
+    for cluster in clusters:
+        cluster["priority_score"] = _calculate_priority(cluster)
+        
+        # Mapping score to severity categories for the UI
+        if cluster["priority_score"] >= 80: cluster["severity"] = "CRITICAL"
+        elif cluster["priority_score"] >= 60: cluster["severity"] = "HIGH"
+        elif cluster["priority_score"] >= 40: cluster["severity"] = "MEDIUM"
+        else: cluster["severity"] = "LOW"
+        
+        # Trending score for dashboard sorting
+        cluster["trending_score"] = cluster["priority_score"]
+        
+        db["signal_problems"].update_one(
+            {"id": cluster["id"]},
+            {"$set": cluster},
+            upsert=True
+        )
+    client.close()
+
+
 def _get_existing_hashes() -> set:
-    """Synchronously fetch existing content hashes from MongoDB."""
-    # Use pymongo directly for sync pipeline context
+    """Fetch existing content hashes to avoid reprocessing EXACT signals."""
     from pymongo import MongoClient
     import os
     mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
@@ -156,7 +158,7 @@ def _get_existing_hashes() -> set:
 
 
 def _store_articles_sync(records: list[dict]) -> int:
-    """Synchronously store article documents to MongoDB."""
+    """Store raw article signals to MongoDB news_articles collection."""
     if not records:
         return 0
     from pymongo import MongoClient
@@ -169,27 +171,10 @@ def _store_articles_sync(records: list[dict]) -> int:
         result = db["news_articles"].insert_many(records, ordered=False)
         return len(result.inserted_ids)
     except Exception as e:
-        logger.warning(f"[Pipeline] Partial insert error (possible duplicate): {e}")
+        logger.warning(f"[Pipeline] Signal storage error: {e}")
         return 0
     finally:
         client.close()
-
-
-def _deduplicate(articles: list[dict], existing_hashes: set) -> list[dict]:
-    if not articles:
-        return []
-    unique = []
-    seen_hashes = set()
-    for art in articles:
-        h = art.get("content_hash", "")
-        if h and h not in existing_hashes and h not in seen_hashes:
-            unique.append(art)
-            seen_hashes.add(h)
-    logger.info(
-        "[Pipeline] Dedup: %d input → %d unique (removed %d duplicates)",
-        len(articles), len(unique), len(articles) - len(unique),
-    )
-    return unique
 
 
 def _process_article(article: dict) -> dict:
@@ -230,129 +215,181 @@ def _process_article(article: dict) -> dict:
     article["risk_level"] = gri["risk_level"]
     article["credibility_score"] = credibility
     article["category"] = category
+    article["department"] = CATEGORY_TO_DEPARTMENT.get(category, "municipal")
 
     return article
 
 
 def run_pipeline() -> dict:
-    """Execute the full data ingestion pipeline (sync, for APScheduler)."""
+    """Execute the intelligent ingestion pipeline with signal aggregation."""
     start_time = time.time()
     logger.info("=" * 60)
-    logger.info("[Pipeline] ▶ Starting data ingestion pipeline (MongoDB)...")
+    logger.info("[Pipeline] ▶ Starting Signal Aggregation & Scoring Pipeline...")
     logger.info("=" * 60)
-
+ 
     all_articles: list[dict] = []
-
-    try:
-        rss_articles = scrape_rss_feeds()
-        all_articles.extend(rss_articles)
-        logger.info("[Pipeline] RSS feeds: %d articles", len(rss_articles))
-    except Exception as e:
-        logger.error("[Pipeline] RSS scraper failed: %s", e)
-
-    try:
-        news_articles = scrape_news_apis()
-        all_articles.extend(news_articles)
-        logger.info("[Pipeline] News APIs: %d articles", len(news_articles))
-    except Exception as e:
-        logger.error("[Pipeline] News API scraper failed: %s", e)
-
-    try:
-        gov_articles = scrape_government_portals()
-        all_articles.extend(gov_articles)
-        logger.info("[Pipeline] Gov portals: %d articles", len(gov_articles))
-    except Exception as e:
-        logger.error("[Pipeline] Gov portal scraper failed: %s", e)
-
-    try:
-        reddit_articles = scrape_reddit_complaints()
-        all_articles.extend(reddit_articles)
-        logger.info("[Pipeline] Reddit complaints: %d posts", len(reddit_articles))
-    except Exception as e:
-        logger.error("[Pipeline] Reddit scraper failed: %s", e)
-
+ 
+    # Stage 1: Collect from all sources
+    scrapers = [
+        ("RSS", scrape_rss_feeds),
+        ("News APIs", scrape_news_apis),
+        ("Gov Portals", scrape_government_portals),
+        ("Reddit", scrape_reddit_complaints)
+    ]
+ 
+    for name, scraper_func in scrapers:
+        try:
+            articles = scraper_func()
+            all_articles.extend(articles)
+            logger.info(f"[Pipeline] %s: %d raw signals", name, len(articles))
+        except Exception as e:
+            logger.error(f"[Pipeline] %s scraper failed: %s", name, e)
+ 
     if not all_articles:
-        elapsed = round(time.time() - start_time, 2)
-        logger.warning("[Pipeline] ⚠ No articles collected. Elapsed: %ss", elapsed)
-        return {"status": "empty", "total_scraped": 0, "total_stored": 0, "elapsed_seconds": elapsed}
-
-    # Deduplicate
+        return {"status": "empty", "total_scraped": 0, "elapsed_seconds": round(time.time() - start_time, 2)}
+ 
+    # Stage 2: Filter exact already-processed hashes to save NLP costs
     existing_hashes = _get_existing_hashes()
-    unique_articles = _deduplicate(all_articles, existing_hashes)
-
-    if not unique_articles:
-        elapsed = round(time.time() - start_time, 2)
-        return {"status": "no_new", "total_scraped": len(all_articles), "total_stored": 0, "elapsed_seconds": elapsed}
-
-    processed_count = 0
-    failed_count = 0
+    new_articles = [a for a in all_articles if a.get("content_hash") not in existing_hashes]
+    
+    if not new_articles:
+        logger.info("[Pipeline] No brand-new signals found. Skipping NLP.")
+        return {"status": "no_new", "total_scraped": len(all_articles), "elapsed_seconds": round(time.time() - start_time, 2)}
+ 
+    # Stage 3: NLP Processing of new signals
+    processed_signals = []
     records_to_store = []
     now = datetime.utcnow()
-
-    for article in unique_articles:
+ 
+    for article in new_articles:
         try:
             processed = _process_article(article)
-            loc = _resolve_location(article)
-
-            record = {
+            loc = resolve_location_from_text(
+                title=article.get("title", ""),
+                content=article.get("content", ""),
+                current_location=article.get("location", "India")
+            )
+ 
+            # Prepare internal signal record
+            signal_record = {
                 "id": str(uuid.uuid4()),
-                "title": processed["title"],
+                "title": clean_text_simple(processed["title"]),
                 "content": processed["content"],
                 "source_name": processed["source_name"],
-                "source_url": processed.get("source_url", ""),
-                "url": processed.get("url", ""),
+                "source_type": processed.get("source_type", "NEWS"),
                 "published_at": processed.get("published_at"),
                 "content_hash": processed["content_hash"],
-                "credibility_score": processed.get("credibility_score", 0.5),
-                "risk_score": processed.get("risk_score", 0.0),
-                "risk_level": processed.get("risk_level", "LOW"),
-                "sentiment_label": processed.get("sentiment_label", "NEUTRAL"),
-                "sentiment_polarity": processed.get("sentiment_polarity", 0.0),
                 "anger_rating": processed.get("anger_rating", 0.0),
-                "fake_news_label": processed.get("fake_news_label", "UNCERTAIN"),
-                "fake_news_confidence": processed.get("fake_news_confidence", 0.0),
+                "sentiment_polarity": processed.get("sentiment_polarity", 0.0),
                 "category": processed.get("category", "General"),
-                "source_type": processed.get("source_type", "NEWS"),
-                "tier": processed.get("tier", "UNKNOWN"),
-                "occurrence_count": 1,
-                "priority_score": 1.0,
-                "priority_level": "LOW",
-                "scraped_at": now,
-                "created_at": now,
-                # Location fields
-                "state": loc["state"],
-                "district": loc["district"],
+                "department": processed.get("department", "municipal"),
                 "city": loc["city"],
-                "latitude": loc["latitude"],
-                "longitude": loc["longitude"],
+                "district": loc["district"],
+                "state": loc["state"],
+                "risk_score": processed.get("risk_score", 0.0),
+                "source_domain": processed.get("source_domain", ""),
+                "scraped_at": now
             }
-            records_to_store.append(record)
-            processed_count += 1
-
+            processed_signals.append(signal_record)
+            
+            # Map for news_articles storage (legacy-compatible)
+            records_to_store.append({**signal_record, "created_at": now})
+ 
         except Exception as e:
-            failed_count += 1
-            logger.error("[Pipeline] ❌ Failed to process article '%s': %s", article.get("title", "???")[:80], e)
-
-    stored_count = _store_articles_sync(records_to_store)
+            logger.error("[Pipeline] Processing failed for signal '%s': %s", article.get("title", "???")[:50], e)
+ 
+    # Stage 4: Grouping into Clusters
+    existing_clusters = _get_existing_clusters()
+    # Build a lookup for easier matching
+    clusters_dict = {c["id"]: c for c in existing_clusters}
+    new_clusters_count = 0
+ 
+    for signal in processed_signals:
+        matched_id = None
+        
+        # Look for semantic match in existing clusters
+        for cid, cluster in clusters_dict.items():
+            # Match by Category AND City AND Semantic Similarity
+            # We use city-level granularity for grouping regional problems
+            if (signal["category"] == cluster["category"] and 
+                signal.get("city") == cluster.get("city")):
+                
+                sim = calculate_similarity(signal["title"], cluster["title"])
+                if sim > 0.65:
+                    matched_id = cid
+                    break
+        
+        if matched_id:
+            cluster = clusters_dict[matched_id]
+            cluster["frequency"] = cluster.get("frequency", 0) + 1
+            cluster["last_updated"] = now
+            # Running average of anger for sentiment weighting
+            current_anger = cluster.get("anger_avg", 0.0)
+            cluster["anger_avg"] = (current_anger + signal["anger_rating"]) / 2.0
+            cluster["sources"] = list(set(cluster.get("sources", []) + [signal["source_name"]]))
+            cluster["locations"] = list(set(cluster.get("locations", []) + [signal["city"]]))
+            
+            # Add to sample records (keep it small)
+            if len(cluster.get("sample_records", [])) < 5:
+                cluster.setdefault("sample_records", []).append({
+                    "title": signal["title"],
+                    "source": signal["source_name"],
+                    "risk": signal["risk_score"]
+                })
+        else:
+            # Create a brand new Issue Cluster
+            new_cid = f"ISSUE-{str(uuid.uuid4())[:8].upper()}"
+            new_cluster = {
+                "id": new_cid,
+                "title": signal["title"],
+                "category": signal["category"],
+                "department": signal["department"],
+                "locations": [signal["city"]],
+                "city": signal["city"],
+                "frequency": 1,
+                "priority_score": 0.0, # Calculated in storage phase
+                "anger_avg": signal["anger_rating"],
+                "sources": [signal["source_name"]],
+                "sample_records": [{
+                    "title": signal["title"],
+                    "source": signal["source_name"],
+                    "risk": signal["risk_score"]
+                }],
+                "last_updated": now,
+                "detected_at": now,
+                "status": "Pending"
+            }
+            clusters_dict[new_cid] = new_cluster
+            new_clusters_count += 1
+ 
+    # Stage 5: Recalculate Scores and Persist
+    all_clusters = list(clusters_dict.values())
+    _store_aggregated_clusters(all_clusters)
+    
+    # Store raw signals for detailed record-keeping
+    _store_articles_sync(records_to_store)
+ 
+    # Logging Improvements & Analytics
     elapsed = round(time.time() - start_time, 2)
-
+    avg_freq = sum(c.get("frequency", 1) for c in all_clusters) / len(all_clusters) if all_clusters else 0
+    highest_p = max(all_clusters, key=lambda x: x.get("priority_score", 0)) if all_clusters else None
+ 
     logger.info("=" * 60)
-    logger.info("[Pipeline] ✅ Pipeline complete!")
-    logger.info("[Pipeline]    Total scraped:    %d", len(all_articles))
-    logger.info("[Pipeline]    After dedup:      %d", len(unique_articles))
-    logger.info("[Pipeline]    NLP processed:    %d", processed_count)
-    logger.info("[Pipeline]    Failed:           %d", failed_count)
-    logger.info("[Pipeline]    Stored in DB:     %d", stored_count)
-    logger.info("[Pipeline]    Elapsed:          %ss", elapsed)
+    logger.info("[Pipeline] ✅ Processing Complete!")
+    logger.info(f"[Pipeline]    Scraped:          {len(all_articles)}")
+    logger.info(f"[Pipeline]    Active Clusters:  {len(all_clusters)} ({new_clusters_count} new)")
+    logger.info(f"[Pipeline]    Avg Frequency:    {avg_freq:.1f}")
+    if highest_p:
+        logger.info(f"[Pipeline]    Top Issue:        '{highest_p.get('title', '???')[:50]}' (Score: {highest_p.get('priority_score', 0)})")
+    logger.info(f"[Pipeline]    Elapsed:          {elapsed}s")
     logger.info("=" * 60)
-
+ 
     return {
         "status": "success",
         "total_scraped": len(all_articles),
-        "after_dedup": len(unique_articles),
-        "total_processed": processed_count,
-        "total_stored": stored_count,
-        "total_failed": failed_count,
-        "elapsed_seconds": elapsed,
-        "timestamp": datetime.utcnow().isoformat(),
+        "total_clusters": len(all_clusters),
+        "new_clusters": new_clusters_count,
+        "avg_frequency": avg_freq,
+        "top_issue": highest_p.get("title") if highest_p else None,
+        "elapsed_seconds": elapsed
     }

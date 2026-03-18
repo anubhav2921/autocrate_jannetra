@@ -1,10 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
 from ..mongodb import articles_collection, sources_collection, detection_results_collection, community_reviews_collection
-from ..utils import gen_uuid
+from ..utils import gen_uuid, get_current_user
 
 router = APIRouter(prefix="/api", tags=["Complaints"])
 
@@ -17,13 +17,22 @@ class ReviewCreate(BaseModel):
 
 
 @router.get("/complaints")
-async def list_complaints():
-    """Returns articles from COMPLAINT sources joined with detection results."""
+async def list_complaints(current_user: dict = Depends(get_current_user)):
+    """Returns articles from COMPLAINT sources joined with detection results, filtered by department."""
     # Get all source IDs that are COMPLAINT type
     complaint_sources = await sources_collection.find({"source_type": "COMPLAINT"}, {"id": 1}).to_list(None)
     source_ids = [s["id"] for s in complaint_sources]
 
-    art_cursor = articles_collection.find({"source_id": {"$in": source_ids}})
+    user_dept = current_user.get("department")
+    user_role = current_user.get("role")
+
+    query = {"source_id": {"$in": source_ids}}
+    
+    # Apply Department Filter if not admin
+    if user_role != "ADMIN" and user_dept:
+        query["department"] = user_dept
+
+    art_cursor = articles_collection.find(query)
     art_docs = await art_cursor.to_list(None)
 
     complaints = []

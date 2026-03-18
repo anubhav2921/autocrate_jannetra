@@ -1,15 +1,25 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
+from typing import Optional
 from ..mongodb import news_articles_collection, articles_collection, gri_scores_collection, sentiment_records_collection, detection_results_collection
 
 router = APIRouter(prefix="/api", tags=["Analytics"])
 
 
 @router.get("/analytics/sentiment-trend")
-async def sentiment_trend():
+async def sentiment_trend(
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
+):
     """Sentiment polarity over time — derived from NewsArticle (live pipeline data)."""
-    na_count = await news_articles_collection.count_documents({})
+    from .location import _build_location_match
+    loc_match = _build_location_match(state, district, city, ward)
+    
+    na_count = await news_articles_collection.count_documents(loc_match)
     if na_count > 0:
         pipeline = [
+            {"$match": loc_match},
             {"$addFields": {"date_str": {"$dateToString": {"format": "%Y-%m-%d", "date": "$scraped_at"}}}},
             {"$group": {
                 "_id": "$date_str",
@@ -59,11 +69,20 @@ async def sentiment_trend():
 
 
 @router.get("/analytics/risk-heatmap")
-async def risk_heatmap():
+async def risk_heatmap(
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
+):
     """Governance Risk Index heatmap by category."""
-    na_count = await news_articles_collection.count_documents({})
+    from .location import _build_location_match
+    loc_match = _build_location_match(state, district, city, ward)
+
+    na_count = await news_articles_collection.count_documents(loc_match)
     if na_count > 0:
         pipeline = [
+            {"$match": loc_match},
             {"$group": {
                 "_id": "$category",
                 "avg_gri": {"$avg": "$risk_score"},
@@ -109,11 +128,20 @@ async def risk_heatmap():
 
 
 @router.get("/analytics/category-breakdown")
-async def category_breakdown():
+async def category_breakdown(
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
+):
     """Risk breakdown by category."""
-    na_count = await news_articles_collection.count_documents({})
+    from .location import _build_location_match
+    loc_match = _build_location_match(state, district, city, ward)
+
+    na_count = await news_articles_collection.count_documents(loc_match)
     if na_count > 0:
         pipeline = [
+            {"$match": loc_match},
             {"$group": {
                 "_id": "$category",
                 "avg_gri": {"$avg": "$risk_score"},
@@ -124,7 +152,7 @@ async def category_breakdown():
         results = await news_articles_collection.aggregate(pipeline).to_list(None)
 
         fake_pipeline = [
-            {"$match": {"fake_news_label": "FAKE"}},
+            {"$match": {**loc_match, "fake_news_label": "FAKE"}},
             {"$group": {"_id": "$category", "count": {"$sum": 1}}}
         ]
         fake_res = await news_articles_collection.aggregate(fake_pipeline).to_list(None)

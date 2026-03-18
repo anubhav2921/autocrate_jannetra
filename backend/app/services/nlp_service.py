@@ -1,9 +1,32 @@
-"""
-NLP Service — Pure Python sentiment analysis, anger rating, and entity extraction.
-No external NLP library dependencies (no TextBlob/NLTK needed).
-"""
-
 import re
+import logging
+
+logger = logging.getLogger("jannetra.nlp")
+
+# --- Optional GPU Acceleration ---
+NLP_GPU_AVAILABLE = False
+SENTIMENT_MODEL = None
+
+try:
+    import torch
+    from transformers import pipeline
+    
+    device = 0 if torch.cuda.is_available() else -1
+    if device == 0:
+        logger.info("[NLP] GPU detected! Loading sentiment transformer on CUDA...")
+        # Use a small, efficient model suitable for 4GB VRAM (distilbert)
+        SENTIMENT_MODEL = pipeline(
+            "sentiment-analysis", 
+            model="distilbert-base-uncased-finetuned-sst-2-english",
+            device=device
+        )
+        NLP_GPU_AVAILABLE = True
+    else:
+        logger.info("[NLP] No GPU found or CUDA not available. Using Pure-Python NLP.")
+except ImportError:
+    logger.info("[NLP] Transformers/Torch not installed. Using Pure-Python NLP.")
+except Exception as e:
+    logger.warning(f"[NLP] Failed to initialize GPU sentiment: {e}")
 
 # Sentiment word lists
 POSITIVE_WORDS = {
@@ -55,7 +78,27 @@ DEPARTMENTS = [
 
 
 def analyze_sentiment(text: str) -> dict:
-    """Pure-Python sentiment: count positive vs negative word hits."""
+    """Analyze sentiment: use GPU transformer if available, else Pure-Python."""
+    # Try GPU Transformer first
+    if NLP_GPU_AVAILABLE and SENTIMENT_MODEL and len(text.strip()) > 10:
+        try:
+            # Truncate to max transformer length (512 tokens)
+            result = SENTIMENT_MODEL(text[:1024])[0]
+            label = result['label'].upper() # 'POSITIVE' or 'NEGATIVE'
+            score = result['score']
+            
+            # Map score to polarity (-1 to 1)
+            polarity = round(score if label == 'POSITIVE' else -score, 4)
+            return {
+                "polarity": polarity, 
+                "subjectivity": 0.8, # Transformers are subjective by nature 
+                "sentiment_label": label,
+                "engine": "gpu_transformer"
+            }
+        except Exception as e:
+            logger.debug(f"GPU Sentiment failed, falling back: {e}")
+
+    # Fallback: Pure-Python
     words = set(re.findall(r'\b[a-z]+\b', text.lower()))
     pos = len(words & POSITIVE_WORDS)
     neg = len(words & NEGATIVE_WORDS)
@@ -73,7 +116,12 @@ def analyze_sentiment(text: str) -> dict:
     else:
         label = "NEUTRAL"
 
-    return {"polarity": polarity, "subjectivity": subjectivity, "sentiment_label": label}
+    return {
+        "polarity": polarity, 
+        "subjectivity": subjectivity, 
+        "sentiment_label": label,
+        "engine": "pure_python"
+    }
 
 
 def compute_anger_rating(text: str) -> float:

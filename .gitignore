@@ -1,58 +1,47 @@
-# ── Python ───────────────────────────────────────────────
+# ── Clean-up rules (User Requested) ──────────────────
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.venv/
 venv/
-env/
-*.egg-info/
-dist/
-build/
-
-# ── Node ─────────────────────────────────────────────────
+venv311/
+venv311venv311/
+.venv/
 node_modules/
-frontend/dist/
-npm-debug.log*
-
-# ── IDE ──────────────────────────────────────────────────
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# ── OS ───────────────────────────────────────────────────
-.DS_Store
-Thumbs.db
-
-# ── Secrets (NEVER commit) ──────────────────────────────
-.env
-.env.local
-.env.*.local
-.env.production
-
-# ── Firebase (NEVER commit) ─────────────────────────────
-serviceAccountKey.json
-
-# ── Database ────────────────────────────────────────────
+*.log
+tmp/
+*.txt
+!requirements.txt
+!*.example
 *.db
 *.sqlite
 *.sqlite3
-
-# ── Logs ───────────────────────────────────────────────
-*.log
-
-# ── Static analysis / cache ─────────────────────────────
-.pyre/
-.pyre_configuration
-.mypy_cache/
-.pytest_cache/
-.cache/
-
-# ── Misc ───────────────────────────────────────────────
-pyrightconfig.json
-pip_error.txt
-status.json
-
-# ── AI agents ──────────────────────────────────────────
-.gemini/
+check_*.py
+verify_*.py
+audit_*.py
+audit*.py
+*.json
+!package.json
+!package-lock.json
+!requirements.txt
+!pyrightconfig.json
+!pyre_configuration
+!rails-project.json
+!repair_verification.json
+!repair_verification_mongodb.json
+!status.json
+!serviceAccountKey.json
+!*.md
+!*.js
+!*.jsx
+!*.py
+!Procfile
+!railway.json
+!*.ps1
+!*.html
+!*.css
+!*.png
+!*.jpg
+!*.jpeg
+!*.svg
+!*.ico
+!*.json

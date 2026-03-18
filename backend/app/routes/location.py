@@ -15,7 +15,7 @@ Provides:
 from fastapi import APIRouter, Query
 from typing import Optional
 
-from ..mongodb import news_articles_collection
+from ..mongodb import news_articles_collection, signal_problems_collection
 
 router = APIRouter(prefix="/api/location", tags=["Location"])
 
@@ -195,13 +195,48 @@ def _build_location_match(state, district, city, ward) -> dict:
     """Build MongoDB match filter for location fields."""
     match = {}
     if state:
-        match["state"] = {"$regex": f"^{state}$", "$options": "i"}
+        match["$or"] = [
+            {"state": {"$regex": f"^\\s*{state}\\s*$", "$options": "i"}},
+            {"location": {"$regex": state, "$options": "i"}},
+            {"locations": {"$in": [state]}}
+        ]
     if district:
-        match["district"] = {"$regex": f"^{district}$", "$options": "i"}
+        # If state filter already added $or, we need to be careful.
+        # But usually we want AND between state and district.
+        # So we use nested $and or just add to the match if possible.
+        d_match = {"$or": [
+            {"district": {"$regex": f"^\\s*{district}\\s*$", "$options": "i"}},
+            {"location": {"$regex": district, "$options": "i"}},
+            {"locations": {"$in": [district]}}
+        ]}
+        if "$and" not in match: match["$and"] = []
+        match["$and"].append(d_match)
+
     if city:
-        match["city"] = {"$regex": f"^{city}$", "$options": "i"}
+        c_match = {"$or": [
+            {"city": {"$regex": f"^\\s*{city}\\s*$", "$options": "i"}},
+            {"location": {"$regex": city, "$options": "i"}},
+            {"locations": {"$in": [city]}}
+        ]}
+        if "$and" not in match: match["$and"] = []
+        match["$and"].append(c_match)
+
     if ward:
-        match["ward"] = {"$regex": f"^{ward}$", "$options": "i"}
+        w_match = {"$or": [
+            {"ward": {"$regex": f"^\\s*{ward}\\s*$", "$options": "i"}},
+            {"location": {"$regex": ward, "$options": "i"}}
+        ]}
+        if "$and" not in match: match["$and"] = []
+        match["$and"].append(w_match)
+
+    # Simplified if only state exists
+    if state and not (district or city or ward):
+        return {"$or": [
+            {"state": {"$regex": f"^\\s*{state}\\s*$", "$options": "i"}},
+            {"location": {"$regex": state, "$options": "i"}},
+            {"locations": {"$in": [state]}}
+        ]}
+
     return match
 
 
@@ -294,7 +329,9 @@ async def get_location_dashboard(
     ]
     cat_res = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
 
-    top_articles = await news_articles_collection.find(match).sort("risk_score", -1).limit(10).to_list(10)
+    # Fetch Trending Problems from aggregated SignalProblems collection
+    # These are consolidated clusters rather than raw articles
+    top_issues = await signal_problems_collection.find(match).sort("priority_score", -1).limit(10).to_list(10)
 
     return {
         "location_context": {
@@ -317,18 +354,16 @@ async def get_location_dashboard(
                 "id": a["id"],
                 "title": a.get("title"),
                 "category": a.get("category"),
-                "location": _article_location_str(a),
-                "state": a.get("state"),
-                "district": a.get("district"),
-                "city": a.get("city"),
-                "ward": a.get("ward"),
-                "gri_score": round(a.get("risk_score") or 0, 1),
-                "risk_level": a.get("risk_level"),
-                "label": a.get("fake_news_label"),
-                "confidence": round(a.get("fake_news_confidence") or 0, 2),
-                "anger_rating": round(a.get("anger_rating") or 0, 1),
+                "location": a.get("location") or ", ".join(a.get("locations", [])) or a.get("city") or "India",
+                "gri_score": round(a.get("priority_score") or a.get("risk_score") or 0, 1),
+                "frequency": a.get("frequency", 1),
+                "priority_score": a.get("priority_score", 0.0),
+                "risk_level": a.get("severity", "LOW"),
+                "label": "VERIFIED" if a.get("frequency", 1) > 2 else "SINGLE_SIGNAL",
+                "anger_rating": round(a.get("anger_avg") or 0, 1),
+                "status": a.get("status", "Pending")
             }
-            for a in top_articles
+            for a in top_issues
         ],
         "critical_alerts": [],
     }
