@@ -307,12 +307,16 @@ async def firebase_phone_login(request: Request):
 class PhoneOTPRequest(BaseModel):
     phone_number: str
     name: Optional[str] = None
+    password: Optional[str] = None
+    department: Optional[str] = ""
 
 
 class PhoneOTPVerify(BaseModel):
     phone_number: str
     otp: str
     name: Optional[str] = None
+    password: Optional[str] = None
+    department: Optional[str] = ""
 
 
 def _validate_phone(phone: str) -> str:
@@ -330,6 +334,8 @@ def send_phone_otp(req: PhoneOTPRequest):
         "otp": otp,
         "expires": time.time() + 300,
         "name": req.name or "",
+        "password": req.password or "",
+        "department": req.department or "",
     }
     send_otp_sms(phone, otp)
     return {"success": True, "message": f"OTP sent to {phone}", "demo_otp": otp}
@@ -370,14 +376,19 @@ async def register_phone(req: PhoneOTPVerify):
 
     phone_str = str(phone)
     phone_suffix = phone_str[-4:] if len(phone_str) >= 4 else "0000"
-    display_name = req.name or stored.get("name") or f"User {phone_suffix}"
+    
+    # Use data from request or fallback to stored
+    name = req.name or stored.get("name") or f"User {phone_suffix}"
+    password = req.password or stored.get("password") or ""
+    department = req.department or stored.get("department") or ""
+
     user = {
         "id": gen_uuid(),
-        "name": display_name,
+        "name": name,
         "email": None,
-        "password_hash": "",
+        "password_hash": _hash_password(password) if password else "",
         "role": "LEADER",
-        "department": "",
+        "department": department,
         "phone_number": phone,
         "auth_provider": "phone",
         "is_active": True,

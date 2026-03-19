@@ -226,7 +226,6 @@ export default function Account({ user, onLogin, onLogout }) {
                                 </div>
                                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        <Shield size={13} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
                                         Role: <strong style={{ color: 'var(--accent-blue)' }}>{profile?.role}</strong>
                                     </span>
                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
@@ -317,7 +316,7 @@ export default function Account({ user, onLogin, onLogout }) {
                             <div>
                                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Current Password</label>
                                 <input type="password" value={currentPwd} onChange={(e) => setCurrentPwd(e.target.value)}
-                                    placeholder="Enter current password"
+                                    placeholder="Enter Current Password"
                                     style={{
                                         width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
                                         border: '1px solid var(--border-color)', borderRadius: '8px',
@@ -327,7 +326,7 @@ export default function Account({ user, onLogin, onLogout }) {
                             <div>
                                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>New Password</label>
                                 <input type="password" value={newPwd} onChange={(e) => setNewPwd(e.target.value)}
-                                    placeholder="Min 6 characters"
+                                    placeholder="Enter New Password"
                                     style={{
                                         width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
                                         border: '1px solid var(--border-color)', borderRadius: '8px',
@@ -337,7 +336,7 @@ export default function Account({ user, onLogin, onLogout }) {
                             <div>
                                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px', display: 'block' }}>Confirm New Password</label>
                                 <input type="password" value={confirmPwd} onChange={(e) => setConfirmPwd(e.target.value)}
-                                    placeholder="Re-enter new password"
+                                    placeholder="Confirm New Password"
                                     style={{
                                         width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
                                         border: '1px solid var(--border-color)', borderRadius: '8px',
@@ -377,7 +376,7 @@ export default function Account({ user, onLogin, onLogout }) {
                                         Enter your password to confirm
                                     </label>
                                     <input type="password" value={deletePwd} onChange={(e) => setDeletePwd(e.target.value)}
-                                        placeholder="Your password"
+                                        placeholder="Enter Password"
                                         style={{
                                             width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)',
                                             border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px',

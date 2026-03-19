@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-03-17T10:39:21.232147",
+  "total_documents": 611,
+  "city_distribution": {
+    "Unknown": 385,
+    "Delhi": 41,
+    "Bangalore": 34,
+    "Hyderabad": 34,
+    "Mumbai": 28,
+    "Kolkata": 24,
+    "Pune": 19,
+    "India": 17,
+    "Chennai": 17,
+    "Patna": 3,
+    "Agra": 3,
+    "Lucknow": 2,
+    "Ahmedabad": 1,
+    "Bhopal": 1,
+    "Kanpur": 1,
+    "Surat": 1
+  },
+  "missing_coords": 64,
+  "specific_cities": 209,
+  "city_coverage_pct": 34.21,
+  "latest_article": {
+    "title": "Gold, Silver Prices Drop Marginally: Check Rates In Your City Today",
+    "scraped_at": "2026-03-17T05:09:07.278000",
+    "city": "India"
+  }
+}

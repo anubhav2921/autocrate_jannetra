@@ -59,6 +59,19 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
         if active_alerts == 0:
             active_alerts = await news_articles_collection.count_documents({**match_filter, "risk_level": {"$in": ["HIGH", "MODERATE"]}})
 
+        # Location risk
+        loc_pipeline = [
+            {"$match": match_filter},
+            {"$group": {
+                "_id": "$state",
+                "avg_gri": {"$avg": "$risk_score"},
+                "count": {"$sum": 1}
+            }},
+            {"$sort": {"avg_gri": -1}},
+            {"$limit": 12}
+        ]
+        loc_res = await news_articles_collection.aggregate(loc_pipeline).to_list(None)
+
         return {
             "overall_gri": round(avg_risk, 1),
             "total_articles": na_total,
@@ -70,7 +83,10 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
                 {"category": r["_id"] or "General", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
                 for r in cat_res
             ],
-            "location_risk": [],
+            "location_risk": [
+                {"location": r["_id"] or "Unknown", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
+                for r in loc_res if r["_id"]
+            ],
             "top_risks": [
                 {
                     "id": a["id"],

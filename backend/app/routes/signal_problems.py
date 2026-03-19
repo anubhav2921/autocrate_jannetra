@@ -6,7 +6,7 @@ from datetime import datetime
 from ..mongodb import (
     news_articles_collection, signal_problems_collection
 )
-from ..services.gemini_service import generate_signal_problems
+from ..services.gemini_service import generate_signal_problems, summarize_problem_cluster
 from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
@@ -62,7 +62,8 @@ async def list_signal_problems(
             "sampleRecords": p.get("sample_records", []),
             "resolutionReport": p.get("resolution_report"),
             "resolutionProofUrl": p.get("resolution_proof_url"),
-            "resolvedAt": p.get("resolved_at").strftime("%Y-%m-%d %H:%M") if isinstance(p.get("resolved_at"), datetime) else None
+            "resolvedAt": p.get("resolved_at").strftime("%Y-%m-%d %H:%M") if isinstance(p.get("resolved_at"), datetime) else None,
+            "hasGeminiSummary": p.get("has_gemini_summary", False)
         }
         for p in problems_cursor
     ]
@@ -74,6 +75,37 @@ async def list_signal_problems(
 async def get_signal_problem(problem_id: str):
     p = await signal_problems_collection.find_one({"id": problem_id})
     if p:
+        # Fallback text check - aggressive re-generation if missing or placeholder
+        FALLBACK_SOL = "Immediate investigation by the concerned department (Municipal/Infrastructure)."
+        current_sol = p.get("expected_solution", "")
+        
+        needs_summary = (
+            not p.get("has_gemini_summary") or 
+            current_sol == FALLBACK_SOL or
+            not current_sol or
+            len(p.get("description", "")) < 30
+        )
+
+        if needs_summary:
+            # Limit samples to avoid token overflow and speed up processing
+            raw_samples = p.get("sample_records", [])[:5]
+            summary = summarize_problem_cluster(
+                title=p.get("title", ""),
+                category=p.get("category", "General"),
+                location=p.get("location") or ", ".join(p.get("locations", [])),
+                samples=raw_samples
+            )
+            if summary:
+                update_fields = {
+                    "description": summary["description"],
+                    "location_detail": summary["location_detail"],
+                    "evidence_summary": summary["evidence_summary"],
+                    "expected_solution": summary["expected_solution"],
+                    "has_gemini_summary": True
+                }
+                await signal_problems_collection.update_one({"id": problem_id}, {"$set": update_fields})
+                p.update(update_fields)
+
         return {
             "id": p["id"],
             "title": p.get("title"),
@@ -83,6 +115,10 @@ async def get_signal_problem(problem_id: str):
             "detectedAt": p.get("detected_at"),
             "lastUpdated": p.get("last_updated"),
             "description": p.get("description") or p.get("title"),
+            "locationDetail": p.get("location_detail"),
+            "evidenceSummary": p.get("evidence_summary"),
+            "expectedSolution": p.get("expected_solution"),
+            "hasGeminiSummary": p.get("has_gemini_summary", False),
             "priorityScore": p.get("priority_score") or p.get("risk_score") or 0.0,
             "frequency": p.get("frequency", 1),
             "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source"),

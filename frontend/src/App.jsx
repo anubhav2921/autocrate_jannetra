@@ -23,22 +23,17 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import PhoneAuth from './pages/PhoneAuth';
 import LandingPage from './pages/LandingPage';
+import PulseDashboard from './pages/PulseDashboard';
+import Legal from './pages/Legal';
+import ReportIssue from './pages/ReportIssue';
 import { LocationProvider } from './context/LocationContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
     const [user, setUser] = useState(null);
     const [showSplash, setShowSplash] = useState(true);
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem('app-theme');
-        if (savedTheme === 'light') {
-            document.documentElement.setAttribute('data-theme', 'light');
-        } else if (savedTheme === 'dark') {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        } else {
-            document.documentElement.removeAttribute('data-theme');
-        }
-
         const saved = localStorage.getItem('user');
         if (saved) {
             try { setUser(JSON.parse(saved)); } catch { localStorage.removeItem('user'); }
@@ -57,47 +52,57 @@ export default function App() {
 
     if (!user) {
         return (
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/login" element={<Login onLogin={handleLogin} />} />
-                    <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/phone-auth" element={<PhoneAuth onLogin={handleLogin} />} />
-                    <Route path="*" element={<LandingPage />} />
-                </Routes>
-            </BrowserRouter>
+            <ThemeProvider>
+                <BrowserRouter>
+                    <Routes>
+                        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+                        <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/phone-auth" element={<PhoneAuth onLogin={handleLogin} />} />
+                        <Route path="/pulse" element={<PulseDashboard />} />
+                        <Route path="/legal/privacy" element={<Legal />} />
+                        <Route path="/legal/terms" element={<Legal />} />
+                        <Route path="/legal/transparency" element={<Legal />} />
+                        <Route path="/report-issue" element={<ReportIssue />} />
+                        <Route path="*" element={<LandingPage />} />
+                    </Routes>
+                </BrowserRouter>
+            </ThemeProvider>
         );
     }
 
     return (
-        <LocationProvider>
-            <BrowserRouter>
-                <div className="app-layout">
-                    <Sidebar user={user} onLogout={handleLogout} />
-                    <div className="main-content">
-                        <Navbar user={user} />
-                        <Routes>
-                            <Route path="/" element={<Dashboard />} />
-                            <Route path="/articles" element={<Articles />} />
-                            <Route path="/alerts" element={<Alerts />} />
-                            <Route path="/analytics" element={<Analytics />} />
-                            <Route path="/sources" element={<Sources />} />
-                            <Route path="/resolutions" element={<Resolutions user={user} />} />
-                            <Route path="/map" element={<MapView />} />
-                            <Route path="/leaderboard" element={<Leaderboard />} />
-                            <Route path="/chatbot" element={<Chatbot />} />
-                            <Route path="/scanner" element={<Scanner />} />
-                            <Route path="/signal-monitor" element={<SignalMonitor />} />
-                            <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
-                            <Route path="/system-monitoring" element={<SystemMonitoring />} />
-                            <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
-                            <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
-                            <Route path="*" element={<Navigate to="/" />} />
-                        </Routes>
+        <ThemeProvider>
+            <LocationProvider>
+                <BrowserRouter>
+                    <div className="app-layout">
+                        <Sidebar user={user} onLogout={handleLogout} />
+                        <div className="main-content">
+                            <Navbar user={user} />
+                            <Routes>
+                                <Route path="/" element={<Dashboard />} />
+                                <Route path="/articles" element={<Articles />} />
+                                <Route path="/alerts" element={<Alerts />} />
+                                <Route path="/analytics" element={<Analytics />} />
+                                <Route path="/sources" element={<Sources />} />
+                                <Route path="/resolutions" element={<Resolutions user={user} />} />
+                                <Route path="/map" element={<MapView />} />
+                                <Route path="/leaderboard" element={<Leaderboard />} />
+                                <Route path="/chatbot" element={<Chatbot />} />
+                                <Route path="/scanner" element={<Scanner />} />
+                                <Route path="/signal-monitor" element={<SignalMonitor />} />
+                                <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
+                                <Route path="/system-monitoring" element={<SystemMonitoring />} />
+                                <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
+                                <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
+                                <Route path="/pulse" element={<PulseDashboard />} />
+                                <Route path="*" element={<Navigate to="/" />} />
+                            </Routes>
+                        </div>
                     </div>
-                </div>
-            </BrowserRouter>
-        </LocationProvider>
+                </BrowserRouter>
+            </LocationProvider>
+        </ThemeProvider>
     );
 }
 

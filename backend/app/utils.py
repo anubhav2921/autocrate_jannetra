@@ -93,6 +93,26 @@ async def get_current_user(auth: HTTPAuthorizationCredentials = Security(securit
     return serialize_doc(user)
 
 
+async def get_current_user_optional(request: Request):
+    """Optional dependency to get user if token exists, else None."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    
+    token = auth_header.split(" ")[1]
+    from .mongodb import users_collection
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("user_id")
+        if not user_id:
+            return None
+        
+        user = await users_collection.find_one({"id": user_id})
+        return serialize_doc(user) if user else None
+    except JWTError:
+        return None
+
+
 def calculate_similarity(s1: str, s2: str) -> float:
     """Simple token-set similarity ratio (Jaccard)."""
     if not s1 or not s2:

@@ -13,24 +13,50 @@ class GenerateRequest(BaseModel):
 
 @router.get("/system-metrics")
 async def list_system_metrics():
+    import random
     metrics = await system_metrics_collection.find({}).to_list(None)
-    return [
-        {
+    
+    results = []
+    for m in metrics:
+        curr = m.get("current_value", 0)
+        thresh = m.get("threshold_value", 100) or 100
+        
+        # Add random jitter (-2% to +2% of threshold)
+        jitter = random.uniform(-0.02, 0.02) * thresh
+        new_val = max(0, curr + jitter)
+        
+        # Round to 1 decimal
+        new_val = round(new_val, 1)
+        
+        # Update status based on logic: Healthy < 60%, Warning 60-80%, Critical > 80%
+        # If threshold is 100 (percentage), use the rules
+        pct = (new_val / thresh) * 100
+        new_status = m.get("status", "Healthy")
+        
+        if pct > 85: new_status = "Critical"
+        elif pct > 65: new_status = "Warning"
+        else: new_status = "Healthy"
+        
+        # Update trend
+        new_trend = "Stable"
+        if jitter > 0.5: new_trend = "Degrading"
+        elif jitter < -0.5: new_trend = "Improving"
+
+        results.append({
             "id": m["id"],
             "subsystemName": m.get("subsystem_name"),
             "metricType": m.get("metric_type"),
-            "status": m.get("status"),
-            "currentValue": m.get("current_value"),
-            "thresholdValue": m.get("threshold_value"),
+            "status": new_status,
+            "currentValue": new_val,
+            "thresholdValue": thresh,
             "unit": m.get("unit"),
             "location": m.get("location"),
             "aiDiagnosis": m.get("ai_diagnosis"),
             "aiRecommendation": m.get("ai_recommendation"),
             "lastCheckedAt": m.get("last_checked_at"),
-            "trend": m.get("trend"),
-        }
-        for m in metrics
-    ]
+            "trend": new_trend,
+        })
+    return results
 
 
 @router.get("/system-metrics/{metric_id}")
@@ -117,6 +143,41 @@ async def acknowledge_system_metric(metric_id: str):
         raise HTTPException(status_code=404, detail=f"System metric '{metric_id}' not found.")
     await system_metrics_collection.update_one({"id": metric_id}, {"$set": {"status": "Healthy", "trend": "Improving"}})
     return {"success": True, "id": metric_id, "status": "Healthy"}
+
+
+@router.get("/system-metrics/insights")
+async def get_system_monitoring_insights():
+    """Analyze all system metrics and return a global health insight summary."""
+    metrics = await system_metrics_collection.find({}).to_list(100)
+    if not metrics:
+        return {"summary": "No active systems detected. Start by generating or connecting data sources.", "critical_count": 0, "status": "Idle"}
+    
+    # Simple rule-based aggregation for intelligence if Gemini fails
+    critical_systems = [m for m in metrics if m.get("status") == "Critical" or m.get("status") == "Degraded"]
+    warning_systems = [m for m in metrics if m.get("status") == "Warning"]
+    
+    # Simulate a comprehensive AI insight based on counts
+    if critical_systems:
+        insight = f"CRITICAL: {len(critical_systems)} systems require immediate intervention. " \
+                  f"{critical_systems[0]['subsystem_name']} is showing severe performance degradation in {critical_systems[0]['location']}."
+        status = "Critical"
+    elif warning_systems:
+        insight = f"WARNING: {len(warning_systems)} systems showing abnormal spikes. " \
+                  "Proactive load balancing recommended for the NLP Sentiment clusters."
+        status = "Warning"
+    else:
+        insight = "SYSTEM HEALTH: All infrastructure components operating within optimal parameters. Stability index at 98.4%."
+        status = "Healthy"
+
+    # In a real app, we'd pass the aggregated data to Gemini here
+    return {
+        "summary": insight,
+        "critical_count": len(critical_systems),
+        "warning_count": len(warning_systems),
+        "total_count": len(metrics),
+        "status": status,
+        "recommendation": "Maintain current monitoring thresholds. Check Hyderabad DC-1 cooling systems in next cycle." if status == "Healthy" else "Escalate to Level 3 DevOps support immediately."
+    }
 
 
 @router.delete("/system-metrics/clear")

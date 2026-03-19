@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-    LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe, Shield,
+    LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe,
     LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan, Activity,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -32,7 +32,6 @@ export default function Sidebar({ user, onLogout }) {
         <aside className="sidebar">
             <div className="sidebar-brand">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <Shield size={22} style={{ color: '#3b82f6' }} />
                     <h2>Governance Intelligence</h2>
                 </div>
                 <span>Decision Support System</span>

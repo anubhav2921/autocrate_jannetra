@@ -40,8 +40,7 @@ export default function ForgotPassword() {
             <div className="auth-card">
                 {/* Brand */}
                 <div className="auth-brand">
-                    <Shield size={36} style={{ color: '#3b82f6' }} />
-                    <h1>JanNetra</h1>
+                    <h1>JANNETRA</h1>
                     <p>Governance Intelligence System</p>
                 </div>
 
@@ -84,7 +83,7 @@ export default function ForgotPassword() {
                                 <input
                                     id="forgot-email"
                                     type="email"
-                                    placeholder="Email address"
+                                    placeholder="Enter Email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     required

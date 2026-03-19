@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    AlertTriangle, Shield, MapPin, Clock, Zap, Eye,
+    AlertTriangle, Shield, MapPin, Clock, Zap,
     CheckCircle2, Circle, Filter, Search, Flame
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
@@ -240,7 +240,7 @@ export default function SignalMonitor() {
                                                 display: 'flex', alignItems: 'center', gap: '5px',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                            <Eye size={13} /> Take Action
+                                            Take Action
                                         </button>
                                     </td>
                                 </tr>

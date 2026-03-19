@@ -329,6 +329,24 @@ async def get_location_dashboard(
     ]
     cat_res = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
 
+    # Location Heatmap Logic: Group by the next hierarchical level
+    group_field = "state"
+    if state: group_field = "district"
+    if district: group_field = "city"
+    if city: group_field = "ward"
+
+    loc_pipeline = [
+        {"$match": match},
+        {"$group": {
+            "_id": f"${group_field}",
+            "avg_gri": {"$avg": "$risk_score"},
+            "count": {"$sum": 1}
+        }},
+        {"$sort": {"avg_gri": -1}},
+        {"$limit": 12}
+    ]
+    loc_res = await news_articles_collection.aggregate(loc_pipeline).to_list(12)
+
     # Fetch Trending Problems from aggregated SignalProblems collection
     # These are consolidated clusters rather than raw articles
     top_issues = await signal_problems_collection.find(match).sort("priority_score", -1).limit(10).to_list(10)
@@ -348,7 +366,10 @@ async def get_location_dashboard(
             {"category": r["_id"] or "General", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
             for r in cat_res
         ],
-        "location_risk": [],
+        "location_risk": [
+            {"location": r["_id"] or f"General {group_field.capitalize()}", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
+            for r in loc_res if r["_id"]
+        ],
         "top_risks": [
             {
                 "id": a["id"],

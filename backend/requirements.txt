@@ -10,7 +10,6 @@ requests==2.32.5
 httpx==0.28.1
 beautifulsoup4==4.14.3
 lxml==6.0.2
-newspaper3k==0.2.8
 tldextract==5.3.1
 
 nltk==3.9.3
@@ -34,5 +33,3 @@ typing_extensions==4.15.0
 motor
 pymongo
 dnspython
-torch
-transformers

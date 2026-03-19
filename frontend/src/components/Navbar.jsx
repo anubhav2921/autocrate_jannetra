@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2,
-    MapPin, Clock, Globe, ChevronDown,
+    MapPin, Clock, Globe, ChevronDown, Moon, Sun
 } from 'lucide-react';
 import { fetchLocationDashboard, fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../context/LocationContext';
+import { useTheme } from '../context/ThemeContext';
 import LocationFilter from './LocationFilter';
 
 export default function Navbar({ user }) {
+    const { theme, toggleTheme } = useTheme();
     const [alertCount, setAlertCount] = useState(0);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
     const [alertsData, setAlertsData] = useState([]);
@@ -116,6 +118,11 @@ export default function Navbar({ user }) {
                         )}
                     </div>
 
+                    {/* Theme Toggle */}
+                    <button className="notification-btn" title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`} onClick={toggleTheme}>
+                        {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                    </button>
+
                     {/* Alert Bell */}
                     <div style={{ position: 'relative' }} ref={dropdownRef}>
                         <button className="notification-btn" title="Alerts" onClick={toggleAlertOpen}>
@@ -128,18 +135,18 @@ export default function Navbar({ user }) {
                         {isAlertOpen && (
                             <div className="notifications-dropdown glass-card animate-in" style={{
                                 position: 'absolute', top: '45px', right: '0', width: '380px',
-                                padding: '12px', zIndex: 1000, border: '1px solid rgba(255,255,255,0.1)',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.5)', background: '#1e293b'
+                                padding: '12px', zIndex: 1000, border: '1px solid var(--border-color)',
+                                boxShadow: 'var(--shadow-lg)', background: 'var(--bg-secondary)'
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: '#f1f5f9' }}>Recent Notifications</span>
-                                    <button onClick={() => { setIsAlertOpen(false); navigate('/alerts'); }} style={{ background: 'none', border: 'none', color: '#3b82f6', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}>View All</button>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
+                                    <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Recent Notifications</span>
+                                    <button onClick={() => { setIsAlertOpen(false); navigate('/alerts'); }} style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.8rem', cursor: 'pointer', padding: 0 }}>View All</button>
                                 </div>
                                 {loadingAlerts ? (
                                     <div style={{ padding: '20px', textAlign: 'center' }}><div className="spinner" style={{ width: 20, height: 20, margin: 'auto' }} /></div>
                                 ) : alertsData.length === 0 ? (
-                                    <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                        <CheckCircle2 size={24} style={{ margin: '0 auto 8px', color: '#10b981' }} />
+                                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                        <CheckCircle2 size={24} style={{ margin: '0 auto 8px', color: 'var(--risk-low)' }} />
                                         No active alerts
                                     </div>
                                 ) : (
@@ -149,21 +156,21 @@ export default function Navbar({ user }) {
                                                 key={a.id}
                                                 onClick={() => { setSelectedAlert(a); setIsAlertOpen(false); }}
                                                 style={{
-                                                    padding: '10px', background: 'rgba(255,255,255,0.03)',
+                                                    padding: '10px', background: 'var(--bg-glass)',
                                                     borderRadius: '6px', cursor: 'pointer',
-                                                    borderLeft: `4px solid ${a.severity === 'CRITICAL' ? '#dc2626' : a.severity === 'HIGH' ? '#ef4444' : '#f59e0b'}`,
+                                                    borderLeft: `4px solid ${a.severity === 'CRITICAL' ? 'var(--risk-critical)' : a.severity === 'HIGH' ? 'var(--risk-high)' : 'var(--risk-moderate)'}`,
                                                     transition: 'background 0.2s'
                                                 }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-glass-hover)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-glass)'}
                                             >
-                                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f1f5f9', marginBottom: '6px' }}>{a.article?.title?.substring(0, 60)}...</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>{a.article?.title?.substring(0, 60)}...</div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-                                                        <AlertTriangle size={12} style={{ color: a.severity === 'CRITICAL' ? '#dc2626' : a.severity === 'HIGH' ? '#ef4444' : '#f59e0b' }} />
+                                                        <AlertTriangle size={12} style={{ color: a.severity === 'CRITICAL' ? 'var(--risk-critical)' : a.severity === 'HIGH' ? 'var(--risk-high)' : 'var(--risk-moderate)' }} />
                                                         {a.severity}
                                                     </span>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-blue)' }}>
                                                         Details <ChevronRight size={12} />
                                                     </span>
                                                 </div>
@@ -195,13 +202,13 @@ export default function Navbar({ user }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
                 }} onClick={() => setSelectedAlert(null)}>
                     <div className="glass-card animate-in" style={{
-                        background: '#0f172a', width: '90%', maxWidth: '600px',
-                        padding: '24px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'var(--bg-secondary)', width: '90%', maxWidth: '600px',
+                        padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)',
                         position: 'relative', overflowY: 'auto', maxHeight: '90vh'
                     }} onClick={e => e.stopPropagation()}>
                         <button onClick={() => setSelectedAlert(null)} style={{
                             position: 'absolute', top: '16px', right: '16px', background: 'none',
-                            border: 'none', color: '#94a3b8', cursor: 'pointer'
+                            border: 'none', color: 'var(--text-muted)', cursor: 'pointer'
                         }}>
                             <X size={20} />
                         </button>
@@ -211,40 +218,40 @@ export default function Navbar({ user }) {
                                 <AlertTriangle size={14} style={{ marginRight: '6px' }} />
                                 {selectedAlert.severity} ALERT
                             </span>
-                            <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{new Date(selectedAlert.created_at).toLocaleString()}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{new Date(selectedAlert.created_at).toLocaleString()}</span>
                         </div>
 
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#f8fafc', marginBottom: '16px', lineHeight: 1.4 }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px', lineHeight: 1.4 }}>
                             {selectedAlert.article?.title}
                         </h2>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1', fontSize: '0.85rem' }}>
-                                <Building2 size={16} style={{ color: '#3b82f6' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px', padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                <Building2 size={16} style={{ color: 'var(--accent-blue)' }} />
                                 <div>
-                                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Department</div>
+                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Department</div>
                                     <div style={{ fontWeight: 500 }}>{selectedAlert.department}</div>
                                 </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#cbd5e1', fontSize: '0.85rem' }}>
-                                <Clock size={16} style={{ color: '#f59e0b' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                <Clock size={16} style={{ color: 'var(--risk-moderate)' }} />
                                 <div>
-                                    <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Urgency</div>
+                                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Urgency</div>
                                     <div style={{ fontWeight: 500 }}>{selectedAlert.urgency}</div>
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ marginBottom: '16px' }}>
-                            <h4 style={{ color: '#cbd5e1', marginBottom: '6px', fontSize: '0.9rem' }}>Recommended Action</h4>
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5, background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid #3b82f6' }}>
+                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '6px', fontSize: '0.9rem' }}>Recommended Action</h4>
+                            <p style={{ color: 'var(--text-primary)', fontSize: '0.9rem', lineHeight: 1.5, background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid var(--accent-blue)' }}>
                                 {selectedAlert.recommendation}
                             </p>
                         </div>
-
+ 
                         <div style={{ marginBottom: '24px' }}>
-                            <h4 style={{ color: '#cbd5e1', marginBottom: '6px', fontSize: '0.9rem' }}>Response Strategy</h4>
-                            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                            <h4 style={{ color: 'var(--text-secondary)', marginBottom: '6px', fontSize: '0.9rem' }}>Response Strategy</h4>
+                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
                                 {selectedAlert.response_strategy}
                             </p>
                         </div>

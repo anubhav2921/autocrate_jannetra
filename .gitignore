@@ -1,99 +1,58 @@
-# ── Clean-up rules (User Requested) ──────────────────
+# JanNetra Root Gitignore (Refactored)
+
+# --- Secrets ---
+.env
+backend/.env
+frontend/.env
+serviceAccountKey.json
+
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
+*venv*/
 venv/
 venv311/
-venv311venv311/
 .venv/
-node_modules/
+.pyre*/
 *.log
+
+# --- Javascript / Node ---
+node_modules/
+dist/
+dist_frontend/
+frontend/dist/
+
+# --- Databases & Reports ---
+*.db
+*.sqlite
+*.sqlite3
+*.json
+!package.json
+!package-lock.json
+!backend/reports/*.json
+!backend/scripts/**/*.json
+
+# --- Tools & Temp ---
 tmp/
 *.txt
 !requirements.txt
 !*.example
-*.db
-*.sqlite
-*.sqlite3
-check_*.py
-verify_*.py
-audit_*.py
-audit*.py
-*.json
-!package.json
-!package-lock.json
-!requirements.txt
-!pyrightconfig.json
-!pyre_configuration
-!rails-project.json
-!repair_verification.json
-!repair_verification_mongodb.json
-!status.json
-serviceAccountKey.json
-# Additional items to ignore
-REPAIR_VERIFICATION*
-*.json
-!package.json
-!package-lock.json
-!status.json
-!repair_verification.json
-!repair_verification_mongodb.json
+
+# --- IDEs ---
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-.pyre/
-.mypy_cache/
-.pytest_cache/
-.cache/
-dist/
-dist_frontend/
-frontend/dist/
-frontend/.env
-backend/.env
-backend/Procfile
-backend/railway.json
-backend/.pyre_configuration
-backend/pyrightconfig.json
-pyrightconfig.json
-status.json
-audit_result.txt
-git_status_output.txt
-status_utf8.txt
-pip_error.txt
-# Keep important python files
+
+# --- Structure Rules ---
+# Keep all app source code
 !backend/app/**/*.py
-!*.py
-# Re-ignore identified junk
-check_*.py
-verify_*.py
-audit_*.py
-audit*.py
-tmp_verify_id.py
-test_*.py
-backend/check_*.py
-backend/verify_*.py
-backend/audit*.py
-backend/audit_*.py
-backend/generate_proof_report.py
-backend/test_*.py
-backend/run_ingestion.py
-backend/list_tables.py
-backend/rebuild_db.py
-backend/trace_error.py
-backend/mock_data.py
-# White-list only what is needed
-!migrate_departments.py
-!seed_clusters_from_articles.py
-!seed_sources.py
-!backend/repair_locations.py
-!backend/run_mock_seed.py
+!frontend/src/**/*
+!backend/scripts/**/*.py
+!backend/data/
+
+# Specific ignores for junk (already handled by extensions above generally)
+# But we keep explicitly named tools if they are in scripts
 !backend/run_backend.ps1
-!backend/requirements.txt
-!frontend/package.json
-!frontend/package-lock.json
-!frontend/vite.config.js
-!frontend/index.html
 !README.md
-repair_verification_mongodb.json
-repair_verification.json

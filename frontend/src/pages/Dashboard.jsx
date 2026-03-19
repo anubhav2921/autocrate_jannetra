@@ -13,7 +13,7 @@ const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444'];
 
 export default function Dashboard() {
-    const { location, hasLocation, locationLabel } = useLocation();
+    const { location, hasLocation, locationLabel, setLocation } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -24,6 +24,18 @@ export default function Dashboard() {
             .catch(console.error)
             .finally(() => setLoading(false));
     }, [location.state, location.district, location.city, location.ward]);
+
+    const handleDrillDown = (name) => {
+        if (!location.state) {
+            setLocation({ ...location, state: name });
+        } else if (!location.district) {
+            setLocation({ ...location, district: name, city: '', ward: '' });
+        } else if (!location.city) {
+            setLocation({ ...location, city: name, ward: '' });
+        } else if (!location.ward) {
+            setLocation({ ...location, ward: name });
+        }
+    };
 
     if (loading) {
         return (
@@ -123,6 +135,7 @@ export default function Dashboard() {
                                 <div
                                     key={loc.location}
                                     className={`heatmap-cell risk-${loc.avg_gri > 60 ? 'high' : loc.avg_gri > 30 ? 'moderate' : 'low'}`}
+                                    onClick={() => handleDrillDown(loc.location)}
                                 >
                                     <div className="cell-location">{loc.location}</div>
                                     <div className="cell-score" style={{ color: RISK_COLORS[loc.avg_gri > 60 ? 'HIGH' : loc.avg_gri > 30 ? 'MODERATE' : 'LOW'] }}>

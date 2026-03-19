@@ -9,6 +9,18 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
 
+const COUNTRY_CODES = [
+    { code: '+91', label: '🇮🇳 +91' },
+    { code: '+1', label: '🇺🇸 +1' },
+    { code: '+44', label: '🇬🇧 +44' },
+    { code: '+971', label: '🇦🇪 +971' },
+    { code: '+61', label: '🇦🇺 +61' },
+    { code: '+65', label: '🇸🇬 +65' },
+    { code: '+49', label: '🇩🇪 +49' },
+    { code: '+33', label: '🇫🇷 +33' },
+    { code: '+81', label: '🇯🇵 +81' },
+];
+
 // Firebase Test Phone Numbers (development only)
 // Add these in Firebase Console → Authentication → Sign-in method
 // → Phone → Phone numbers for testing
@@ -18,6 +30,7 @@ const TEST_PHONES = {
 
 export default function PhoneAuth({ onLogin }) {
     const [phone, setPhone] = useState('');
+    const [countryCode, setCountryCode] = useState('+91');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [step, setStep] = useState('phone');        // 'phone' | 'otp' | 'success'
     const [authMode, setAuthMode] = useState(null);   // 'firebase' | 'backend'
@@ -129,9 +142,11 @@ export default function PhoneAuth({ onLogin }) {
         setError('');
         setInfo('');
 
-        const { valid, cleaned } = validatePhone(phone);
-        if (!valid) {
-            setError('Enter a valid phone number in E.164 format (e.g., +919876543210)');
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = `${countryCode}${cleaned}`;
+
+        if (!/^\+[1-9]\d{7,14}$/.test(finalPhone)) {
+            setError('Enter a valid phone number');
             return;
         }
 
@@ -144,7 +159,7 @@ export default function PhoneAuth({ onLogin }) {
                 throw new Error('reCAPTCHA initialization failed');
             }
 
-            const result = await signInWithPhoneNumber(auth, cleaned, appVerifier);
+            const result = await signInWithPhoneNumber(auth, finalPhone, appVerifier);
             setConfirmationResult(result);
             setAuthMode('firebase');
             setStep('otp');
@@ -247,7 +262,8 @@ export default function PhoneAuth({ onLogin }) {
         }
 
         setLoading(true);
-        const cleaned = phone.replace(/\s/g, '');
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = `${countryCode}${cleaned}`;
 
         try {
             if (authMode === 'firebase' && confirmationResult) {
@@ -277,7 +293,7 @@ export default function PhoneAuth({ onLogin }) {
                 const res = await fetch(`${API_BASE}/auth/login-phone`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: cleaned, otp: code }),
+                    body: JSON.stringify({ phone_number: finalPhone, otp: code }),
                 });
                 const data = await res.json();
 
@@ -294,7 +310,7 @@ export default function PhoneAuth({ onLogin }) {
                         const regRes = await fetch(`${API_BASE}/auth/register-phone`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone_number: cleaned, otp: code }),
+                            body: JSON.stringify({ phone_number: finalPhone, otp: code }),
                         });
                         const regData = await regRes.json();
                         if (regData.success) {
@@ -331,9 +347,10 @@ export default function PhoneAuth({ onLogin }) {
         setError('');
         setInfo('');
         setOtp(['', '', '', '', '', '']);
-        setLoading(true);
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = `${countryCode}${cleaned}`;
 
-        const cleaned = phone.replace(/\s/g, '');
+        setLoading(true);
 
         try {
             if (authMode === 'firebase') {
@@ -341,7 +358,7 @@ export default function PhoneAuth({ onLogin }) {
                 const appVerifier = initRecaptcha();
                 if (!appVerifier) throw new Error('reCAPTCHA failed');
 
-                const result = await signInWithPhoneNumber(auth, cleaned, appVerifier);
+                const result = await signInWithPhoneNumber(auth, finalPhone, appVerifier);
                 setConfirmationResult(result);
                 startResendTimer();
                 setInfo('OTP resent successfully.');
@@ -351,7 +368,7 @@ export default function PhoneAuth({ onLogin }) {
                 const res = await fetch('/api/auth/send-phone-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: cleaned }),
+                    body: JSON.stringify({ phone_number: finalPhone }),
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -373,7 +390,7 @@ export default function PhoneAuth({ onLogin }) {
                     const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone_number: cleaned }),
+                        body: JSON.stringify({ phone_number: finalPhone }),
                     });
                     const data = await res.json();
                     if (data.success) {
@@ -401,7 +418,6 @@ export default function PhoneAuth({ onLogin }) {
             <div className="auth-card phone-auth-card">
                 {/* Brand */}
                 <div className="auth-brand">
-                    <Shield size={36} style={{ color: '#3b82f6' }} />
                     <h1>JanNetra</h1>
                     <p>Governance Intelligence System</p>
                 </div>
@@ -422,22 +438,30 @@ export default function PhoneAuth({ onLogin }) {
                         )}
 
                         <form onSubmit={handleSendOtp} className="auth-form">
-                            <div className="auth-field">
-                                <Phone size={16} className="auth-field-icon" />
-                                <input
-                                    id="phone-input"
-                                    type="tel"
-                                    placeholder="+91 98765 43210"
-                                    value={phone}
-                                    onChange={(e) => setPhone(e.target.value)}
-                                    required
-                                    autoComplete="tel"
-                                    autoFocus
-                                />
+                            <div className="auth-phone-row">
+                                <div className="auth-field country-select-field">
+                                    <select
+                                        value={countryCode}
+                                        onChange={(e) => setCountryCode(e.target.value)}
+                                        className="country-select"
+                                    >
+                                        {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="auth-field phone-input-field">
+                                    <Phone size={16} className="auth-field-icon" />
+                                    <input
+                                        id="phone-input"
+                                        type="tel"
+                                        placeholder="Enter Phone Number"
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                                        required
+                                        autoComplete="tel"
+                                        autoFocus
+                                    />
+                                </div>
                             </div>
-                            <p className="phone-hint">
-                                Include country code (e.g. +91 for India, +1 for US)
-                            </p>
 
                             {/* Test number hint for development */}
                             <div className="phone-test-hint">
@@ -491,7 +515,7 @@ export default function PhoneAuth({ onLogin }) {
                         <h2 className="auth-title">Verify OTP</h2>
                         <p className="auth-subtitle">
                             Enter the 6-digit code sent to{' '}
-                            <strong>{phone}</strong>
+                            <strong>{countryCode} {phone}</strong>
                         </p>
 
                         {authMode === 'backend' && (

@@ -189,18 +189,76 @@ export default function ProblemDetail() {
             </div>
 
             <div className="grid-2">
-                {/* Problem Description */}
+                {/* Problem Summary & Intelligence Summary */}
                 <div className="glass-card animate-in">
                     <div className="section-title" style={{ marginBottom: '16px' }}>
-                        <FileText size={18} /> Problem Summary
+                        <FileText size={18} /> {problem.hasGeminiSummary ? 'AI Intelligence Summary' : 'Problem Summary'}
                     </div>
-                    <p style={{
-                        fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8,
-                        background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '10px',
-                        border: '1px solid var(--border-color)', minHeight: '120px'
-                    }}>
-                        {problem.description || problem.title}
-                    </p>
+                    
+                    {problem.hasGeminiSummary ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                                    Problem Description
+                                </div>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                    {problem.description}
+                                </p>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                                        Location Context
+                                    </div>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {problem.locationDetail || problem.location}
+                                    </p>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                                        Evidence Analysis
+                                    </div>
+                                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                        {problem.evidenceSummary || 'Multiple signals clustered by semantic similarity.'}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div style={{ 
+                                background: 'rgba(139, 92, 246, 0.05)', 
+                                border: '1px solid rgba(139, 92, 246, 0.2)', 
+                                padding: '16px', 
+                                borderRadius: '8px',
+                                marginTop: '4px'
+                            }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-purple)', marginBottom: '6px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Shield size={14} /> Recommended Solution for Leaders
+                                </div>
+                                <p style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 500, lineHeight: 1.5 }}>
+                                    {problem.expectedSolution}
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: '20px' }}>
+                                {problem.description || problem.title}
+                            </p>
+                            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                                <button 
+                                    onClick={() => window.location.reload()} 
+                                    className="btn btn-ghost"
+                                    style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', gap: '8px', padding: '8px 16px' }}
+                                >
+                                    <Zap size={14} /> Generate AI Intelligence Report
+                                </button>
+                                <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                    AI analysis may take a few seconds for new signal clusters.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Signals Cluster Evidence */}
@@ -267,7 +325,12 @@ export default function ProblemDetail() {
 
                         {!showResolveForm ? (
                             <button
-                                onClick={() => setShowResolveForm(true)}
+                                onClick={() => {
+                                    setShowResolveForm(true);
+                                    if (problem.expectedSolution && !report) {
+                                        setReport(`Proposed Action Plan:\n${problem.expectedSolution}\n\nActual Resolution Details:\n`);
+                                    }
+                                }}
                                 className="btn btn-primary"
                                 style={{
                                     padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,

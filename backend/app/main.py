@@ -15,7 +15,8 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.routes import (
     auth, dashboard, articles, alerts, analytics, sources, resolutions,
     map_route, leaderboard, chatbot, scanner, signal_problems,
-    system_monitoring, reports, account, complaints, pipeline, location
+    system_monitoring, reports, account, complaints, pipeline, location,
+    citizen_reports
 )
 
 logging.basicConfig(
@@ -99,7 +100,7 @@ routers = [
     analytics.router, sources.router, resolutions.router, map_route.router,
     leaderboard.router, chatbot.router, scanner.router, signal_problems.router,
     system_monitoring.router, reports.router, account.router,
-    complaints.router, pipeline.router, location.router
+    complaints.router, pipeline.router, location.router, citizen_reports.router
 ]
 
 for router in routers:

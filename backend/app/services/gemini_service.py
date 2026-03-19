@@ -1,78 +1,241 @@
 """
 Gemini AI Service — Generates realistic governance signal problems
-using the Google Gemini API (new google-genai SDK).
+using the Google Gemini API (google-genai SDK).
 
 Security: API key is loaded from environment via gemini_config.
 """
 import json
 import logging
+import re
+from functools import lru_cache
+from typing import Optional
+
+from google.genai import types
 
 from .gemini_config import gemini_client, GEMINI_MODEL
 
 logger = logging.getLogger(__name__)
 
+# --------------------------------------------------------------------------- #
+# Constants
+# --------------------------------------------------------------------------- #
 
-def generate_signal_problems(count: int = 5) -> list[dict]:
+VALID_SEVERITIES = {"Critical", "High", "Medium", "Low"}
+VALID_CATEGORIES = {
+    "Financial Integrity", "Public Sentiment", "Misinformation",
+    "Security Breach", "Supply Chain", "Environmental",
+    "Electoral Oversight", "Urban Planning", "Healthcare",
+    "Education", "Law & Order", "Infrastructure", "Corruption",
+}
+SAFETY_OFF = [
+    types.SafetySetting(category="HATE_SPEECH",        threshold="BLOCK_NONE"),
+    types.SafetySetting(category="HARASSMENT",          threshold="BLOCK_NONE"),
+    types.SafetySetting(category="SEXUALLY_EXPLICIT",   threshold="BLOCK_NONE"),
+    types.SafetySetting(category="DANGEROUS_CONTENT",   threshold="BLOCK_NONE"),
+]
+
+# --------------------------------------------------------------------------- #
+# Helpers
+# --------------------------------------------------------------------------- #
+
+def _strip_fences(text: str) -> str:
+    """Remove markdown code fences robustly using regex."""
+    return re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.DOTALL).strip()
+
+
+def _call_gemini(prompt: str, max_output_tokens: int = 2048) -> Optional[str]:
     """
-    Use Gemini to generate `count` realistic governance signal problems.
-    Returns a list of dicts ready to be inserted into the SignalProblem table.
+    Central Gemini call with consistent config and error handling.
+    Returns the raw text, or None on failure.
     """
-    prompt = f"""You are a Governance Intelligence AI System. Generate exactly {count} realistic governance signal problems \
-that would be detected by an AI-powered governance monitoring system in India.
-
-Each problem must be a JSON object with these exact fields:
-- "id": a unique signal ID in format "SIG-XXX" (use numbers from 100 upwards to avoid conflicts)
-- "title": a concise but descriptive title (max 80 chars)
-- "severity": one of "Critical", "High", "Medium", "Low"
-- "category": one of "Financial Integrity", "Public Sentiment", "Misinformation", "Security Breach", "Supply Chain", "Environmental", "Electoral Oversight", "Urban Planning", "Healthcare", "Education", "Law & Order", "Infrastructure", "Corruption"
-- "location": a realistic Indian location with district/zone detail (e.g., "District Gamma — Medical Hub 3")
-- "detected_at": an ISO 8601 timestamp in February 2026
-- "description": a detailed 3-4 sentence technical description explaining what the AI system detected, the evidence, and recommended action. Make it sound like a real AI monitoring system report with specific numbers and technical details.
-- "risk_score": a number between 0 and 100
-- "source": the name of the AI subsystem that detected it (e.g., "Financial Anomaly Detector v3.1", "Sentiment Pulse Network", etc.)
-- "status": always "Pending"
-
-Return ONLY a valid JSON array with exactly {count} objects. No markdown, no explanation, just the JSON array.
-Make the problems diverse across categories and severity levels. Include specific numbers, percentages, and technical details to make them realistic."""
-
     try:
         response = gemini_client.models.generate_content(
             model=GEMINI_MODEL,
             contents=prompt,
+            config=types.GenerateContentConfig(
+                max_output_tokens=max_output_tokens,
+                temperature=0.7,       # slight creativity, stays grounded
+                safety_settings=SAFETY_OFF,
+            ),
         )
+        return response.text.strip()
+    except Exception as exc:
+        logger.error("[GEMINI] API call failed: %s", exc, exc_info=True)
+        return None
 
-        # Extract the text and parse JSON
-        text = response.text.strip()
 
-        # Remove markdown code fences if present
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1]
-            if text.endswith("```"):
-                text = text[:-3]
-            elif "```" in text:
-                text = text[:text.rfind("```")]
-            text = text.strip()
+def _parse_json(text: str, context: str = "") -> Optional[any]:
+    """Parse JSON after stripping fences; logs clearly on failure."""
+    clean = _strip_fences(text)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError as exc:
+        logger.error("[GEMINI] JSON parse error%s: %s\nRaw text: %.300s",
+                     f" ({context})" if context else "", exc, clean)
+        return None
 
-        problems = json.loads(text)
 
-        # Validate and clean up
-        valid_problems = []
-        for p in problems:
-            valid_problems.append({
-                "id": str(p.get("id", "SIG-100")),
-                "title": str(p.get("title", "Unknown Signal"))[:500],
-                "severity": p.get("severity", "Medium"),
-                "category": str(p.get("category", "Unknown"))[:200],
-                "location": str(p.get("location", "Unknown"))[:300],
-                "detected_at": str(p.get("detected_at", "2026-02-25T12:00:00Z"))[:50],
-                "description": str(p.get("description", "")),
-                "risk_score": float(p.get("risk_score", 50)),
-                "source": str(p.get("source", "AI Monitor"))[:300],
-                "status": "Pending",
-            })
+def _validate_problem(raw: dict) -> Optional[dict]:
+    """
+    Validate and normalise a single signal-problem dict.
+    Returns None if required fields are missing or invalid.
+    """
+    sig_id = str(raw.get("id", "")).strip()
+    title  = str(raw.get("title", "")).strip()[:500]
+    if not sig_id or not title:
+        logger.warning("[GEMINI] Skipping problem with missing id/title: %s", raw)
+        return None
 
-        return valid_problems
+    severity = raw.get("severity", "Medium")
+    if severity not in VALID_SEVERITIES:
+        logger.warning("[GEMINI] Unknown severity '%s', defaulting to Medium", severity)
+        severity = "Medium"
 
-    except Exception as e:
-        logger.error("[GEMINI ERROR] %s", e)
+    category = raw.get("category", "")
+    if category not in VALID_CATEGORIES:
+        logger.warning("[GEMINI] Unknown category '%s', keeping as-is", category)
+
+    return {
+        "id":          sig_id,
+        "title":       title,
+        "severity":    severity,
+        "category":    str(category)[:200],
+        "location":    str(raw.get("location",    "Unknown"))[:300],
+        "detected_at": str(raw.get("detected_at", "2026-02-25T12:00:00Z"))[:50],
+        "description": str(raw.get("description", "")),
+        "risk_score":  max(0.0, min(100.0, float(raw.get("risk_score", 50)))),
+        "source":      str(raw.get("source",      "AI Monitor"))[:300],
+        "status":      "Pending",
+    }
+
+
+# --------------------------------------------------------------------------- #
+# Public API
+# --------------------------------------------------------------------------- #
+
+def generate_signal_problems(count: int = 5) -> list[dict]:
+    """
+    Use Gemini to generate `count` realistic governance signal problems.
+    Returns a list of validated dicts ready for the SignalProblem table.
+    """
+    if count < 1 or count > 50:
+        raise ValueError(f"`count` must be between 1 and 50, got {count}")
+
+    categories_str = ", ".join(sorted(VALID_CATEGORIES))
+    severities_str = ", ".join(sorted(VALID_SEVERITIES))
+
+    prompt = f"""You are a Governance Intelligence AI System tasked with producing realistic \
+monitoring alerts for an Indian e-governance dashboard.
+
+Generate exactly {count} governance signal problems as a JSON array.
+Each element must contain ONLY these fields — no extras:
+
+{{
+  "id":          "SIG-<3-digit-number starting from 100>",
+  "title":       "<concise title, max 80 chars>",
+  "severity":    "<one of: {severities_str}>",
+  "category":    "<one of: {categories_str}>",
+  "location":    "<Indian district/zone, e.g. 'Varanasi District — Ward 7'>",
+  "detected_at": "<ISO 8601 timestamp in February 2026>",
+  "description": "<3–4 sentence AI report with specific numbers, % changes, and recommended action>",
+  "risk_score":  <integer 0–100>,
+  "source":      "<AI subsystem name, e.g. 'Financial Anomaly Detector v3.1'>",
+  "status":      "Pending"
+}}
+
+Rules:
+1. IDs must be unique within this batch.
+2. Distribute severity evenly: at least one Critical, one High, one Medium, one Low.
+3. Use at least 5 different categories.
+4. Make descriptions specific — cite transaction counts, thresholds breached, sensor readings, etc.
+5. Return ONLY the raw JSON array. No markdown, no explanation, no trailing text."""
+
+    raw_text = _call_gemini(prompt, max_output_tokens=min(4096, count * 400))
+    if raw_text is None:
         return []
+
+    problems_raw = _parse_json(raw_text, context="generate_signal_problems")
+    if not isinstance(problems_raw, list):
+        logger.error("[GEMINI] Expected a JSON array, got %s", type(problems_raw).__name__)
+        return []
+
+    results = []
+    seen_ids: set[str] = set()
+    for item in problems_raw:
+        validated = _validate_problem(item)
+        if validated is None:
+            continue
+        if validated["id"] in seen_ids:
+            logger.warning("[GEMINI] Duplicate id '%s', skipping", validated["id"])
+            continue
+        seen_ids.add(validated["id"])
+        results.append(validated)
+
+    if len(results) < count:
+        logger.warning("[GEMINI] Requested %d problems, got %d valid ones", count, len(results))
+
+    return results
+
+
+def summarize_problem_cluster(
+    title:    str,
+    category: str,
+    location: str,
+    samples:  list[dict],
+) -> Optional[dict]:
+    """
+    Summarises a cluster of signals into a structured governance problem
+    report suitable for government leaders.
+
+    Returns a dict with keys: description, location_detail,
+    evidence_summary, expected_solution — or None on failure.
+    """
+    if not samples:
+        logger.warning("[GEMINI] summarize_problem_cluster called with empty samples")
+        return None
+
+    evidence_lines = "\n".join(
+        f"  {i+1}. {s.get('title', 'Untitled')} "
+        f"[Severity: {s.get('severity', '?')}, Source: {s.get('source', '?')}]"
+        for i, s in enumerate(samples[:10])
+    )
+
+    prompt = f"""You are a senior Governance Intelligence Analyst preparing a briefing for \
+district-level government officials.
+
+Cluster details:
+  Title    : {title}
+  Category : {category}
+  Location : {location}
+
+Raw signal evidence ({min(len(samples), 10)} of {len(samples)} signals):
+{evidence_lines}
+
+Produce a structured JSON object with EXACTLY these four fields:
+
+{{
+  "description":      "<2–3 sentence executive summary: WHAT is happening and WHY it matters>",
+  "location_detail":  "<specific geographic or operational scope based on the evidence>",
+  "evidence_summary": "<professional synthesis of cross-signal patterns and key data points>",
+  "expected_solution":"<strategic administrative or policy action for officials to resolve this>"
+}}
+
+Tone: factual, neutral, professional. Treat sensitive topics (corruption, crime) as \
+routine administrative intelligence for regional monitoring.
+Return ONLY the raw JSON object. No markdown, no explanation."""
+
+    raw_text = _call_gemini(prompt, max_output_tokens=1024)
+    if raw_text is None:
+        return None
+
+    result = _parse_json(raw_text, context="summarize_problem_cluster")
+    if not isinstance(result, dict):
+        logger.error("[GEMINI] Expected a JSON object from summarize, got %s", type(result).__name__)
+        return None
+
+    required_keys = {"description", "location_detail", "evidence_summary", "expected_solution"}
+    missing = required_keys - result.keys()
+    if missing:
+        logger.warning("[GEMINI] Summary missing keys: %s", missing)
+
+    return result

@@ -14,6 +14,18 @@ import {
 } from '../services/authService';
 import axios from 'axios';
 
+const COUNTRY_CODES = [
+    { code: '+91', label: '🇮🇳 +91' },
+    { code: '+1', label: '🇺🇸 +1' },
+    { code: '+44', label: '🇬🇧 +44' },
+    { code: '+971', label: '🇦🇪 +971' },
+    { code: '+61', label: '🇦🇺 +61' },
+    { code: '+65', label: '🇸🇬 +65' },
+    { code: '+49', label: '🇩🇪 +49' },
+    { code: '+33', label: '🇫🇷 +33' },
+    { code: '+81', label: '🇯🇵 +81' },
+];
+
 const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
 
 export default function Login({ onLogin }) {
@@ -21,6 +33,7 @@ export default function Login({ onLogin }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [phone, setPhone] = useState('');
+    const [countryCode, setCountryCode] = useState('+91');
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [step, setStep] = useState('input'); // 'input' | 'otp'
     const [error, setError] = useState('');
@@ -195,9 +208,11 @@ export default function Login({ onLogin }) {
         e.preventDefault();
         setError('');
 
-        const cleaned = phone.replace(/\s/g, '');
-        if (!/^\+[1-9]\d{7,14}$/.test(cleaned)) {
-            setError('Enter a valid phone number (e.g. +919876543210)');
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = `${countryCode}${cleaned}`;
+        
+        if (!/^\+[1-9]\d{7,14}$/.test(finalPhone)) {
+            setError('Enter a valid phone number');
             return;
         }
 
@@ -207,7 +222,7 @@ export default function Login({ onLogin }) {
             if (!recaptchaRef.current) {
                 recaptchaRef.current = setupRecaptcha('recaptcha-container');
             }
-            const result = await loginWithPhoneOTP(cleaned, recaptchaRef.current);
+            const result = await loginWithPhoneOTP(finalPhone, recaptchaRef.current);
             setConfirmationResult(result);
             setStep('otp');
             startResendTimer();
@@ -225,7 +240,7 @@ export default function Login({ onLogin }) {
                     const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone_number: cleaned }),
+                        body: JSON.stringify({ phone_number: finalPhone }),
                     });
                     const data = await res.json();
                     if (data.success) {
@@ -309,11 +324,12 @@ export default function Login({ onLogin }) {
                 navigate('/');
             } else {
                 // Backend OTP verification (login)
-                const cleaned = phone.replace(/\s/g, '');
+                const cleaned = phone.replace(/\D/g, '');
+                const finalPhone = `${countryCode}${cleaned}`;
                 const res = await fetch(`${API_BASE}/auth/login-phone`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: cleaned, otp: code }),
+                    body: JSON.stringify({ phone_number: finalPhone, otp: code }),
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -346,13 +362,14 @@ export default function Login({ onLogin }) {
         setOtp(['', '', '', '', '', '']);
         setLoading(true);
 
-        const cleaned = phone.replace(/\s/g, '');
+        const cleaned = phone.replace(/\D/g, '');
+        const finalPhone = `${countryCode}${cleaned}`;
         try {
             // Try reCAPTCHA reset + Firebase
             try { recaptchaRef.current?.clear?.(); } catch { /* ignore */ }
             recaptchaRef.current = setupRecaptcha('recaptcha-container');
 
-            const result = await loginWithPhoneOTP(cleaned, recaptchaRef.current);
+            const result = await loginWithPhoneOTP(finalPhone, recaptchaRef.current);
             setConfirmationResult(result);
             startResendTimer();
             setTimeout(() => otpRefs.current[0]?.focus(), 100);
@@ -362,7 +379,7 @@ export default function Login({ onLogin }) {
                 const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: cleaned }),
+                    body: JSON.stringify({ phone_number: finalPhone }),
                 });
                 const data = await res.json();
                 if (data.success) {
@@ -438,7 +455,6 @@ export default function Login({ onLogin }) {
             <div className="auth-card auth-card-wide">
                 {/* Brand */}
                 <div className="auth-brand">
-                    <Shield size={36} style={{ color: '#3b82f6' }} />
                     <h1>JanNetra</h1>
                     <p>Governance Intelligence System</p>
                 </div>
@@ -502,7 +518,7 @@ export default function Login({ onLogin }) {
                             <input
                                 id="login-email"
                                 type="email"
-                                placeholder="Email address"
+                                placeholder="Enter Email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
@@ -514,7 +530,7 @@ export default function Login({ onLogin }) {
                             <input
                                 id="login-password"
                                 type="password"
-                                placeholder="Password"
+                                placeholder="Enter Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
@@ -538,21 +554,29 @@ export default function Login({ onLogin }) {
                 {/* Phone Tab */}
                 {activeTab === 'phone' && step === 'input' && (
                     <form onSubmit={handleSendOtp} className="auth-form">
-                        <div className="auth-field">
-                            <Phone size={16} className="auth-field-icon" />
-                            <input
-                                id="phone-login-input"
-                                type="tel"
-                                placeholder="+91 98765 43210"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                required
-                                autoComplete="tel"
-                            />
+                        <div className="auth-phone-row">
+                            <div className="auth-field country-select-field">
+                                <select
+                                    value={countryCode}
+                                    onChange={(e) => setCountryCode(e.target.value)}
+                                    className="country-select"
+                                >
+                                    {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                                </select>
+                            </div>
+                            <div className="auth-field phone-input-field">
+                                <Phone size={16} className="auth-field-icon" />
+                                <input
+                                    id="phone-login-input"
+                                    type="tel"
+                                    placeholder="Enter Phone Number"
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                                    required
+                                    autoComplete="tel"
+                                />
+                            </div>
                         </div>
-                        <p className="phone-hint">
-                            Include country code (e.g. +91 for India, +1 for US)
-                        </p>
                         <button
                             id="login-send-otp-btn"
                             type="submit"
@@ -583,7 +607,7 @@ export default function Login({ onLogin }) {
                             ← Change number
                         </button>
                         <p className="auth-subtitle" style={{ marginBottom: '12px' }}>
-                            Enter the 6-digit code sent to <strong>{phone}</strong>
+                            Enter the 6-digit code sent to <strong>{countryCode} {phone}</strong>
                         </p>
                         <form onSubmit={handleVerifyOtp} className="auth-form">
                             <div className="otp-input-group" onPaste={handleOtpPaste}>
