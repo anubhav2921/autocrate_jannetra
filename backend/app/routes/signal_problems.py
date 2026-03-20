@@ -61,8 +61,8 @@ async def list_signal_problems(
             "severity": p.get("severity", "LOW"),
             "category": p.get("category"),
             "location": p.get("location") or ", ".join(p.get("locations", [])),
-            "detectedAt": p.get("detected_at").strftime("%Y-%m-%d") if isinstance(p.get("detected_at"), datetime) else p.get("detected_at"),
-            "lastUpdated": p.get("last_updated").strftime("%Y-%m-%d %H:%M") if isinstance(p.get("last_updated"), datetime) else p.get("last_updated"),
+            "detectedAt": p.get("detected_at").strftime("%Y-%m-%d") if hasattr(p.get("detected_at"), "strftime") else p.get("detected_at"),
+            "lastUpdated": p.get("last_updated").strftime("%Y-%m-%d %H:%M") if hasattr(p.get("last_updated"), "strftime") else p.get("last_updated"),
             "description": p.get("description") or p.get("title"),
             "riskScore": p.get("priority_score") or p.get("risk_score") or 0.0,
             "priorityScore": p.get("priority_score", 0.0),
@@ -72,13 +72,59 @@ async def list_signal_problems(
             "sampleRecords": p.get("sample_records", []),
             "resolutionReport": p.get("resolution_report"),
             "resolutionProofUrl": p.get("resolution_proof_url"),
-            "resolvedAt": p.get("resolved_at").strftime("%Y-%m-%d %H:%M") if isinstance(p.get("resolved_at"), datetime) else None,
+            "resolvedAt": p.get("resolved_at").strftime("%Y-%m-%d %H:%M") if hasattr(p.get("resolved_at"), "strftime") else None,
             "hasGeminiSummary": p.get("has_gemini_summary", False)
         }
         for p in problems_cursor
     ]
 
+    # Fallback to news_articles_collection if signal_problems_collection is empty
+    if not results:
+        article_match = _build_location_match(state, district, city, ward)
+        if user_role != "ADMIN" and user_dept and not user_id:
+            article_match["department"] = user_dept
+            
+        articles_cursor = await news_articles_collection.find(article_match).sort("risk_score", -1).limit(50).to_list(50)
+        
+        def get_severity(score):
+            if score >= 85: return "Critical"
+            elif score >= 70: return "High"
+            elif score >= 50: return "Medium"
+            return "Low"
+
+        for a in articles_cursor:
+            loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
+            location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
+            det_at = a.get("scraped_at") or datetime.utcnow()
+            
+            # Map news article to signal problem format
+            mapped_status = "Pending"
+            if status and status != "Pending":
+                continue # Skip if looking for resolved and this is fallback (all pending)
+                
+            results.append({
+                "id": a.get("id") or f"SIG-{str(a['_id'])[-6:].upper()}",
+                "title": a.get("title") or "Unknown Event",
+                "severity": get_severity(a.get("risk_score") or 0),
+                "category": a.get("category", "General"),
+                "location": location_str,
+                "detectedAt": det_at.strftime("%Y-%m-%d") if hasattr(det_at, "strftime") else det_at,
+                "lastUpdated": det_at.strftime("%Y-%m-%d %H:%M") if hasattr(det_at, "strftime") else det_at,
+                "description": a.get("content") or a.get("title") or "",
+                "riskScore": round(a.get("risk_score") or 0, 1),
+                "priorityScore": round(a.get("risk_score") or 0, 1),
+                "frequency": 1,
+                "source": a.get("source_name", "Unknown"),
+                "status": mapped_status,
+                "sampleRecords": [],
+                "resolutionReport": None,
+                "resolutionProofUrl": None,
+                "resolvedAt": None,
+                "hasGeminiSummary": False
+            })
+
     return results
+
 
 
 @router.get("/signal-problems/{problem_id}")
@@ -138,6 +184,44 @@ async def get_signal_problem(problem_id: str):
             "resolutionProofUrl": p.get("resolution_proof_url"),
             "resolvedAt": p.get("resolved_at")
         }
+
+    # 2. Try to find in synthetic (news articles) if not in signal_problems
+    if problem_id.startswith("SIG-"):
+        suffix = problem_id[4:].lower()
+        async for a in news_articles_collection.find({}):
+            if str(a["_id"])[-6:].lower() == suffix:
+                
+                def get_severity(score):
+                    if score >= 85: return "Critical"
+                    elif score >= 70: return "High"
+                    elif score >= 50: return "Medium"
+                    return "Low"
+
+                loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
+                location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
+
+                return {
+                    "id": problem_id,
+                    "title": a.get("title"),
+                    "severity": get_severity(a.get("risk_score") or 0),
+                    "category": a.get("category") or "General",
+                    "location": location_str,
+                    "detectedAt": a.get("scraped_at"),
+                    "lastUpdated": a.get("scraped_at"),
+                    "description": a.get("content") or a.get("title") or "",
+                    "locationDetail": location_str,
+                    "evidenceSummary": "Synthetic problem derived from news article.",
+                    "expectedSolution": "Investigation required by concerned department.",
+                    "hasGeminiSummary": False,
+                    "priorityScore": a.get("risk_score") or 0.0,
+                    "frequency": 1,
+                    "source": a.get("source_name"),
+                    "status": "Pending",
+                    "sampleRecords": [],
+                    "resolutionReport": None,
+                    "resolutionProofUrl": None,
+                    "resolvedAt": None
+                }
 
     raise HTTPException(status_code=404, detail=f"Signal problem '{problem_id}' not found.")
 
