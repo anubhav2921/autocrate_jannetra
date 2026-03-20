@@ -1,30 +1,35 @@
-"""
-Firebase Admin SDK — one-time initialization.
-
-Provides an `initialize_firebase()` helper that is safe to call multiple times.
-The SDK is configured using the serviceAccountKey.json located alongside this file.
-"""
-
 import os
+import json
 import firebase_admin
 from firebase_admin import credentials
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_CRED_PATH = os.path.join(BASE_DIR, "serviceAccountKey.json")
-
-
 def initialize_firebase():
-    """Initialize Firebase Admin SDK (idempotent — safe to call repeatedly)."""
     if not firebase_admin._apps:
-        if not os.path.exists(_CRED_PATH):
-            raise FileNotFoundError(
-                f"serviceAccountKey.json not found at {_CRED_PATH}. "
-                "Download it from the Firebase Console → Project Settings → Service Accounts."
-            )
-        cred = credentials.Certificate(_CRED_PATH)
-        firebase_admin.initialize_app(cred)
-        print("Firebase Admin Initialized Successfully")
+
+        firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+
+        # ✅ PRODUCTION (Railway)
+        if firebase_json:
+            try:
+                cred_dict = json.loads(firebase_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+                print("✅ Firebase initialized from ENV")
+                return
+            except Exception as e:
+                print("❌ ENV Firebase error:", e)
+
+        # ✅ LOCAL (fallback)
+        BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+        cred_path = os.path.join(BASE_DIR, "serviceAccountKey.json")
+
+        if os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+            print("✅ Firebase initialized from file")
+        else:
+            print("❌ Firebase Admin not configured")
 
 
-# Auto-initialize when this module is first imported
+# auto init
 initialize_firebase()
