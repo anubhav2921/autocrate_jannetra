@@ -154,6 +154,38 @@ def _generate_insights(issue: dict):
 async def export_issue_report(issue_id: str = Query(...)):
     # 1. Fetch Issue
     issue = await signal_problems_collection.find_one({"id": issue_id})
+    
+    if not issue:
+        # Fallback to news_articles_collection
+        a = await news_articles_collection.find_one({"id": issue_id})
+        if not a and issue_id.startswith("SIG-"):
+            suffix = issue_id[4:].lower()
+            async for article in news_articles_collection.find({}):
+                if str(article["_id"])[-6:].lower() == suffix:
+                    a = article
+                    break
+        if a:
+            def get_severity(score):
+                if score >= 85: return "Critical"
+                elif score >= 70: return "High"
+                elif score >= 50: return "Medium"
+                return "Low"
+
+            loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
+            location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
+
+            issue = {
+                "id": issue_id,
+                "title": a.get("title"),
+                "severity": get_severity(a.get("risk_score") or 0),
+                "category": a.get("category") or "General",
+                "location": location_str,
+                "description": a.get("content") or a.get("title") or "",
+                "priority_score": a.get("risk_score") or 0.0,
+                "frequency": 1,
+                "status": "Pending"
+            }
+
     if not issue:
         raise HTTPException(status_code=404, detail="Issue not found")
     

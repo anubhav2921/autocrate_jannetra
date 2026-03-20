@@ -186,42 +186,46 @@ async def get_signal_problem(problem_id: str):
         }
 
     # 2. Try to find in synthetic (news articles) if not in signal_problems
-    if problem_id.startswith("SIG-"):
+    a = await news_articles_collection.find_one({"id": problem_id})
+    if not a and problem_id.startswith("SIG-"):
         suffix = problem_id[4:].lower()
-        async for a in news_articles_collection.find({}):
-            if str(a["_id"])[-6:].lower() == suffix:
-                
-                def get_severity(score):
-                    if score >= 85: return "Critical"
-                    elif score >= 70: return "High"
-                    elif score >= 50: return "Medium"
-                    return "Low"
+        async for article in news_articles_collection.find({}):
+            if str(article["_id"])[-6:].lower() == suffix:
+                a = article
+                break
 
-                loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
-                location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
+    if a:
+        def get_severity(score):
+            if score >= 85: return "Critical"
+            elif score >= 70: return "High"
+            elif score >= 50: return "Medium"
+            return "Low"
 
-                return {
-                    "id": problem_id,
-                    "title": a.get("title"),
-                    "severity": get_severity(a.get("risk_score") or 0),
-                    "category": a.get("category") or "General",
-                    "location": location_str,
-                    "detectedAt": a.get("scraped_at"),
-                    "lastUpdated": a.get("scraped_at"),
-                    "description": a.get("content") or a.get("title") or "",
-                    "locationDetail": location_str,
-                    "evidenceSummary": "Synthetic problem derived from news article.",
-                    "expectedSolution": "Investigation required by concerned department.",
-                    "hasGeminiSummary": False,
-                    "priorityScore": a.get("risk_score") or 0.0,
-                    "frequency": 1,
-                    "source": a.get("source_name"),
-                    "status": "Pending",
-                    "sampleRecords": [],
-                    "resolutionReport": None,
-                    "resolutionProofUrl": None,
-                    "resolvedAt": None
-                }
+        loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
+        location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
+
+        return {
+            "id": problem_id,
+            "title": a.get("title"),
+            "severity": get_severity(a.get("risk_score") or 0),
+            "category": a.get("category") or "General",
+            "location": location_str,
+            "detectedAt": a.get("scraped_at"),
+            "lastUpdated": a.get("scraped_at"),
+            "description": a.get("content") or a.get("title") or "",
+            "locationDetail": location_str,
+            "evidenceSummary": "Synthetic problem derived from news article.",
+            "expectedSolution": "Investigation required by concerned department.",
+            "hasGeminiSummary": False,
+            "priorityScore": a.get("risk_score") or 0.0,
+            "frequency": 1,
+            "source": a.get("source_name"),
+            "status": "Pending",
+            "sampleRecords": [],
+            "resolutionReport": None,
+            "resolutionProofUrl": None,
+            "resolvedAt": None
+        }
 
     raise HTTPException(status_code=404, detail=f"Signal problem '{problem_id}' not found.")
 
@@ -254,35 +258,39 @@ async def resolve_signal_problem(
         return {"success": True, "id": problem_id, "status": "Problem Resolved"}
 
     # 2. Try to find in synthetic (news articles)
-    if problem_id.startswith("SIG-"):
+    a = await news_articles_collection.find_one({"id": problem_id})
+    if not a and problem_id.startswith("SIG-"):
         suffix = problem_id[4:].lower()
-        async for a in news_articles_collection.find({}):
-            if str(a["_id"])[-6:].lower() == suffix:
+        async for article in news_articles_collection.find({}):
+            if str(article["_id"])[-6:].lower() == suffix:
+                a = article
+                break
                 
-                def get_severity(score):
-                    if score >= 85: return "Critical"
-                    elif score >= 70: return "High"
-                    elif score >= 50: return "Medium"
-                    return "Low"
+    if a:
+        def get_severity(score):
+            if score >= 85: return "Critical"
+            elif score >= 70: return "High"
+            elif score >= 50: return "Medium"
+            return "Low"
 
-                def article_location_str(a):
-                    parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
-                    return ", ".join(parts) if parts else (a.get("source_name") or "Unknown")
+        def article_location_str(a):
+            parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
+            return ", ".join(parts) if parts else (a.get("source_name") or "Unknown")
 
-                new_sp = {
-                    "id": problem_id,
-                    "title": a.get("title"),
-                    "severity": get_severity(a.get("risk_score") or 0),
-                    "category": a.get("category") or "General",
-                    "location": article_location_str(a),
-                    "detected_at": a["scraped_at"].strftime("%Y-%m-%d") if isinstance(a.get("scraped_at"), datetime) else a.get("scraped_at"),
-                    "description": a.get("content") or a.get("title") or "",
-                    "risk_score": round(a.get("risk_score") or 0, 1),
-                    "source": a.get("source_name"),
-                    **update_data
-                }
-                await signal_problems_collection.insert_one(new_sp)
-                return {"success": True, "id": problem_id, "status": "Problem Resolved"}
+        new_sp = {
+            "id": problem_id,
+            "title": a.get("title"),
+            "severity": get_severity(a.get("risk_score") or 0),
+            "category": a.get("category") or "General",
+            "location": article_location_str(a),
+            "detected_at": a["scraped_at"].strftime("%Y-%m-%d") if hasattr(a.get("scraped_at"), "strftime") else a.get("scraped_at"),
+            "description": a.get("content") or a.get("title") or "",
+            "risk_score": round(a.get("risk_score") or 0, 1),
+            "source": a.get("source_name"),
+            **update_data
+        }
+        await signal_problems_collection.insert_one(new_sp)
+        return {"success": True, "id": problem_id, "status": "Problem Resolved"}
 
     raise HTTPException(status_code=404, detail=f"Signal problem '{problem_id}' not found.")
 
