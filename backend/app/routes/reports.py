@@ -8,8 +8,7 @@ from ..mongodb import (
     signal_problems_collection
 )
 
-router = APIRouter(tags=["Reports"])
-
+router = APIRouter(prefix="/api", tags=["Reports"])
 async def _build_text_report() -> str:
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
 
