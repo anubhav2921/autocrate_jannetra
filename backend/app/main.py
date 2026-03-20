@@ -1,7 +1,8 @@
+from app import firebase_admin_config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import complaints, analytics, auth, reports
-from app import firebase_admin_config
+
 
 app = FastAPI()
 
