@@ -26,7 +26,7 @@ const COUNTRY_CODES = [
     { code: '+81', label: '🇯🇵 +81' },
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://jannetra-web-production.up.railway.app/api';
 
 export default function Login({ onLogin }) {
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'

@@ -14,10 +14,9 @@ import {
 import { auth, googleProvider } from '../config/firebase';
 import axios from 'axios';
 
-// ✅ Base URL fix (no double /api issue)
 const API_BASE = import.meta.env.VITE_API_URL
     ? `${import.meta.env.VITE_API_URL}/api`
-    : 'http://localhost:8000/api';
+    : 'https://jannetra-web-production.up.railway.app/api';
 
 // ==============================
 // 🔹 Email Signup

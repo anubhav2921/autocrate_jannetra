@@ -7,7 +7,7 @@ import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
+const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://jannetra-web-production.up.railway.app/api';
 
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
