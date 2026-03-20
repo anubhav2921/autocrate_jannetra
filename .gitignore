@@ -30,6 +30,8 @@ frontend/dist/
 *.json
 !package.json
 !package-lock.json
+!vercel.json
+!frontend/vercel.json
 !backend/reports/*.json
 !backend/scripts/**/*.json
 
