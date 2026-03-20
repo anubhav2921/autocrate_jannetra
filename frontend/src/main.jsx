@@ -8,3 +8,4 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <App />
     </React.StrictMode>
 )
+console.log("API URL:", import.meta.env.VITE_API_URL)
