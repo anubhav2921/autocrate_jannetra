@@ -2,7 +2,6 @@ import io
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from xhtml2pdf import pisa
 from ..mongodb import (
     articles_collection, gri_scores_collection, alerts_collection,
     detection_results_collection, sentiment_records_collection, news_articles_collection,
@@ -349,20 +348,8 @@ async def export_issue_report(issue_id: str = Query(...)):
     """
 
     # 5. Generate PDF
-    pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(html_content, dest=pdf_buffer)
-    
-    if pisa_status.err:
-        raise HTTPException(status_code=500, detail="PDF generation failed")
-    
-    pdf_buffer.seek(0)
-    filename = f"Issue_Report_{issue_id}.pdf"
-    
-    return StreamingResponse(
-        pdf_buffer,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f"attachment; filename={filename}",
-            "Access-Control-Expose-Headers": "Content-Disposition"
-        }
-    )
+   # Return HTML instead of PDF
+return StreamingResponse(
+    io.BytesIO(html_content.encode("utf-8")),
+    media_type="text/html"
+)
