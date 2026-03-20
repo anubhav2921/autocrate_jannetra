@@ -1,7 +1,7 @@
 // 
-//  JanNetra — Firebase Auth Service
-//  Centralized authentication functions using Firebase SDK
-// 
+// JanNetra — Firebase Auth Service (Improved Version)
+// Clean + Safe + Production Ready
+//
 
 import {
     createUserWithEmailAndPassword,
@@ -14,76 +14,161 @@ import {
 import { auth, googleProvider } from '../config/firebase';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'http://localhost:8000/api';
+// ✅ Base URL fix (no double /api issue)
+const API_BASE = import.meta.env.VITE_API_URL
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : 'http://localhost:8000/api';
 
-// Email Signup
+// ==============================
+// 🔹 Email Signup
+// ==============================
 export async function signUpWithEmail(email, password) {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    const idToken = await result.user.getIdToken();
-    return { user: result.user, idToken };
+    try {
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+    } catch (error) {
+        console.error('[Signup Error]', error);
+        throw error;
+    }
 }
 
-// Email Login
+// ==============================
+// 🔹 Email Login
+// ==============================
 export async function loginWithEmail(email, password) {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    const idToken = await result.user.getIdToken();
-    return { user: result.user, idToken };
+    try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+    } catch (error) {
+        console.error('[Email Login Error]', error);
+        throw error;
+    }
 }
 
-// Phone OTP — Send
+// ==============================
+// 🔹 reCAPTCHA Setup
+// ==============================
 export function setupRecaptcha(containerId) {
-    const verifier = new RecaptchaVerifier(auth, containerId, {
-        size: 'invisible',
-        callback: () => { },
-        'expired-callback': () => {
-            console.warn('reCAPTCHA expired');
-        },
-    });
-    return verifier;
+    try {
+        return new RecaptchaVerifier(auth, containerId, {
+            size: 'invisible',
+            callback: () => { },
+            'expired-callback': () => {
+                console.warn('reCAPTCHA expired');
+            },
+        });
+    } catch (err) {
+        console.error('Recaptcha error:', err);
+        throw err;
+    }
 }
 
+// ==============================
+// 🔹 Phone OTP — Send
+// ==============================
 export async function loginWithPhoneOTP(phoneNumber, appVerifier) {
-    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    return confirmationResult;
+    try {
+        return await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+    } catch (error) {
+        console.error('[Phone OTP Error]', error);
+        throw error;
+    }
 }
 
-// Phone OTP — Verify
+// ==============================
+// 🔹 Phone OTP — Verify
+// ==============================
 export async function verifyOTP(confirmationResult, code) {
-    const result = await confirmationResult.confirm(code);
-    const idToken = await result.user.getIdToken();
-    return { user: result.user, idToken };
+    try {
+        const result = await confirmationResult.confirm(code);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+    } catch (error) {
+        console.error('[OTP Verify Error]', error);
+        throw error;
+    }
 }
 
-// Reset Password
+// ==============================
+// 🔹 Reset Password
+// ==============================
 export async function resetPassword(email) {
-    await sendPasswordResetEmail(auth, email);
-    return { success: true };
+    try {
+        await sendPasswordResetEmail(auth, email);
+        return { success: true };
+    } catch (error) {
+        console.error('[Reset Password Error]', error);
+        throw error;
+    }
 }
 
-// Google Sign-In
+// ==============================
+// 🔹 Google Login
+// ==============================
 export async function loginWithGoogle() {
-    const result = await signInWithPopup(auth, googleProvider);
-    const idToken = await result.user.getIdToken();
-    return { user: result.user, idToken };
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const idToken = await result.user.getIdToken();
+        return { user: result.user, idToken };
+    } catch (error) {
+        console.error('[Google Login Error]', error);
+        throw error;
+    }
 }
 
-// Backend: Create/Upsert User Profile
-export async function createUserProfile({ name, email, phone, firebase_uid }) {
-    const response = await axios.post(`${API_BASE}/auth/users/create`, {
-        name,
-        email: email || '',
-        phone: phone || '',
-        firebase_uid,
-    });
-    return response.data;
+// ==============================
+// 🔹 Backend: Create User Profile
+// ==============================
+export async function createUserProfile(payload) {
+    try {
+        const response = await axios.post(`${API_BASE}/auth/users/create`, payload);
+        return response.data;
+    } catch (error) {
+        console.error('[Create User Profile Error]', error);
+
+        throw {
+            message:
+                error.response?.data?.detail ||
+                error.response?.data?.error ||
+                error.message ||
+                'User creation failed',
+        };
+    }
 }
 
-// Backend: Verify Firebase Token (Google/Phone)
-export async function verifyFirebaseToken(idToken, endpoint = '/api/auth/firebase-login') {
-    const response = await axios.post(
-        endpoint,
-        {},
-        { headers: { Authorization: `Bearer ${idToken}` } }
-    );
-    return response.data;
+// ==============================
+// 🔥 IMPORTANT FIX
+// 🔹 Backend: Verify Firebase Token
+// ==============================
+export async function verifyFirebaseToken(
+    idToken,
+    endpoint = '/auth/firebase-login'   // ✅ FIXED (no double /api)
+) {
+    try {
+        const response = await axios.post(
+            `${API_BASE}${endpoint}`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${idToken}`,
+                },
+            }
+        );
+
+        return response.data;
+    } catch (error) {
+        console.error('[Firebase Verify Error]', error);
+
+        // ✅ Proper error propagation (NO fake messages)
+        throw {
+            message:
+                error.response?.data?.detail ||
+                error.response?.data?.error ||
+                error.message ||
+                'Firebase verification failed',
+            status: error.response?.status,
+        };
+    }
 }
