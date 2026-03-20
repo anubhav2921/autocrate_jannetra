@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from app.routes import complaints, analytics   # 👈 ADD analytics here
+from app.routes import complaints, analytics, reports
 
 app = FastAPI()
 
 app.include_router(complaints.router)
-app.include_router(analytics.router)   # 👈 ADD THIS LINE
+app.include_router(analytics.router)
+app.include_router(reports.router)
 
 @app.get("/")
 def health_check():
