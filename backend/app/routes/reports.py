@@ -346,9 +346,8 @@ async def export_issue_report(issue_id: str = Query(...)):
     </html>
     """
 
-    # 5. Generate PDF
-   # Return HTML instead of PDF
-return StreamingResponse(
-    io.BytesIO(html_content.encode("utf-8")),
-    media_type="text/html"
-)
+       # Return HTML instead of PDF
+    return StreamingResponse(
+        io.BytesIO(html_content.encode("utf-8")),
+        media_type="text/html"
+    )
