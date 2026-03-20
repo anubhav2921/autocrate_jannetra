@@ -54,8 +54,11 @@ async def create_resolution(req: ResolutionCreate):
 
 
 @router.get("/resolutions")
-async def list_resolutions():
-    cursor = resolutions_collection.find({}).sort("submitted_at", -1)
+async def list_resolutions(user_id: Optional[str] = None):
+    query = {}
+    if user_id:
+        query["resolved_by"] = user_id
+    cursor = resolutions_collection.find(query).sort("submitted_at", -1)
     res_docs = await cursor.to_list(None)
 
     results = []

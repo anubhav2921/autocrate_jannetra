@@ -12,9 +12,20 @@ async def get_leaderboard():
     leaders = []
     for user in all_users:
         uid = user["id"]
-        total = await resolutions_collection.count_documents({"resolved_by": uid})
-        resolved = await resolutions_collection.count_documents({"resolved_by": uid, "status": "RESOLVED"})
+        
+        # Count manual resolutions
+        man_total = await resolutions_collection.count_documents({"resolved_by": uid})
+        man_resolved = await resolutions_collection.count_documents({"resolved_by": uid, "status": "RESOLVED"})
+        
+        # Count signal resolutions
+        from ..mongodb import signal_problems_collection
+        sig_total = await signal_problems_collection.count_documents({"resolved_by": uid})
+        sig_resolved = await signal_problems_collection.count_documents({"resolved_by": uid, "status": "Problem Resolved"})
+        
+        total = man_total + sig_total
+        resolved = man_resolved + sig_resolved
         in_progress = total - resolved
+        
         score = resolved * 100 + in_progress * 40
         leaders.append({
             "id": uid,

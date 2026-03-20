@@ -252,39 +252,27 @@ const ReportIssue = () => {
         setReportId(newId);
         try {
             await api.post('/report-issue/submit', {
+                report_id: newId,
                 image_url: aiResult.image_url || capturedImage,
                 detected_issue: issueType,
                 user_description: description,
-                latitude: location.latitude,
-                longitude: location.longitude,
+                latitude: location?.latitude || 0,
+                longitude: location?.longitude || 0,
                 timestamp: new Date().toISOString(),
                 metadata: aiResult
             });
-            setSubmitted(true);
-            setTimeout(() => navigate('/'), 5000);
+            setStep('success');
         } catch (err) {
-            setSubmitted(true);
-            setTimeout(() => navigate('/'), 5000);
+            console.error("Submission error:", err);
+            let errMsg = err.message;
+            if (err.response?.data) {
+                errMsg = JSON.stringify(err.response.data);
+            }
+            alert("Failed to submit report. Please check your network and try again.\nError: " + errMsg);
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    if (submitted) {
-        return (
-            <div className="report-full-page flex-center bg-dark">
-                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center p-xl">
-                    <div className="success-glow">
-                        <CheckCircle2 size={80} color="#10b981" />
-                    </div>
-                    <h2 className="mt-l">Report ID: {reportId}</h2>
-                    <h3 className="text-blue mt-s">Successfully Received</h3>
-                    <p className="text-muted mt-m">Your report has been logged. Use the ID above to track resolution status.</p>
-                    <button className="btn btn-primary mt-xl w-full" onClick={() => navigate('/')}>Back to Home</button>
-                </motion.div>
-            </div>
-        );
-    }
 
     return (
         <div className="report-full-page">
@@ -503,6 +491,31 @@ const ReportIssue = () => {
                             </div>
                         </motion.div>
                     )}
+
+                    {step === 'success' && (
+                        <motion.div 
+                            key="success"
+                            initial={{ scale: 0.9, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }} 
+                            className="flex-center bg-dark"
+                            style={{ position: 'absolute', inset: 0, zIndex: 100 }}
+                        >
+                            <div className="text-center success-view-inner">
+                                <div className="success-glow" style={{ marginBottom: '24px' }}>
+                                    <CheckCircle2 size={80} color="#10b981" style={{ margin: '0 auto' }} />
+                                </div>
+                                <h2 className="mt-l">Report ID: {reportId}</h2>
+                                <h3 className="text-blue mt-s" style={{ fontSize: '1.5rem' }}>Successfully Received</h3>
+                                <p className="text-muted mt-m" style={{ fontSize: '1.1rem', lineHeight: 1.6 }}>
+                                    Your report has been logged. <br />
+                                    Use the ID above to track resolution status.
+                                </p>
+                                <button className="btn btn-primary mt-xl w-full" style={{ padding: '18px' }} onClick={() => navigate('/')}>
+                                    Back to Home
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
                 </AnimatePresence>
             </main>
 
@@ -651,8 +664,9 @@ const ReportIssue = () => {
                 .text-blue { color: #6366f1; }
                 .mt-s { margin-top: 8px; } .mt-m { margin-top: 16px; } .mt-l { margin-top: 24px; } .mt-xl { margin-top: 32px; }
                 .w-full { width: 100%; }
-                .flex-center { display: flex; align-items: center; justify-content: center; }
+                .flex-center { display: flex; align-items: center; justify-content: center; height: 100%; }
                 .bg-dark { background: var(--bg-primary); }
+                .success-view-inner { max-width: 480px; width: 100%; padding: 40px; }
                 .glass-premium { background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-color); }
 
                 @keyframes scanning { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }

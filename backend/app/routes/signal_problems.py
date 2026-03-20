@@ -22,9 +22,11 @@ async def list_signal_problems(
     district: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     ward: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
-    """Return all signal problems, filtered by user's department, sorted by priority."""
+    """Return signal problems, filtered by location, department, status, and/or user."""
     
     user_dept = current_user.get("department")
     user_role = current_user.get("role")
@@ -32,8 +34,16 @@ async def list_signal_problems(
     from .location import _build_location_match
     match = _build_location_match(state, district, city, ward)
 
-    # Add Department Filter if not admin
-    if user_role != "ADMIN" and user_dept:
+    # Add Status Filter
+    if status:
+        match["status"] = status
+        
+    # Add User Filter
+    if user_id:
+        match["resolved_by"] = user_id
+    
+    # Add Department Filter if not admin and not specifically filtering by another user
+    if user_role != "ADMIN" and user_dept and not user_id:
         match["department"] = user_dept
 
     # Fetch from the aggregated collection
@@ -136,7 +146,8 @@ async def get_signal_problem(problem_id: str):
 async def resolve_signal_problem(
     problem_id: str,
     report: str = Form(...),
-    proof: Optional[UploadFile] = File(None)
+    proof: Optional[UploadFile] = File(None),
+    current_user: dict = Depends(get_current_user)
 ):
     """Marks a signal as resolved but REQUIRES a report. Proof photo is optional but tracked."""
     
@@ -148,7 +159,8 @@ async def resolve_signal_problem(
         "status": "Problem Resolved",
         "resolution_report": report,
         "resolution_proof_url": proof_url,
-        "resolved_at": datetime.utcnow()
+        "resolved_at": datetime.utcnow(),
+        "resolved_by": current_user.get("id")
     }
 
     # 1. Try to find in manual collection

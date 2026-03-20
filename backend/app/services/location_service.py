@@ -62,6 +62,8 @@ def resolve_location_from_text(title: str, content: str, current_location: str =
     title_lower = title.lower()
     content_snippet = content.lower()[:500]
     
+    city_candidate = None
+    
     # Step 1: Check for city mentions in TITLE first (highest priority)
     for city in CITY_LOCATION_MAP_LOWER.keys():
         if city != "india" and city in title_lower:

@@ -31,8 +31,8 @@ export default function Resolutions({ user }) {
     useEffect(() => {
         setLoading(true);
         Promise.all([
-            api.get('/resolutions'),
-            api.get('/signal-problems'),
+            api.get('/resolutions', { params: { user_id: user?.id } }),
+            api.get('/signal-problems', { params: { user_id: user?.id } }),
         ])
             .then(([resData, sigData]) => {
                 setResolutions(resData?.resolutions || []);
@@ -60,7 +60,7 @@ export default function Resolutions({ user }) {
                     action_taken: '', resources_used: '', people_benefited: '', status: 'RESOLVED',
                 });
                 // Refresh list
-                const listData = await api.get('/resolutions');
+                const listData = await api.get('/resolutions', { params: { user_id: user?.id } });
                 setResolutions(listData?.resolutions || []);
             }
         } catch (err) {

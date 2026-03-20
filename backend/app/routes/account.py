@@ -38,9 +38,19 @@ async def get_profile(user_id: str):
     if not user:
         return {"success": False, "error": "User not found"}
 
-    total_res = await resolutions_collection.count_documents({"resolved_by": user_id})
-    resolved = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "RESOLVED"})
-    in_progress = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "IN_PROGRESS"})
+    # Count manual resolutions
+    manual_total = await resolutions_collection.count_documents({"resolved_by": user_id})
+    manual_resolved = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "RESOLVED"})
+    manual_in_progress = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "IN_PROGRESS"})
+    
+    # Count signal resolutions (from signal_problems_collection)
+    from ..mongodb import signal_problems_collection
+    signal_total = await signal_problems_collection.count_documents({"resolved_by": user_id})
+    signal_resolved = await signal_problems_collection.count_documents({"resolved_by": user_id, "status": "Problem Resolved"})
+    
+    total_res = manual_total + signal_total
+    resolved = manual_resolved + signal_resolved
+    in_progress = manual_in_progress + (signal_total - signal_resolved)
 
     return {
         "success": True,
