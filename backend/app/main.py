@@ -19,11 +19,10 @@ app.add_middleware(
 )
 
 # ✅ THEN routers
-app.include_router(complaints.router)
-app.include_router(analytics.router)
-app.include_router(auth.router)
-app.include_router(reports.router)
-
+app.include_router(complaints.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(reports.router, prefix="/api")
 @app.get("/")
 def health_check():
     return {"status": "ok"}
