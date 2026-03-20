@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`,
+    baseURL: `${import.meta.env.VITE_API_URL}/api`,
     timeout: 15000,
     headers: { 'Content-Type': 'application/json' },
 });
@@ -45,10 +45,10 @@ export const fetchSources = () => api.get('/sources');
  */
 export const buildLocationParams = (locationParams = {}, extra = {}) => {
     const p = {};
-    if (locationParams.state)    p.state    = locationParams.state;
+    if (locationParams.state) p.state = locationParams.state;
     if (locationParams.district) p.district = locationParams.district;
-    if (locationParams.city)     p.city     = locationParams.city;
-    if (locationParams.ward)     p.ward     = locationParams.ward;
+    if (locationParams.city) p.city = locationParams.city;
+    if (locationParams.ward) p.ward = locationParams.ward;
     return { ...p, ...extra };
 };
 
