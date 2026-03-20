@@ -4,15 +4,17 @@ from app.routes import complaints, analytics, auth, reports
 
 app = FastAPI()
 
-# ✅ ADD THIS BLOCK
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # temporary fix
+    allow_origins=[
+        "http://localhost:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ✅ THEN routers
 app.include_router(complaints.router)
 app.include_router(analytics.router)
 app.include_router(auth.router)
