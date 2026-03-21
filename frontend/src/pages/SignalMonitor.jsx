@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation as useRouteLocation } from 'react-router-dom';
 import {
     AlertTriangle, Shield, MapPin, Clock, Zap,
     CheckCircle2, Circle, Filter, Search, Flame
@@ -22,6 +22,13 @@ export default function SignalMonitor() {
     const [filterSeverity, setFilterSeverity] = useState('ALL');
     const [filterStatus, setFilterStatus] = useState('ALL');
     const navigate = useNavigate();
+    const routeLocation = useRouteLocation();
+
+    useEffect(() => {
+        if (routeLocation.state?.searchParam) {
+            setSearch(routeLocation.state.searchParam);
+        }
+    }, [routeLocation.state]);
 
     useEffect(() => {
         setLoading(true);

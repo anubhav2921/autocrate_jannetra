@@ -3,7 +3,8 @@ from datetime import datetime
 from ..mongodb import (
     news_articles_collection, articles_collection,
     alerts_collection, gri_scores_collection,
-    detection_results_collection, sentiment_records_collection
+    detection_results_collection, sentiment_records_collection,
+    signal_problems_collection
 )
 from fastapi import Depends
 from ..utils import get_current_user
@@ -72,11 +73,13 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
         ]
         loc_res = await news_articles_collection.aggregate(loc_pipeline).to_list(None)
 
+        citizen_reports_count = await signal_problems_collection.count_documents({**match_filter, "category": "Citizen Report"})
+
         return {
             "overall_gri": round(avg_risk, 1),
             "total_articles": na_total,
             "fake_news_percentage": fake_pct,
-            "average_anger": round(avg_anger, 2),
+            "citizen_reports_count": citizen_reports_count,
             "active_alerts": active_alerts,
             "sentiment_distribution": sentiment_dist,
             "category_risk": [
@@ -130,11 +133,13 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     ]).to_list(1)
     avg_anger = anger_agg[0]["avg"] if anger_agg else 0
 
+    citizen_reports_count = await signal_problems_collection.count_documents({"category": "Citizen Report"})
+
     return {
         "overall_gri": avg_gri,
         "total_articles": total_articles,
         "fake_news_percentage": fake_pct,
-        "average_anger": round(avg_anger, 1),
+        "citizen_reports_count": citizen_reports_count,
         "active_alerts": active_alerts,
         "sentiment_distribution": sentiment_dist,
         "critical_alerts": [

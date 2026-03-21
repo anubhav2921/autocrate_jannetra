@@ -5,7 +5,7 @@ import {
     ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
-    AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame, Globe,
+    AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame, Globe, Users,
 } from 'lucide-react';
 import { fetchLocationDashboard } from '../services/api';
 import { useLocation } from '../context/LocationContext';
@@ -116,12 +116,12 @@ export default function Dashboard() {
                     <div className="stat-value">{data.active_alerts}</div>
                     <div className="stat-label">Active Alerts</div>
                 </div>
-                <div className="glass-card stat-card red animate-in" onClick={() => navigate('/pulse')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Flame size={22} /></div>
-                    <div className="stat-value" style={{ color: data.average_anger > 5 ? '#ef4444' : '#f59e0b' }}>
-                        {data.average_anger}/10
+                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor', { state: { searchParam: 'Citizen Report' } })} style={{ cursor: 'pointer' }}>
+                    <div className="stat-icon"><Users size={22} /></div>
+                    <div className="stat-value" style={{ color: '#8b5cf6' }}>
+                        {data.citizen_reports_count || 0}
                     </div>
-                    <div className="stat-label">Average Anger Rating</div>
+                    <div className="stat-label">Citizen Reports</div>
                 </div>
             </div>
 
