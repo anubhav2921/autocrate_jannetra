@@ -1,6 +1,10 @@
 from app import firebase_admin_config
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
+import logging
+
 from app.routes import (
     account, alerts, analytics, articles, auth, chatbot,
     citizen_reports, complaints, dashboard, leaderboard,
@@ -8,8 +12,40 @@ from app.routes import (
     scanner, signal_problems, signals, sources, system_monitoring
 )
 
+logger = logging.getLogger("jannetra.scheduler")
 
-app = FastAPI()
+
+def run_pipeline_job():
+    """Scheduled job: runs the full scrape → NLP → cluster pipeline."""
+    try:
+        logger.info("[Scheduler] ▶ Starting scheduled pipeline run...")
+        from app.services.data_pipeline import run_pipeline
+        result = run_pipeline()
+        logger.info("[Scheduler] ✅ Pipeline complete: %s", result)
+    except Exception as exc:
+        logger.error("[Scheduler] ❌ Pipeline failed: %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # ── Startup ──────────────────────────────────────────────
+    scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+
+    # Run once immediately on startup (after a 10-second warm-up delay)
+    scheduler.add_job(run_pipeline_job, "interval", minutes=30, id="pipeline_job",
+                      max_instances=1, coalesce=True)
+
+    scheduler.start()
+    logger.info("[Scheduler] ✅ APScheduler started — pipeline runs every 30 minutes.")
+
+    yield  # App is running
+
+    # ── Shutdown ─────────────────────────────────────────────
+    scheduler.shutdown(wait=False)
+    logger.info("[Scheduler] Stopped.")
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,7 +59,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ THEN routers
 app.include_router(account.router)
 app.include_router(alerts.router)
 app.include_router(analytics.router)
@@ -45,6 +80,7 @@ app.include_router(signals.router)
 app.include_router(sources.router)
 app.include_router(system_monitoring.router)
 
+
 @app.get("/")
 def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "scheduler": "running — pipeline every 30 min"}
