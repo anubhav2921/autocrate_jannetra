@@ -769,7 +769,8 @@ a:hover {
   padding: 12px 0;
 }
 
-.sidebar-nav a {
+.sidebar-nav a,
+.sidebar-nav button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -781,7 +782,8 @@ a:hover {
   border-left: 3px solid transparent;
 }
 
-.sidebar-nav a:hover {
+.sidebar-nav a:hover,
+.sidebar-nav button:hover {
   background: var(--bg-glass-hover);
   color: var(--text-primary);
 }
