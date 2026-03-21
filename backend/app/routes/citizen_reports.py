@@ -298,3 +298,39 @@ async def get_report_status(report_id: str):
         "lastUpdate": last_update,
         "severity": article.get("risk_level", "MEDIUM")
     }
+
+@router.get("/citizen-reports/list")
+async def list_citizen_reports(current_user: Optional[dict] = Depends(get_current_user_optional)):
+    """
+    Returns a list of all signal problems that were reported by citizens.
+    Sorted by priority_score descending.
+    """
+    match_filter = {"category": "Citizen Report"}
+    
+    # Optional: filter by department if leader
+    if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):
+        match_filter["department"] = current_user.get("department")
+
+    cursor = signal_problems_collection.find(match_filter).sort("priority_score", -1).limit(200)
+    reports = await cursor.to_list(200)
+    
+    # We map the data slightly to match the SignalMonitor format exactly
+    results = []
+    from .signal_problems import get_severity # just use string formatting if needed
+    for p in reports:
+        results.append({
+            "id": p["id"],
+            "title": p.get("title", ""),
+            "severity": p.get("severity", "Medium"),
+            "category": "Citizen Report",
+            "location": p.get("location", ""),
+            "detectedAt": p.get("detected_at"),
+            "lastUpdated": p.get("last_updated"),
+            "description": p.get("description", ""),
+            "riskScore": p.get("risk_score", 0),
+            "priorityScore": p.get("priority_score", 0),
+            "frequency": p.get("frequency", 1),
+            "source": p.get("source", "Citizen Application"),
+            "status": p.get("status", "Pending")
+        })
+    return results

@@ -116,7 +116,7 @@ export default function Dashboard() {
                     <div className="stat-value">{data.active_alerts}</div>
                     <div className="stat-label">Active Alerts</div>
                 </div>
-                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor', { state: { searchParam: 'Citizen Report' } })} style={{ cursor: 'pointer' }}>
+                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/citizen-reports')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Users size={22} /></div>
                     <div className="stat-value" style={{ color: '#8b5cf6' }}>
                         {data.citizen_reports_count || 0}

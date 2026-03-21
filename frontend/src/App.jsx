@@ -15,6 +15,7 @@ import Leaderboard from './pages/Leaderboard';
 import Chatbot from './pages/Chatbot';
 import Scanner from './pages/Scanner';
 import SignalMonitor from './pages/SignalMonitor';
+import CitizenReports from './pages/CitizenReports';
 import ProblemDetail from './pages/ProblemDetail';
 import SystemMonitoring from './pages/SystemMonitoring';
 import SystemMetricDetail from './pages/SystemMetricDetail';
@@ -130,6 +131,7 @@ export default function App() {
                                 <Route path="/chatbot" element={<Chatbot />} />
                                 <Route path="/scanner" element={<Scanner />} />
                                 <Route path="/signal-monitor" element={<SignalMonitor />} />
+                                <Route path="/citizen-reports" element={<CitizenReports />} />
                                 <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
                                 <Route path="/system-monitoring" element={<SystemMonitoring />} />
                                 <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
