@@ -338,12 +338,11 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
     
     # We map the data slightly to match the SignalMonitor format exactly
     results = []
-    from .signal_problems import get_severity # just use string formatting if needed
     for p in reports:
         results.append({
             "id": p["id"],
             "title": p.get("title", ""),
-            "severity": p.get("severity", "Medium"),
+            "severity": str(p.get("severity", "Medium")).capitalize(),
             "category": "Citizen Report",
             "location": p.get("location", ""),
             "detectedAt": p.get("detected_at"),
