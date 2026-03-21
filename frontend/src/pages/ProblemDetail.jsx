@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, AlertTriangle, MapPin, Clock, Shield, Zap, CheckCircle2,
-    Circle, FileText, Radio, Target, Flame
+    Circle, FileText, Radio, Target, Flame, Image, Mic
 } from 'lucide-react';
 
 const SEVERITY_CONFIG = {
@@ -187,6 +187,30 @@ export default function ProblemDetail() {
                     </div>
                 </div>
             </div>
+
+            {/* Attached Citizen Evidence */}
+            {(problem.image_url || problem.audio_url) && (
+                <div className="glass-card animate-in" style={{ marginBottom: '20px' }}>
+                    <div className="section-title" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Image size={18} /> Attached Citizen Evidence
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: problem.image_url && problem.audio_url ? '1fr 1fr' : '1fr', gap: '20px' }}>
+                        {problem.image_url && (
+                            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000' }}>
+                                <img src={problem.image_url} alt="Problem Evidence" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }} />
+                            </div>
+                        )}
+                        {problem.audio_url && (
+                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Mic size={16} /> Authentic Voice Recording
+                                </div>
+                                <audio src={problem.audio_url} controls style={{ width: '100%' }} />
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             <div className="grid-2">
                 {/* Problem Summary & Intelligence Summary */}
