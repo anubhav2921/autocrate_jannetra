@@ -60,7 +60,7 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
     };
 
     return (
-        <div style={{ position: 'relative' }} ref={menuRef}>
+        <div style={{ position: 'relative', zIndex: isOpen ? 9999 : 1 }} ref={menuRef}>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
@@ -77,22 +77,9 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                 <div style={{
                     position: 'absolute', right: 0, top: '100%', marginTop: '4px',
                     background: '#1e1e2e', border: '1px solid var(--border-color)',
-                    borderRadius: '8px', padding: '8px', zIndex: 100,
-                    boxShadow: '0 10px 25px rgba(0,0,0,0.5)', minWidth: '180px'
+                    borderRadius: '8px', padding: '8px', zIndex: 99999,
+                    boxShadow: '0 10px 25px rgba(0,0,0,0.8)', minWidth: '180px'
                 }}>
-                    <button 
-                        onClick={() => navigate(`/signal-monitor/${problem.id}`)}
-                        style={{
-                            width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent',
-                            border: 'none', color: 'var(--text-primary)', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem',
-                            borderRadius: '4px'
-                        }}
-                        className="hover-bg"
-                    >
-                        <Eye size={14} /> View Details
-                    </button>
-                    
                     <button 
                         onClick={handleTakeCustody}
                         disabled={isProcessing}
