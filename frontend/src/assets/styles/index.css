@@ -3541,3 +3541,6 @@ img, video, iframe, canvas, svg:not([class]) {
 /* Mobile & Touch Specific Fixes */
 .sidebar-link:hover, .sidebar-link:active, .notification-item:hover, .notification-item:active { background: var(--bg-glass-hover) !important; color: var(--text-primary) !important; }
 
+
+.table-row-hover:hover, .table-row-hover:active { background: rgba(255,255,255,0.03) !important; }
+

@@ -159,15 +159,13 @@ export default function SignalMonitor() {
                             const sev = SEVERITY_CONFIG[p.severity] || SEVERITY_CONFIG.Medium;
                             const isResolved = p.status === 'Problem Resolved';
                             return (
-                                <tr key={p.id} style={{
+                                <tr key={p.id} className="table-row-hover" style={{
                                     borderBottom: '1px solid rgba(255,255,255,0.04)',
                                     transition: 'background 0.2s ease',
                                     animation: `fadeInUp 0.3s ease ${idx * 0.04}s both`,
-                                }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-blue)' }}>
-                                        {p.id}
+                                }}>
+                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-blue)', whiteSpace: 'nowrap' }}>
+                                        <span title={p.id}>{p.id.length > 12 ? p.id.substring(0, 8) + '...' : p.id}</span>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '8px' }}>
