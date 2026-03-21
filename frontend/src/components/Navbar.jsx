@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2,
-    MapPin, Clock, Globe, ChevronDown, Moon, Sun
+    MapPin, Clock, Globe, ChevronDown, Moon, Sun, Menu
 } from 'lucide-react';
 import { fetchLocationDashboard, fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ import { useLocation } from '../context/LocationContext';
 import { useTheme } from '../context/ThemeContext';
 import LocationFilter from './LocationFilter';
 
-export default function Navbar({ user }) {
+export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
     const { theme, toggleTheme } = useTheme();
     const [alertCount, setAlertCount] = useState(0);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -65,11 +65,22 @@ export default function Navbar({ user }) {
         <>
             <header className="navbar">
                 <div className="navbar-left">
-                    <Search size={16} style={{ color: 'var(--text-muted)' }} />
+                    {/* Hamburger — visible on mobile only */}
+                    <button
+                        className="hamburger-btn"
+                        onClick={onHamburgerClick}
+                        aria-label={isSidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                        aria-expanded={isSidebarOpen}
+                        aria-controls="main-sidebar"
+                    >
+                        <Menu size={20} aria-hidden="true" />
+                    </button>
+                    <Search size={16} style={{ color: 'var(--text-muted)' }} className="navbar-search-icon-desktop" />
                     <input
                         type="text"
                         className="navbar-search"
                         placeholder="Search signals, alerts, locations..."
+                        aria-label="Search signals, alerts, locations"
                     />
                 </div>
                 <div className="navbar-right">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -32,6 +32,7 @@ import { ThemeProvider } from './context/ThemeContext';
 export default function App() {
     const [user, setUser] = useState(null);
     const [showSplash, setShowSplash] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem('user');
@@ -40,11 +41,32 @@ export default function App() {
         }
     }, []);
 
+    // Close sidebar on Escape key
+    useEffect(() => {
+        const handleKey = (e) => {
+            if (e.key === 'Escape' && sidebarOpen) setSidebarOpen(false);
+        };
+        document.addEventListener('keydown', handleKey);
+        return () => document.removeEventListener('keydown', handleKey);
+    }, [sidebarOpen]);
+
+    // Prevent body scroll when mobile sidebar is open
+    useEffect(() => {
+        if (sidebarOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [sidebarOpen]);
+
     const handleLogin = (userData) => setUser(userData);
     const handleLogout = () => {
         localStorage.removeItem('user');
         setUser(null);
     };
+    const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
+    const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
     if (showSplash) {
         return <SplashScreen onComplete={() => setShowSplash(false)} />;
@@ -76,9 +98,26 @@ export default function App() {
             <LocationProvider>
                 <BrowserRouter>
                     <div className="app-layout">
-                        <Sidebar user={user} onLogout={handleLogout} />
+                        {/* Mobile overlay — click to close sidebar */}
+                        <div
+                            className={`sidebar-overlay ${sidebarOpen ? 'open' : ''}`}
+                            onClick={closeSidebar}
+                            aria-hidden="true"
+                        />
+
+                        <Sidebar
+                            user={user}
+                            onLogout={handleLogout}
+                            isOpen={sidebarOpen}
+                            onClose={closeSidebar}
+                        />
+
                         <div className="main-content">
-                            <Navbar user={user} />
+                            <Navbar
+                                user={user}
+                                onHamburgerClick={toggleSidebar}
+                                isSidebarOpen={sidebarOpen}
+                            />
                             <Routes>
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/articles" element={<Articles />} />
@@ -105,4 +144,3 @@ export default function App() {
         </ThemeProvider>
     );
 }
-
