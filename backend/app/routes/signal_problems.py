@@ -6,7 +6,7 @@ from datetime import datetime
 from ..mongodb import (
     news_articles_collection, signal_problems_collection
 )
-from ..services.gemini_service import generate_signal_problems, summarize_problem_cluster
+from ..services.gemini_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
 from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
@@ -145,12 +145,20 @@ async def get_signal_problem(problem_id: str):
         if needs_summary:
             # Limit samples to avoid token overflow and speed up processing
             raw_samples = p.get("sample_records", [])[:5]
-            summary = summarize_problem_cluster(
-                title=p.get("title", ""),
-                category=p.get("category", "General"),
-                location=p.get("location") or ", ".join(p.get("locations", [])),
-                samples=raw_samples
-            )
+            if raw_samples:
+                summary = summarize_problem_cluster(
+                    title=p.get("title", ""),
+                    category=p.get("category", "General"),
+                    location=p.get("location") or ", ".join(p.get("locations", [])),
+                    samples=raw_samples
+                )
+            else:
+                summary = structure_single_problem(
+                    title=p.get("title", ""),
+                    category=p.get("category", "General"),
+                    location=p.get("location") or ", ".join(p.get("locations", [])),
+                    description=p.get("description", "")
+                )
             if summary:
                 update_fields = {
                     "description": summary["description"],
@@ -204,6 +212,30 @@ async def get_signal_problem(problem_id: str):
         loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
         location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")
 
+        # Generate structured report if missing
+        needs_summary = (
+            not a.get("has_gemini_summary") or
+            not a.get("gemini_description")
+        )
+
+        if needs_summary and a.get("content"):
+            summary = summarize_news_article(
+                title=a.get("title", ""),
+                category=a.get("category", "General"),
+                location=location_str,
+                content=a.get("content", "")
+            )
+            if summary:
+                update_fields = {
+                    "gemini_description": summary["description"],
+                    "location_detail": summary["location_detail"],
+                    "evidence_summary": summary["evidence_summary"],
+                    "expected_solution": summary["expected_solution"],
+                    "has_gemini_summary": True
+                }
+                await news_articles_collection.update_one({"_id": a["_id"]}, {"$set": update_fields})
+                a.update(update_fields)
+
         return {
             "id": problem_id,
             "title": a.get("title"),
@@ -212,11 +244,11 @@ async def get_signal_problem(problem_id: str):
             "location": location_str,
             "detectedAt": a.get("scraped_at"),
             "lastUpdated": a.get("scraped_at"),
-            "description": a.get("content") or a.get("title") or "",
-            "locationDetail": location_str,
-            "evidenceSummary": "Synthetic problem derived from news article.",
-            "expectedSolution": "Investigation required by concerned department.",
-            "hasGeminiSummary": False,
+            "description": a.get("gemini_description") if a.get("has_gemini_summary") else (a.get("content") or a.get("title") or ""),
+            "locationDetail": a.get("location_detail") or location_str,
+            "evidenceSummary": a.get("evidence_summary") or "Synthetic problem derived from news article.",
+            "expectedSolution": a.get("expected_solution") or "Investigation required by concerned department.",
+            "hasGeminiSummary": a.get("has_gemini_summary", False),
             "priorityScore": a.get("risk_score") or 0.0,
             "frequency": 1,
             "source": a.get("source_name"),

@@ -239,3 +239,97 @@ Return ONLY the raw JSON object. No markdown, no explanation."""
         logger.warning("[GEMINI] Summary missing keys: %s", missing)
 
     return result
+
+def summarize_news_article(
+    title: str,
+    category: str,
+    location: str,
+    content: str,
+) -> Optional[dict]:
+    """
+    Summarises a news article into a structured governance problem report.
+    """
+    if not content:
+        return None
+
+    prompt = f"""You are a senior Governance Intelligence Analyst preparing a briefing for district-level government officials.
+
+News Article details:
+  Title    : {title}
+  Category : {category}
+  Location : {location}
+
+Content:
+{content[:2500]}
+
+Produce a structured JSON object with EXACTLY these four fields:
+
+{{
+  "description":      "<2–3 sentence executive summary: WHAT is happening and WHY it matters based on the article>",
+  "location_detail":  "<specific geographic or operational scope based on the article>",
+  "evidence_summary": "<professional synthesis of the facts and key data points from the article>",
+  "expected_solution":"<strategic administrative or policy action for officials to resolve this>"
+}}
+
+Tone: factual, neutral, professional. Treat sensitive topics as routine intelligence.
+Return ONLY the raw JSON object. No markdown, no explanation."""
+
+    raw_text = _call_gemini(prompt, max_output_tokens=1024)
+    if raw_text is None:
+        return None
+
+    result = _parse_json(raw_text, context="summarize_news_article")
+    if not isinstance(result, dict):
+        logger.error("[GEMINI] Expected a JSON object from summarize_news_article, got %s", type(result).__name__)
+        return None
+
+    required_keys = {"description", "location_detail", "evidence_summary", "expected_solution"}
+    for key in required_keys:
+        if key not in result:
+             result[key] = ""
+
+    return result
+
+def structure_single_problem(
+    title: str,
+    category: str,
+    location: str,
+    description: str,
+) -> Optional[dict]:
+    """
+    Restructures a mock generated problem into the structured summary format.
+    """
+    prompt = f"""You are a senior Governance Intelligence Analyst restructuring a basic alert into a briefing.
+
+Problem details:
+  Title       : {title}
+  Category    : {category}
+  Location    : {location}
+  Description : {description}
+
+Produce a structured JSON object with EXACTLY these four fields:
+
+{{
+  "description":      "<2–3 sentence executive summary: WHAT is happening based on the description>",
+  "location_detail":  "<specific geographic context>",
+  "evidence_summary": "<professional synthesis of the facts>",
+  "expected_solution":"<strategic administrative action to resolve this>"
+}}
+
+Tone: factual, neutral, professional.
+Return ONLY the raw JSON object. No markdown, no explanation."""
+
+    raw_text = _call_gemini(prompt, max_output_tokens=1024)
+    if raw_text is None:
+        return None
+
+    result = _parse_json(raw_text, context="structure_single_problem")
+    if not isinstance(result, dict):
+        return None
+
+    required_keys = {"description", "location_detail", "evidence_summary", "expected_solution"}
+    for key in required_keys:
+        if key not in result:
+             result[key] = ""
+
+    return result
