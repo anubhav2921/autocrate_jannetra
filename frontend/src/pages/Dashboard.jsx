@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell,
@@ -16,6 +17,7 @@ export default function Dashboard() {
     const { location, hasLocation, locationLabel, setLocation } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         setLoading(true);
@@ -92,29 +94,29 @@ export default function Dashboard() {
 
             {/* Stat Cards */}
             <div className="stats-grid">
-                <div className="glass-card stat-card red animate-in">
+                <div className="glass-card stat-card red animate-in" onClick={() => navigate('/analytics')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Shield size={22} /></div>
                     <div className="stat-value" style={{ color: griColor }}>{data.overall_gri}</div>
                     <div className="stat-label">Governance Risk Index</div>
                 </div>
-                <div className="glass-card stat-card blue animate-in">
+                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Newspaper size={22} /></div>
                     <div className="stat-value">{data.total_articles}</div>
                     <div className="stat-label">Total Signals Processed</div>
                 </div>
-                <div className="glass-card stat-card amber animate-in">
+                <div className="glass-card stat-card amber animate-in" onClick={() => navigate('/scanner')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><AlertTriangle size={22} /></div>
                     <div className="stat-value" style={{ color: data.fake_news_percentage > 30 ? '#ef4444' : '#f59e0b' }}>
                         {data.fake_news_percentage}%
                     </div>
                     <div className="stat-label">Fake News Detected</div>
                 </div>
-                <div className="glass-card stat-card green animate-in">
+                <div className="glass-card stat-card green animate-in" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Activity size={22} /></div>
                     <div className="stat-value">{data.active_alerts}</div>
                     <div className="stat-label">Active Alerts</div>
                 </div>
-                <div className="glass-card stat-card red animate-in">
+                <div className="glass-card stat-card red animate-in" onClick={() => navigate('/pulse')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Flame size={22} /></div>
                     <div className="stat-value" style={{ color: data.average_anger > 5 ? '#ef4444' : '#f59e0b' }}>
                         {data.average_anger}/10
