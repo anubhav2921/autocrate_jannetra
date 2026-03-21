@@ -22,12 +22,12 @@ from ..services.gemini_config import gemini_client, GEMINI_MODEL
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
 
-async def _upload_to_firebase(file_content: bytes, filename: str) -> str:
+async def _upload_to_firebase(file_content: bytes, filename: str, content_type: str = "image/jpeg") -> str:
     """Uploads bytes to Firebase Storage and returns public URL."""
     try:
         bucket = storage.bucket("jannetra.firebasestorage.app")
         blob = bucket.blob(f"citizen_reports/{filename}")
-        blob.upload_from_string(file_content, content_type="image/jpeg")
+        blob.upload_from_string(file_content, content_type=content_type)
         blob.make_public()
         return blob.public_url
     except Exception as e:
@@ -54,8 +54,9 @@ async def analyze_reported_issue(
     filename = f"{uuid.uuid4()}.{ext}"
     
     # 1. Upload to Firebase
-    image_url = await _upload_to_firebase(content, filename)
-    print(f"Image uploaded to: {image_url}")
+    mime_type = image.content_type or "image/jpeg"
+    image_url = await _upload_to_firebase(content, filename, mime_type)
+    print(f"Image uploaded to: {image_url} with mime: {mime_type}")
     
     # 2. AI Vision Pipeline with Gemini
     # Constructing prompt for specific issue detection
@@ -94,22 +95,22 @@ async def analyze_reported_issue(
         try:
             print(f"Calling Gemini API (Attempt {attempt + 1})...")
             # Include baseline safety settings to ensure civic issues aren't blocked
-            SAFETY_OFF = [
-                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH",        threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT",         threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT",  threshold="BLOCK_NONE"),
-            ]
+            # SAFETY_OFF = [
+            #     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH",        threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT",         threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT",  threshold="BLOCK_NONE"),
+            # ]
             
             response = gemini_client.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=[
-                    types.Part.from_bytes(data=content, mime_type="image/jpeg"),
+                    types.Part.from_bytes(data=content, mime_type=mime_type),
                     prompt
                 ],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    safety_settings=SAFETY_OFF,
+                    # safety_settings=SAFETY_OFF,
                 )
             )
             print(f"Gemini Raw Response: {response.text}")
@@ -131,7 +132,7 @@ async def analyze_reported_issue(
             ai_data = {
                 "scene_type": "Other",
                 "detected_issue": "Analysis Service Unavailable",
-                "ai_description": "Unable to clearly analyze the image. Please try again with a clearer photo.",
+                "ai_description": f"DEBUG ERROR: {error_msg}",  # TEMP: show real error
                 "severity": "None",
                 "urgency": "None",
                 "confidence_score": 0
