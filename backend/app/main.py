@@ -9,7 +9,7 @@ from app.routes import (
     account, alerts, analytics, articles, auth, chatbot,
     citizen_reports, complaints, dashboard, leaderboard,
     location, map_route, pipeline, reports, resolutions,
-    scanner, signal_problems, signals, sources, system_monitoring
+    scanner, signal_problems, signals, sources, system_monitoring, workflows
 )
 
 logger = logging.getLogger("jannetra.scheduler")
@@ -87,6 +87,7 @@ app.include_router(signal_problems.router)
 app.include_router(signals.router)
 app.include_router(sources.router)
 app.include_router(system_monitoring.router)
+app.include_router(workflows.router)
 
 
 @app.get("/")

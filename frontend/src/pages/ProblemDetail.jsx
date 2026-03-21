@@ -24,18 +24,28 @@ export default function ProblemDetail() {
     const [showResolveForm, setShowResolveForm] = useState(false);
     const [report, setReport] = useState('');
     const [proofFile, setProofFile] = useState(null);
+    const [activityLogs, setActivityLogs] = useState([]);
+    const [progress, setProgress] = useState(0);
+    const [updatingProgress, setUpdatingProgress] = useState(false);
+    const [noteText, setNoteText] = useState('');
+    const [addingNote, setAddingNote] = useState(false);
 
     useEffect(() => {
         setLoading(true);
         api.get(`/signal-problems/${id}`)
             .then((data) => {
                 setProblem(data);
-                if (data?.status === 'Problem Resolved') setResolved(true);
+                if (data?.status === 'Problem Resolved' || data?.status === 'Resolved') setResolved(true);
+                setProgress(data?.progress || 0);
             })
             .catch((err) => {
                 console.error('Failed to fetch problem detail:', err);
             })
             .finally(() => setLoading(false));
+
+        api.get(`/workflows/${id}/activity`)
+            .then(data => setActivityLogs(data))
+            .catch(err => console.error("Failed to load activity logs", err));
     }, [id]);
 
     const handleResolve = async () => {
@@ -46,19 +56,20 @@ export default function ProblemDetail() {
 
         setResolving(true);
         try {
+            // First submit resolution natively
             const formData = new FormData();
             formData.append('report', report);
-            if (proofFile) {
-                formData.append('proof', proofFile);
-            }
+            if (proofFile) formData.append('proof', proofFile);
 
             const data = await api.patch(`/signal-problems/${id}/resolve`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
             if (data.success) {
+                // Log and update workflow native progress
+                await api.post(`/workflows/${id}/progress`, { progress: 100 });
                 setResolved(true);
-                setProblem((prev) => ({ ...prev, status: 'Problem Resolved' }));
+                setProblem((prev) => ({ ...prev, status: 'Resolved', progress: 100 }));
                 setShowResolveForm(false);
             }
         } catch (err) {
@@ -66,6 +77,51 @@ export default function ProblemDetail() {
             alert('Failed to submit resolution. Please try again.');
         } finally {
             setResolving(false);
+        }
+    };
+
+    const handleUpdateProgress = async () => {
+        setUpdatingProgress(true);
+        try {
+            const data = await api.post(`/workflows/${id}/progress`, { progress: parseInt(progress) });
+            setProblem(prev => ({ ...prev, progress: data.progress, status: data.status }));
+            if (data.progress === 100) setResolved(true);
+            
+            const logs = await api.get(`/workflows/${id}/activity`);
+            setActivityLogs(logs);
+        } catch(err) {
+            console.error(err);
+        } finally {
+            setUpdatingProgress(false);
+        }
+    };
+
+    const handleAddNote = async () => {
+        if (!noteText.trim()) return;
+        setAddingNote(true);
+        try {
+            await api.post(`/workflows/${id}/notes`, { note: noteText });
+            setNoteText('');
+            const logs = await api.get(`/workflows/${id}/activity`);
+            setActivityLogs(logs);
+        } catch(err) {
+            console.error(err);
+        } finally {
+            setAddingNote(false);
+        }
+    };
+
+    const handleEscalate = async () => {
+        try {
+            const reason = prompt("Enter reason for escalation:");
+            if (!reason) return;
+            await api.post(`/workflows/${id}/escalate`, { reason });
+            const p = await api.get(`/signal-problems/${id}`);
+            setProblem(p);
+            const logs = await api.get(`/workflows/${id}/activity`);
+            setActivityLogs(logs);
+        } catch(err) {
+            console.error(err);
         }
     };
 
@@ -328,6 +384,80 @@ export default function ProblemDetail() {
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Workflow Progress Engine */}
+            <div className="glass-card animate-in" style={{ padding: '24px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Target size={18} style={{ color: 'var(--accent-purple)' }} /> Execution Workflow Progress
+                    </h3>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button onClick={handleEscalate} className="btn" style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            <Flame size={12} style={{ marginRight: '4px' }} /> Escalate Priority
+                        </button>
+                    </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                    <input 
+                        type="range" 
+                        min="0" max="100" 
+                        value={progress} 
+                        onChange={e => setProgress(e.target.value)}
+                        disabled={isResolved || updatingProgress}
+                        style={{ flex: 1, accentColor: 'var(--accent-purple)' }}
+                    />
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-purple)', width: '60px', textAlign: 'right' }}>
+                        {progress}%
+                    </div>
+                    {!isResolved && progress != problem.progress && (
+                        <button onClick={handleUpdateProgress} disabled={updatingProgress} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                            {updatingProgress ? 'Saving...' : 'Save Progress'}
+                        </button>
+                    )}
+                </div>
+
+                {/* Activity & Notes */}
+                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                        Governance Audit Timeline
+                    </h4>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+                        {activityLogs.length === 0 ? (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No activity logs found.</div>
+                        ) : (
+                            activityLogs.map(log => (
+                                <div key={log._id} style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
+                                    <div style={{ width: '2px', background: 'var(--accent-blue)', opacity: 0.5, borderRadius: '2px' }} />
+                                    <div>
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.action}</span>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>by {log.performed_by} at {new Date(log.timestamp).toLocaleString()}</span>
+                                        </div>
+                                        {log.details && <div style={{ color: 'var(--text-secondary)' }}>{log.details}</div>}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {!isResolved && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                                type="text" 
+                                value={noteText}
+                                onChange={e => setNoteText(e.target.value)}
+                                placeholder="Add an official execution note or update..." 
+                                style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
+                            />
+                            <button onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem' }}>
+                                {addingNote ? 'Adding...' : 'Attach Note'}
+                            </button>
                         </div>
                     )}
                 </div>

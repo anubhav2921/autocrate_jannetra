@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
+import ProblemActionMenu from '../components/ProblemActionMenu';
 
 const SEVERITY_CONFIG = {
     Critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
@@ -236,7 +237,7 @@ export default function SignalMonitor() {
                                             {isResolved ? 'Resolved' : 'Pending'}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '14px 12px' }}>
+                                    <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
                                             onClick={() => navigate(`/signal-monitor/${p.id}`)}
                                             className="btn btn-primary"
@@ -247,6 +248,7 @@ export default function SignalMonitor() {
                                             }}>
                                             Take Action
                                         </button>
+                                        <ProblemActionMenu problem={p} onUpdate={() => window.location.reload()} />
                                     </td>
                                 </tr>
                             );

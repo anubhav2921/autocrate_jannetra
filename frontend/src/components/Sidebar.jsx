@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe,
     LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan, Activity, Users,
+    Briefcase
 } from 'lucide-react';
 import { useState } from 'react';
 import ExportReportModal from './ExportReportModal';
@@ -10,6 +11,7 @@ const navLinks = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/signal-monitor', label: 'Signal Monitor', icon: FileText },
     { path: '/citizen-reports', label: 'Citizen Reports', icon: Users },
+    { path: '/working', label: 'Working Problems', icon: Briefcase },
     { path: '/alerts', label: 'Alerts & Actions', icon: AlertTriangle },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
     { path: '/map', label: 'Problem Map', icon: Map },

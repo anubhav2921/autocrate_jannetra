@@ -327,7 +327,11 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
     Returns a list of all signal problems that were reported by citizens.
     Sorted by priority_score descending.
     """
-    match_filter = {"category": "Citizen Report"}
+    match_filter = {
+        "category": "Citizen Report", 
+        "deleted": {"$ne": True}, 
+        "status": {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
+    }
     
     # Optional: filter by department if leader
     if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):

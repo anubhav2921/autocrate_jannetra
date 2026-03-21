@@ -27,5 +27,6 @@ resolutions_collection    = db["resolutions"]
 signal_problems_collection = db["signal_problems"]
 system_metrics_collection = db["system_metrics"]
 community_reviews_collection = db["community_reviews"]
+activity_logs_collection  = db["activity_logs"]
 
 

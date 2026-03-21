@@ -34,9 +34,14 @@ async def list_signal_problems(
     from .location import _build_location_match
     match = _build_location_match(state, district, city, ward)
 
-    # Add Status Filter
+    # Add Status Filter (default to pending/review unless overridden)
     if status:
         match["status"] = status
+    else:
+        match["status"] = {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
+        
+    # Ignore Deleted items
+    match["deleted"] = {"$ne": True}
         
     # Add User Filter
     if user_id:

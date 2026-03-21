@@ -17,6 +17,7 @@ import Scanner from './pages/Scanner';
 import SignalMonitor from './pages/SignalMonitor';
 import CitizenReports from './pages/CitizenReports';
 import ProblemDetail from './pages/ProblemDetail';
+import WorkingProblems from './pages/WorkingProblems';
 import SystemMonitoring from './pages/SystemMonitoring';
 import SystemMetricDetail from './pages/SystemMetricDetail';
 import Login from './pages/Login';
@@ -132,6 +133,7 @@ export default function App() {
                                 <Route path="/scanner" element={<Scanner />} />
                                 <Route path="/signal-monitor" element={<SignalMonitor />} />
                                 <Route path="/citizen-reports" element={<CitizenReports />} />
+                                <Route path="/working" element={<WorkingProblems />} />
                                 <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
                                 <Route path="/system-monitoring" element={<SystemMonitoring />} />
                                 <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
