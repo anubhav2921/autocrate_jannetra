@@ -32,7 +32,7 @@ async def _upload_to_firebase(file_content: bytes, filename: str, content_type: 
         return blob.public_url
     except Exception as e:
         print(f"Firebase Upload Error: {e}")
-        return f"https://mock-storage.jannetra.ai/reports/{filename}"
+        return ""
 
 @router.post("/upload-audio")
 async def upload_audio(audio: UploadFile = File(...)):

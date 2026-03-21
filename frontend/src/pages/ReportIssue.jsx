@@ -280,8 +280,18 @@ const ReportIssue = () => {
                 audioData.append('audio', audioBlob, 'report_audio.webm');
                 const audRes = await api.post('/upload-audio', audioData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                if (audRes.success) uploadedAudioUrl = audRes.audio_url;
+                }).catch(() => ({ success: false }));
+                
+                if (audRes.success && audRes.audio_url && !audRes.audio_url.includes('mock-storage')) {
+                    uploadedAudioUrl = audRes.audio_url;
+                } else {
+                    // Critical Fallback: Save audio as robust Base64 directly bypassing failed cloud storage
+                    uploadedAudioUrl = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(audioBlob);
+                    });
+                }
             }
 
             await api.post('/report-issue/submit', {
