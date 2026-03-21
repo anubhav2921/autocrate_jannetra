@@ -231,46 +231,46 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
     if req.metadata.get("department_tag"):
         assigned_dept = req.metadata["department_tag"].lower()
     
-    if req.metadata.get("scene_type") in ["Civic Issue", "Pending Verification"]:
-        ai_desc = req.metadata.get("ai_description", "Verified by Citizen")
-        audio_evidence = req.metadata.get("audio_url", "")
-        
-        signal_problem = {
-            "id": req.report_id,  # Link IDs directly for tracking
-            "title": req.detected_issue,
-            "category": "Citizen Report",
-            "department": assigned_dept,
-            "state": "Uttar Pradesh",
-            "district": "Prayagraj",
-            "city": "Prayagraj",
-            "ward": "Unknown",
-            "location": f"Lat {req.latitude}, Lng {req.longitude}",
-            "detected_at": datetime.datetime.utcnow(),
-            "last_updated": datetime.datetime.utcnow(),
-            "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
-            "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
-            "evidence_summary": ai_desc,
-            "image_url": req.image_url,
-            "audio_url": audio_evidence,
-            "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
-            "risk_score": article["risk_score"],
-            "priority_score": article["risk_score"],
-            "severity": article["risk_level"],
-            "frequency": 1,
-            "source": "Citizen Application",
-            "status": "Pending",
-            "has_gemini_summary": True, # Pre-summarized conceptually
-            "sample_records": [{
-                 "title": req.detected_issue, 
-                 "severity": article["risk_level"], 
-                 "source": "Citizen App"
-            }],
-            "resolution_proof_url": None,
-            "resolution_report": None,
-            "resolved_at": None,
-            "resolved_by": None
-        }
-        await signal_problems_collection.insert_one(signal_problem)
+    # Always insert the report into signals collection so no public grievances are silently dropped!
+    ai_desc = req.metadata.get("ai_description", "Verified by Citizen")
+    audio_evidence = req.metadata.get("audio_url", "")
+    
+    signal_problem = {
+        "id": req.report_id,  # Link IDs directly for tracking
+        "title": req.detected_issue,
+        "category": "Citizen Report",
+        "department": assigned_dept,
+        "state": "Uttar Pradesh",
+        "district": "Prayagraj",
+        "city": "Prayagraj",
+        "ward": "Unknown",
+        "location": f"Lat {req.latitude}, Lng {req.longitude}",
+        "detected_at": datetime.datetime.utcnow(),
+        "last_updated": datetime.datetime.utcnow(),
+        "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
+        "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
+        "evidence_summary": ai_desc,
+        "image_url": req.image_url,
+        "audio_url": audio_evidence,
+        "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
+        "risk_score": article["risk_score"],
+        "priority_score": article["risk_score"],
+        "severity": article["risk_level"],
+        "frequency": 1,
+        "source": "Citizen Application",
+        "status": "Pending",
+        "has_gemini_summary": True, # Pre-summarized conceptually
+        "sample_records": [{
+             "title": req.detected_issue, 
+             "severity": article["risk_level"], 
+             "source": "Citizen App"
+        }],
+        "resolution_proof_url": None,
+        "resolution_report": None,
+        "resolved_at": None,
+        "resolved_by": None
+    }
+    await signal_problems_collection.insert_one(signal_problem)
 
     return {"success": True, "report_id": req.report_id}
 
