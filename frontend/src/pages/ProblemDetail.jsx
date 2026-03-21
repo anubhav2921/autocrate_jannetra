@@ -188,29 +188,7 @@ export default function ProblemDetail() {
                 </div>
             </div>
 
-            {/* Attached Citizen Evidence */}
-            {(problem.image_url || problem.audio_url) && (
-                <div className="glass-card animate-in" style={{ marginBottom: '20px' }}>
-                    <div className="section-title" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Image size={18} /> Attached Citizen Evidence
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: problem.image_url && problem.audio_url ? '1fr 1fr' : '1fr', gap: '20px' }}>
-                        {problem.image_url && (
-                            <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000' }}>
-                                <img src={problem.image_url} alt="Problem Evidence" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain' }} />
-                            </div>
-                        )}
-                        {problem.audio_url && (
-                            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '16px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Mic size={16} /> Authentic Voice Recording
-                                </div>
-                                <audio src={problem.audio_url} controls style={{ width: '100%' }} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+
 
             <div className="grid-2">
                 {/* Problem Summary & Intelligence Summary */}
@@ -315,6 +293,43 @@ export default function ProblemDetail() {
                             </div>
                         )}
                     </div>
+
+                    {/* Appended Tags & Primary Evidence for Citizen Reports */}
+                    {(problem.image_url || problem.audio_url || problem.department) && (
+                        <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <Image size={15} /> Primary Core Evidence & Tags
+                            </div>
+
+                            {problem.department && (
+                                <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>MAPPED DEPARTMENT:</div>
+                                    <span style={{
+                                        background: 'rgba(59,130,246,0.15)', color: '#3b82f6',
+                                        padding: '4px 10px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, border: '1px solid rgba(59,130,246,0.2)'
+                                    }}>
+                                        #{problem.department}
+                                    </span>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: problem.image_url && problem.audio_url ? '1fr 1fr' : '1fr', gap: '16px' }}>
+                                {problem.image_url && (
+                                    <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000' }}>
+                                        <img src={problem.image_url} alt="Problem Evidence" style={{ width: '100%', maxHeight: '250px', objectFit: 'contain' }} />
+                                    </div>
+                                )}
+                                {problem.audio_url && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '12px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <Mic size={14} /> Voice Note Attached
+                                        </div>
+                                        <audio src={problem.audio_url} controls style={{ width: '100%' }} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
