@@ -18,9 +18,8 @@ class ReviewCreate(BaseModel):
 
 @router.get("/complaints")
 async def list_complaints(current_user: Optional[dict] = Depends(get_current_user_optional)):
-    """Returns articles joined with detection results. Public access allowed."""
-    # Get all source IDs that are COMPLAINT or SOCIAL_MEDIA type
-    source_query = {"source_type": {"$in": ["COMPLAINT", "SOCIAL_MEDIA"]}}
+    # Get all source IDs that are SOCIAL_MEDIA or PUBLIC type (Excluding direct Citizen Reports for privacy)
+    source_query = {"source_type": {"$in": ["NEWS", "SOCIAL_MEDIA", "PUBLIC_FORUM"]}}
     complaint_sources = await sources_collection.find(source_query, {"id": 1}).to_list(None)
     source_ids = [s["id"] for s in complaint_sources]
 
