@@ -3538,3 +3538,6 @@ img, video, iframe, canvas, svg:not([class]) {
     grid-template-columns: 1fr;
   }
 }
+/* Mobile & Touch Specific Fixes */
+.sidebar-link:hover, .sidebar-link:active, .notification-item:hover, .notification-item:active { background: var(--bg-glass-hover) !important; color: var(--text-primary) !important; }
+

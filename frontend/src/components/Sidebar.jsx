@@ -58,17 +58,10 @@ export default function Sidebar({ user, onLogout, isOpen, onClose }) {
                 ))}
 
                 <button
+                    className="sidebar-link"
+                    style={{ background: 'none', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', outline: 'none' }}
                     onClick={() => { setIsExportModalOpen(true); handleNavClick(); }}
                     aria-label="Export Report"
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 20px',
-                        color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500,
-                        background: 'none', border: 'none', cursor: 'pointer', width: '100%',
-                        textAlign: 'left', fontFamily: 'var(--font-family)', borderLeft: '3px solid transparent',
-                        transition: 'all 0.2s ease',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-glass-hover)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
                 >
                     <Download size={18} aria-hidden="true" />
                     Export Report

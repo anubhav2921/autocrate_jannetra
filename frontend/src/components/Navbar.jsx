@@ -118,7 +118,8 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
                                     top: '45px',
                                     right: '0',
                                     zIndex: 1001,
-                                    width: '380px',
+                                    width: '100vw',
+                                    maxWidth: '380px',
                                 }}
                             >
                                 <LocationFilter
@@ -145,7 +146,7 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
 
                         {isAlertOpen && (
                             <div className="notifications-dropdown glass-card animate-in" style={{
-                                position: 'absolute', top: '45px', right: '0', width: '380px',
+                                position: 'absolute', top: '45px', right: '0', width: '100vw', maxWidth: '380px',
                                 padding: '12px', zIndex: 1000, border: '1px solid var(--border-color)',
                                 boxShadow: 'var(--shadow-lg)', background: 'var(--bg-secondary)'
                             }}>
@@ -165,6 +166,7 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
                                         {alertsData.map(a => (
                                             <div
                                                 key={a.id}
+                                                className="notification-item"
                                                 onClick={() => { setSelectedAlert(a); setIsAlertOpen(false); }}
                                                 style={{
                                                     padding: '10px', background: 'var(--bg-glass)',
@@ -172,8 +174,6 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
                                                     borderLeft: `4px solid ${a.severity === 'CRITICAL' ? 'var(--risk-critical)' : a.severity === 'HIGH' ? 'var(--risk-high)' : 'var(--risk-moderate)'}`,
                                                     transition: 'background 0.2s'
                                                 }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-glass-hover)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-glass)'}
                                             >
                                                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>{a.article?.title?.substring(0, 60)}...</div>
                                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
