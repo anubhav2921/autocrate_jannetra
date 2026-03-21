@@ -241,7 +241,7 @@ export default function CitizenReports() {
                                                 display: 'flex', alignItems: 'center', gap: '5px',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                            View Details
+                                            Take Action
                                         </button>
                                         <ProblemActionMenu problem={p} onUpdate={() => window.location.reload()} />
                                     </td>

@@ -32,6 +32,10 @@ async def lifespan(app: FastAPI):
     scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
 
     # Run once immediately on startup (after a 10-second warm-up delay)
+    from datetime import datetime, timedelta
+    scheduler.add_job(run_pipeline_job, "date", run_date=datetime.now() + timedelta(seconds=10), id="startup_pipeline_job")
+    
+    # And then run every 30 minutes
     scheduler.add_job(run_pipeline_job, "interval", minutes=30, id="pipeline_job",
                       max_instances=1, coalesce=True)
 
