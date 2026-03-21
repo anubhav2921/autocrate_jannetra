@@ -130,11 +130,11 @@ async def analyze_reported_issue(
             
             # For other errors or last attempt, fail gracefully following the Failsafe instructions
             ai_data = {
-                "scene_type": "Other",
-                "detected_issue": "Analysis Service Unavailable",
-                "ai_description": f"DEBUG ERROR: {error_msg}",  # TEMP: show real error
-                "severity": "None",
-                "urgency": "None",
+                "scene_type": "Pending Verification",
+                "detected_issue": "Manual Review Required",
+                "ai_description": "We successfully received your photo, but our real-time AI analysis is currently experiencing high traffic. You can still submit this report immediately, and our team will manually review and prioritize it.",
+                "severity": "Pending",
+                "urgency": "Pending",
                 "confidence_score": 0
             }
             break
@@ -214,7 +214,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
     }
     assigned_dept = department_map.get(req.detected_issue, "municipal")
     
-    if req.metadata.get("scene_type") == "Civic Issue":
+    if req.metadata.get("scene_type") in ["Civic Issue", "Pending Verification"]:
         ai_desc = req.metadata.get("ai_description", "Verified by Citizen")
         signal_problem = {
             "id": req.report_id,  # Link IDs directly for tracking
