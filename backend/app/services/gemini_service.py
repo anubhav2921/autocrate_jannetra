@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 
 VALID_SEVERITIES = {"Critical", "High", "Medium", "Low"}
 VALID_CATEGORIES = {
-    "Financial Integrity", "Public Sentiment", "Misinformation",
-    "Security Breach", "Supply Chain", "Environmental",
-    "Electoral Oversight", "Urban Planning", "Healthcare",
-    "Education", "Law & Order", "Infrastructure", "Corruption",
+    "Civil Infrastructure", "Road & Traffic", "Accidents & Emergencies",
+    "Crime", "Social & Human Rights", "Public Health & Safety",
+    "Environmental", "Animal Related", "Governance & Corruption",
+    "Digital/Cyber", "Suspicious Activities",
 }
 SAFETY_OFF = [
     types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,       threshold=types.HarmBlockThreshold.OFF),

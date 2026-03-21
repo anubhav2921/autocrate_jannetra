@@ -33,29 +33,67 @@ from app.utils import calculate_similarity, clean_text_simple
 logger = logging.getLogger("jannetra.pipeline")
 
 CATEGORY_KEYWORDS: dict[str, list[str]] = {
-    "Water": ["water", "supply", "pipeline", "tanker", "drought", "contaminated", "sewage", "groundwater", "drinking water"],
-    "Infrastructure": ["road", "bridge", "building", "construction", "pothole", "highway", "metro", "railway", "smart city", "electricity"],
-    "Healthcare": ["hospital", "doctor", "medicine", "health", "disease", "dengue", "vaccine", "covid", "medical", "surgeon"],
-    "Education": ["school", "teacher", "student", "education", "exam", "university", "scholarship", "literacy"],
-    "Law & Order": ["police", "crime", "theft", "murder", "violence", "mob", "arrest", "safety", "security", "cybercrime"],
-    "Corruption": ["corrupt", "bribe", "scam", "fraud", "embezzle", "money laundering", "kickback", "black money"],
-    "Environment": ["pollution", "environment", "forest", "waste", "climate", "emissions", "mining", "deforestation"],
-    "Sanitation": ["sanitation", "sewer", "drain", "toilet", "clean", "garbage", "waste management"],
-    "Transport": ["traffic", "transport", "bus", "metro", "railway", "airport", "commute", "congestion"],
-    "Housing": ["housing", "slum", "homeless", "real estate", "rent", "eviction", "demolition"],
+    "Civil Infrastructure": [
+        "road damage", "potholes", "cracks", "broken road", "road blockage", "encroachment", 
+        "debris", "water leakage", "pipeline burst", "drainage", "sewage overflow", 
+        "electricity", "power cut", "exposed wire", "transformer", "street light", 
+        "garbage", "waste disposal", "public toilet", "illegal construction", 
+        "building collapse", "unsafe structure", "bridge damage", "traffic signal", 
+        "water logging", "flooding", "footpath"
+    ],
+    "Road & Traffic": [
+        "traffic jam", "congestion", "illegal parking", "wrong-side", "signal violation", 
+        "over-speeding", "traffic police", "road signs", "divider damage", "zebra crossing", 
+        "road lighting", "intersection"
+    ],
+    "Accidents & Emergencies": [
+        "accident", "hit and run", "pedestrian", "vehicle breakdown", "fire", 
+        "industrial accident", "gas leakage", "earthquake", "storm", "landslide"
+    ],
+    "Crime": [
+        "murder", "homicide", "assault", "armed attack", "kidnapping", "abduction", 
+        "theft", "robbery", "burglary", "snatching", "vehicle theft", "fights", 
+        "clashes", "riots", "public nuisance", "drunken", "domestic violence", 
+        "harassment", "eve-teasing", "bullying", "threatening", "stalking", "sexual"
+    ],
+    "Social & Human Rights": [
+        "child labor", "missing person", "homeless", "begging", "elder abuse", "trafficking"
+    ],
+    "Public Health & Safety": [
+        "open sewage", "unhygienic", "contaminated water", "disease outbreak", 
+        "illegal medical", "unsafe food", "health hazard"
+    ],
+    "Environmental": [
+        "air pollution", "water pollution", "illegal dumping", "tree cutting", 
+        "deforestation", "noise pollution", "burning waste", "industrial pollution"
+    ],
+    "Animal Related": [
+        "injured animal", "dead animal", "stray animal", "animal cruelty", "cattle"
+    ],
+    "Governance & Corruption": [
+        "bribery", "bribe", "negligence", "delay in service", "fake scheme", 
+        "fraud", "misuse of funds", "corruption", "scam"
+    ],
+    "Digital/Cyber": [
+        "online fraud", "scam call", "phishing", "identity theft", "fake news", "cybercrime"
+    ],
+    "Suspicious Activities": [
+        "suspicious person", "unattended bag", "smuggling", "illegal gathering", "surveillance"
+    ]
 }
 
 CATEGORY_TO_DEPARTMENT: dict[str, str] = {
-    "Water": "water",
-    "Infrastructure": "municipal",
-    "Healthcare": "health",
-    "Education": "municipal",
-    "Law & Order": "police",
-    "Corruption": "police",
-    "Environment": "municipal",
-    "Sanitation": "municipal",
-    "Transport": "municipal",
-    "Housing": "municipal",
+    "Civil Infrastructure": "municipal",
+    "Road & Traffic": "traffic",
+    "Accidents & Emergencies": "emergency",
+    "Crime": "police",
+    "Social & Human Rights": "social",
+    "Public Health & Safety": "health",
+    "Environmental": "municipal",
+    "Animal Related": "municipal",
+    "Governance & Corruption": "police",
+    "Digital/Cyber": "cyber",
+    "Suspicious Activities": "police",
 }
 
 
