@@ -41,7 +41,7 @@ async def sentiment_trend(
                 for r in results
             ]
         }
-
+        
     # Fallback: legacy articles + sentiment_records
     # Use articles scraped_at or ingested_at
     pipeline = [

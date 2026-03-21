@@ -7,8 +7,13 @@ Security: API key is loaded from environment via gemini_config.
 import json
 import logging
 import re
+import warnings
 from functools import lru_cache
 from typing import Optional
+
+# Suppress google-genai SDK UserWarnings about HarmCategory/HarmBlockThreshold
+# enum string validation — cosmetic only, does not affect functionality.
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
 
 from google.genai import types
 
