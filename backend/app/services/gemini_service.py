@@ -28,10 +28,10 @@ VALID_CATEGORIES = {
     "Education", "Law & Order", "Infrastructure", "Corruption",
 }
 SAFETY_OFF = [
-    types.SafetySetting(category="HATE_SPEECH",        threshold="OFF"),
-    types.SafetySetting(category="HARASSMENT",          threshold="OFF"),
-    types.SafetySetting(category="SEXUALLY_EXPLICIT",   threshold="OFF"),
-    types.SafetySetting(category="DANGEROUS_CONTENT",   threshold="OFF"),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,       threshold=types.HarmBlockThreshold.OFF),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,      threshold=types.HarmBlockThreshold.OFF),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold=types.HarmBlockThreshold.OFF),
+    types.SafetySetting(category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold=types.HarmBlockThreshold.OFF),
 ]
 
 # --------------------------------------------------------------------------- #

@@ -35,14 +35,22 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(run_pipeline_job, "interval", minutes=30, id="pipeline_job",
                       max_instances=1, coalesce=True)
 
-    scheduler.start()
-    logger.info("[Scheduler] ✅ APScheduler started — pipeline runs every 30 minutes.")
+    try:
+        scheduler.start()
+        logger.info("[Scheduler] \u2705 APScheduler started \u2014 pipeline runs every 30 minutes.")
+    except Exception as exc:
+        logger.error("[Scheduler] Failed to start: %s", exc)
 
-    yield  # App is running
+    try:
+        yield  # App is running
+    finally:
+        try:
+            if scheduler.running:
+                scheduler.shutdown(wait=False)
+        except Exception:
+            pass
+        logger.info("[Scheduler] Stopped.")
 
-    # ── Shutdown ─────────────────────────────────────────────
-    scheduler.shutdown(wait=False)
-    logger.info("[Scheduler] Stopped.")
 
 
 app = FastAPI(lifespan=lifespan)
