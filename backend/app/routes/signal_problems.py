@@ -46,6 +46,9 @@ async def list_signal_problems(
     if user_role != "ADMIN" and user_dept and not user_id:
         match["department"] = user_dept
 
+    # Do NOT show Citizen Reports on the public Signal Monitor. They have their own dedicated section.
+    match["category"] = {"$ne": "Citizen Report"}
+
     # Fetch from the aggregated collection
     # We sort by priority_score descending to show high-impact issues first
     problems_cursor = await signal_problems_collection.find(match).sort([
