@@ -352,6 +352,8 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
             "priorityScore": p.get("priority_score", 0),
             "frequency": p.get("frequency", 1),
             "source": p.get("source", "Citizen Application"),
-            "status": p.get("status", "Pending")
+            "status": p.get("status", "Pending"),
+            "image_url": p.get("image_url", ""),
+            "audio_url": p.get("audio_url", "")
         })
     return results

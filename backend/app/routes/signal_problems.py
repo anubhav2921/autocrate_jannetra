@@ -206,7 +206,10 @@ async def get_signal_problem(problem_id: str):
             "sampleRecords": p.get("sample_records", []),
             "resolutionReport": p.get("resolution_report"),
             "resolutionProofUrl": p.get("resolution_proof_url"),
-            "resolvedAt": p.get("resolved_at")
+            "resolvedAt": p.get("resolved_at"),
+            "image_url": p.get("image_url"),
+            "audio_url": p.get("audio_url"),
+            "department": p.get("department")
         }
 
     # 2. Try to find in synthetic (news articles) if not in signal_problems
@@ -272,7 +275,10 @@ async def get_signal_problem(problem_id: str):
             "sampleRecords": [],
             "resolutionReport": None,
             "resolutionProofUrl": None,
-            "resolvedAt": None
+            "resolvedAt": None,
+            "image_url": a.get("image_url") or a.get("url"),
+            "audio_url": None,
+            "department": a.get("department", "General")
         }
 
     raise HTTPException(status_code=404, detail=f"Signal problem '{problem_id}' not found.")
