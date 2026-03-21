@@ -231,7 +231,13 @@ const ReportIssue = () => {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }).catch(() => new MediaRecorder(stream));
+            
+            let options = { mimeType: 'audio/webm' };
+            if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported('audio/webm')) {
+                options = MediaRecorder.isTypeSupported('audio/mp4') ? { mimeType: 'audio/mp4' } : {};
+            }
+            
+            const mediaRecorder = new MediaRecorder(stream, options);
             mediaRecorderRef.current = mediaRecorder;
             audioChunksRef.current = [];
 
@@ -240,7 +246,8 @@ const ReportIssue = () => {
             };
 
             mediaRecorder.onstop = () => {
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const mimeType = options.mimeType || 'audio/mp4';
+                const blob = new Blob(audioChunksRef.current, { type: mimeType });
                 setAudioBlob(blob);
                 const url = URL.createObjectURL(blob);
                 setAudioUrl(url);
@@ -251,7 +258,7 @@ const ReportIssue = () => {
             setIsRecordingAudio(true);
         } catch (err) {
             console.error("Audio recording failed", err);
-            alert("Could not access microphone to record audio.");
+            alert("Could not access microphone to record audio: " + err.message);
         }
     };
 
