@@ -37,13 +37,13 @@ HEADERS = {
 
 # Governance-relevant search queries
 GOVERNANCE_QUERIES = [
-    "India governance corruption",
-    "India infrastructure development",
-    "India public health crisis",
+    "India pothole road damage",
     "India water supply shortage",
-    "India education policy",
-    "India law enforcement",
-    "India environmental pollution",
+    "India power cut electricity",
+    "India open sewage problem",
+    "India illegal construction building",
+    "India traffic congestion accident",
+    "India government hospital negligence",
 ]
 
 # Location extraction is now handled by app.services.location_service
@@ -141,7 +141,7 @@ def scrape_gdelt(max_articles: int = 20) -> list[dict]:
     Returns normalized article dicts.
     """
     articles: list[dict] = []
-    query = "India governance OR corruption OR infrastructure OR healthcare"
+    query = "India (pothole OR sewage OR \"power cut\" OR \"water shortage\" OR \"road damage\")"
 
     logger.info("[GDELT] Fetching events: %s", query)
 

@@ -5,6 +5,18 @@ from ..mongodb import news_articles_collection
 router = APIRouter(prefix="/api", tags=["Data Pipeline"])
 
 
+@router.post("/pipeline/wipe")
+async def wipe_database():
+    """Wipe all scraped data from the database completely."""
+    from ..mongodb import db
+    try:
+        await db.news_articles.delete_many({})
+        await db.signal_problems.delete_many({})
+        await db.detection_results.delete_many({})
+        return {"success": True, "message": "All scraped problems and signals successfully wiped."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Wipe failed: {str(e)}")
+
 @router.post("/pipeline/run")
 def trigger_pipeline():
     """Manually trigger the data ingestion pipeline."""
