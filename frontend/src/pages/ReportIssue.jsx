@@ -29,7 +29,13 @@ const ReportIssue = () => {
     
     const [description, setDescription] = useState('');
     const [issueType, setIssueType] = useState('');
-    const [isListening, setIsListening] = useState(false);
+    const [department, setDepartment] = useState('');
+    
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const [audioBlob, setAudioBlob] = useState(null);
+    const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+    const [audioUrl, setAudioUrl] = useState(null);
     
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -215,28 +221,38 @@ const ReportIssue = () => {
         }
     };
 
-    // Speech to Text
-    const toggleListening = () => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
-
-        if (isListening) {
-            setIsListening(false);
+    // Real Audio Recording Implementation
+    const toggleAudioRecording = async () => {
+        if (isRecordingAudio) {
+            mediaRecorderRef.current?.stop();
+            setIsRecordingAudio(false);
             return;
         }
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' }).catch(() => new MediaRecorder(stream));
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
 
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => setIsListening(false);
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            setDescription(prev => prev + (prev ? " " : "") + transcript);
-        };
-        recognition.start();
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(blob);
+                const url = URL.createObjectURL(blob);
+                setAudioUrl(url);
+                stream.getTracks().forEach(t => t.stop());
+            };
+
+            mediaRecorder.start();
+            setIsRecordingAudio(true);
+        } catch (err) {
+            console.error("Audio recording failed", err);
+            alert("Could not access microphone to record audio.");
+        }
     };
 
     const handleBack = () => {
@@ -251,6 +267,16 @@ const ReportIssue = () => {
         const newId = `JN-${Math.floor(100000 + Math.random() * 900000)}`;
         setReportId(newId);
         try {
+            let uploadedAudioUrl = "";
+            if (audioBlob) {
+                const audioData = new FormData();
+                audioData.append('audio', audioBlob, 'report_audio.webm');
+                const audRes = await api.post('/upload-audio', audioData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (audRes.success) uploadedAudioUrl = audRes.audio_url;
+            }
+
             await api.post('/report-issue/submit', {
                 report_id: newId,
                 image_url: aiResult.image_url || capturedImage,
@@ -259,7 +285,11 @@ const ReportIssue = () => {
                 latitude: location?.latitude || 0,
                 longitude: location?.longitude || 0,
                 timestamp: new Date().toISOString(),
-                metadata: aiResult
+                metadata: {
+                    ...aiResult,
+                    department_tag: department,
+                    audio_url: uploadedAudioUrl
+                }
             });
             setStep('success');
         } catch (err) {
@@ -449,22 +479,57 @@ const ReportIssue = () => {
                                 </div>
 
                                 <div className="form-section">
+                                    <label>Add Audio Evidence (Voice Recording)</label>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                        <button 
+                                            className={`mic-floating-btn ${isRecordingAudio ? 'active' : ''}`}
+                                            onClick={toggleAudioRecording}
+                                            style={{ position: 'relative', width: '56px', height: '56px', right: 0, bottom: 0 }}
+                                        >
+                                            <Mic size={24} />
+                                        </button>
+                                        <div style={{ flex: 1 }}>
+                                            {isRecordingAudio ? (
+                                                <div className="text-blue animate-pulse font-medium">Recording Audio... Tap to stop</div>
+                                            ) : audioUrl ? (
+                                                <audio src={audioUrl} controls style={{ width: '100%', height: '40px' }} />
+                                            ) : (
+                                                <div className="text-muted text-sm">Tap mic to record authentic audio evidence</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
                                     <label>Report Description</label>
                                     <div className="ai-textarea-container">
                                         <textarea 
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                             placeholder="Add more details..."
-                                            rows={5}
+                                            rows={3}
+                                            style={{ paddingRight: '16px' }}
                                         />
-                                        <button 
-                                            className={`mic-floating-btn ${isListening ? 'active' : ''}`}
-                                            onClick={toggleListening}
-                                        >
-                                            <Mic size={24} />
-                                        </button>
                                     </div>
-                                    <p className="mic-hint">{isListening ? 'Listening...' : 'Tap mic to record audio'}</p>
+
+                                    <label style={{ marginTop: '16px' }}>Tag Responsible Authority (Optional)</label>
+                                    <select 
+                                        value={department} 
+                                        onChange={(e) => setDepartment(e.target.value)}
+                                        style={{ 
+                                            width: '100%', padding: '12px 16px', borderRadius: '12px',
+                                            background: 'var(--bg-glass)', border: '1px solid var(--border-color)',
+                                            color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'inherit',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <option value="">-- Let AI Decide Automatically --</option>
+                                        <option value="police">Police Department</option>
+                                        <option value="municipal">Municipal Corporation</option>
+                                        <option value="traffic">Traffic Police</option>
+                                        <option value="electricity">Electricity Board</option>
+                                        <option value="water">Water & Sanitation</option>
+                                        <option value="health">Public Health Dept</option>
+                                        <option value="environment">Environmental Control</option>
+                                    </select>
                                 </div>
 
                                 <div className="priority-pills">

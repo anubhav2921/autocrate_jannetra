@@ -32,8 +32,21 @@ async def _upload_to_firebase(file_content: bytes, filename: str, content_type: 
         return blob.public_url
     except Exception as e:
         print(f"Firebase Upload Error: {e}")
-        # Return a dummy URL if failed (for local dev)
         return f"https://mock-storage.jannetra.ai/reports/{filename}"
+
+@router.post("/upload-audio")
+async def upload_audio(audio: UploadFile = File(...)):
+    """Uploads an audio file to Firebase and returns the URL."""
+    try:
+        content = await audio.read()
+        ext = audio.filename.split(".")[-1] if "." in audio.filename else "m4a"
+        filename = f"audio_{uuid.uuid4()}.{ext}"
+        mime_type = audio.content_type or "audio/m4a"
+        audio_url = await _upload_to_firebase(content, filename, mime_type)
+        return {"success": True, "audio_url": audio_url}
+    except Exception as e:
+        print(f"Audio upload failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 @router.post("/report-issue")
@@ -214,8 +227,14 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
     }
     assigned_dept = department_map.get(req.detected_issue, "municipal")
     
+    # Allow user override for proper authority routing
+    if req.metadata.get("department_tag"):
+        assigned_dept = req.metadata["department_tag"].lower()
+    
     if req.metadata.get("scene_type") in ["Civic Issue", "Pending Verification"]:
         ai_desc = req.metadata.get("ai_description", "Verified by Citizen")
+        audio_evidence = req.metadata.get("audio_url", "")
+        
         signal_problem = {
             "id": req.report_id,  # Link IDs directly for tracking
             "title": req.detected_issue,
@@ -228,9 +247,9 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
             "location": f"Lat {req.latitude}, Lng {req.longitude}",
             "detected_at": datetime.datetime.utcnow(),
             "last_updated": datetime.datetime.utcnow(),
-            "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
+            "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}\n\nAudio Evidence: {audio_evidence}".strip(),
             "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
-            "evidence_summary": ai_desc,
+            "evidence_summary": ai_desc + (f" (Attached Audio: {audio_evidence})" if audio_evidence else ""),
             "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
             "risk_score": article["risk_score"],
             "priority_score": article["risk_score"],
