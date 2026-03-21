@@ -96,6 +96,8 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                     
                     <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
                     
+
+                    
                     <button 
                         onClick={() => { setIsOpen(false); setShowDeleteModal(true); }}
                         style={{
