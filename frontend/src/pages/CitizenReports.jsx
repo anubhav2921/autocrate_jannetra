@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation as useRouteLocation } from 'react-router-dom';
 import {
     AlertTriangle, Shield, MapPin, Clock, Zap,
-    CheckCircle2, Circle, Filter, Search, Flame
+    CheckCircle2, Circle, Filter, Search, Flame, Image, Mic
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
@@ -171,6 +171,8 @@ export default function CitizenReports() {
                                         <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             {p.title}
                                             {p.frequency > 5 && <Zap size={14} style={{ color: '#ef4444' }} />}
+                                            {p.image_url && <Image size={14} style={{ color: '#8b5cf6' }} title="Photo Evidence Attached" />}
+                                            {p.audio_url && <Mic size={14} style={{ color: '#ec4899' }} title="Audio Voice Note Attached" />}
                                         </div>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
