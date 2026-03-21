@@ -3546,3 +3546,8 @@ img, video, iframe, canvas, svg:not([class]) {
 
 .table-row-hover:hover, .table-row-hover:active { background: rgba(255,255,255,0.03) !important; }
 
+tr.table-row-hover:hover,
+tr.table-row-hover:focus-within {
+     position: relative;
+     z-index: 50;
+}
