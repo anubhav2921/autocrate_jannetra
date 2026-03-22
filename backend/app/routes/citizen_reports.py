@@ -1,10 +1,14 @@
 import os
+import io
 import uuid
 import datetime
+import json
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
+from google import genai
+from google.genai import types
 
 from ..mongodb import (
     articles_collection, 
@@ -13,6 +17,7 @@ from ..mongodb import (
     signal_problems_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
+from ..services.gemini_config import gemini_client, GEMINI_MODEL
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -52,29 +57,134 @@ async def analyze_reported_issue(
     timestamp: str = Form(...),
 ):
     """
-    Uploads the citizen report image to Firebase and returns pending fields.
-    AI analysis has been removed — reports go straight to manual review.
+    Analyzes an uploaded image using Gemini Vision and extracts issue details.
     """
-    print(f"--- Report received for {image.filename} ---")
+    print(f"--- Analysis Started for {image.filename} ---")
     content = await image.read()
-
-    # Generate unique filename and upload to Firebase
-    ext = image.filename.split(".")[-1] if "." in image.filename else "jpg"
+    
+    # Generate unique filename
+    ext = image.filename.split(".")[-1]
     filename = f"{uuid.uuid4()}.{ext}"
+    
+    # 1. Upload to Firebase
     mime_type = image.content_type or "image/jpeg"
     image_url = await _upload_to_firebase(content, filename, mime_type)
-    print(f"Image uploaded to: {image_url}")
+    print(f"Image uploaded to: {image_url} with mime: {mime_type}")
+    
+    # 2. AI Vision Pipeline with Gemini
+    # Constructing prompt for specific issue detection
+    prompt = """
+    You are an intelligent image analysis system for JanNetra, a civic health monitoring platform.
+    Your task is to generate a clear, human-like description of the given image.
+
+    STRICT RULES:
+    1. ONLY describe what is visible in the image.
+    2. DO NOT return any system errors, API errors, debug logs, or technical messages.
+    3. DO NOT mention words like "error", "quota", "API", or "resource exhausted".
+    4. If the image contains a person:
+       - Describe posture, activity, and visible emotions (e.g., sitting, walking, smiling, injured).
+    5. If the image contains an issue (road damage, garbage, waterlogging, etc.):
+       - Clearly describe the problem.
+       - Mention severity (low, medium, high if possible).
+       - Mention surroundings (roadside, residential area, public place, etc.).
+    6. Keep the description natural, like a real human reporting the issue.
+    7. Maximum length for the description is 3-5 sentences.
+
+    OUTPUT FORMAT: You MUST return a pure JSON object. Do not wrap in markdown or anything else.
+    {
+        "scene_type": "Human/Portrait | Civic Issue | Other",
+        "detected_issue": "Garbage Dumping | Water Logging | Road Damage | Street Light issue | Infrastructure Damage | Others | None",
+        "ai_description": "<Your 3-5 sentence description following the rules above. FAILSAFE: If the image analysis fails or is completely unclear, return EXACTLY: 'Unable to clearly analyze the image. Please try again with a clearer photo.'>",
+        "severity": "Low | Medium | High | None",
+        "urgency": "Low | Medium | High | None",
+        "confidence_score": <0-100 integer>
+    }
+    """
+    import time
+    max_retries = 3
+    base_delay = 2 # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            import requests as req_lib
+            import base64
+            
+            print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
+            
+            b64_img = base64.b64encode(content).decode("utf-8")
+            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+            api_key = os.getenv("NVIDIA_API_KEY", "")
+            nv_headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json"
+            }
+            
+            # llama-3.2-11b-vision-instruct uses <img src> tag format in content string
+            img_tag = f'<img src="data:{mime_type};base64,{b64_img}" />'
+            full_prompt = f"{prompt}\n\n{img_tag}"
+            
+            payload = {
+              "model": "meta/llama-3.2-11b-vision-instruct",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": full_prompt
+                }
+              ],
+              "max_tokens": 1024,
+              "temperature": 0.2,
+              "top_p": 0.7
+            }
+            
+            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=60)
+            response.raise_for_status()
+            
+            response_json = response.json()
+            raw_text = response_json["choices"][0]["message"]["content"]
+            print(f"NVIDIA Raw Response: {raw_text}")
+            
+            # Safely extract JSON from Markdown code blocks or raw text
+            import re
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
+            elif "```" in raw_text:
+                raw_text = raw_text.split("```")[1].strip()
+            else:
+                # Fallback: extract first JSON object using regex
+                json_match = re.search(r'\{[\s\S]*\}', raw_text)
+                if json_match:
+                    raw_text = json_match.group(0)
+                    
+            ai_data = json.loads(raw_text)
+            break # Success!
+        except Exception as e:
+            error_msg = str(e)
+            print(f"NVIDIA Analysis Attempt {attempt + 1} Error: {error_msg}")
+            
+            # If it's a quota error, wait and retry
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                if attempt < max_retries - 1:
+                    sleep_time = base_delay * (2 ** attempt)
+                    print(f"Quota exhausted. Retrying in {sleep_time}s...")
+                    time.sleep(sleep_time)
+                    continue
+            
+            # For other errors or last attempt, fail gracefully following the Failsafe instructions
+            ai_data = {
+                "scene_type": "Pending Verification",
+                "detected_issue": "Manual Review Required",
+                "ai_description": "We successfully received your photo, but our real-time AI analysis is currently experiencing high traffic. You can still submit this report immediately, and our team will manually review and prioritize it.",
+                "severity": "Pending",
+                "urgency": "Pending",
+                "confidence_score": 0
+            }
+            break
 
     return {
         "image_url": image_url,
         "location": {"lat": latitude, "lng": longitude},
         "timestamp": timestamp,
-        "scene_type": "Pending Verification",
-        "detected_issue": "Civic Issue",
-        "ai_description": "Your photo has been received. Please add a description below and our team will review it shortly.",
-        "severity": "Medium",
-        "urgency": "Medium",
-        "confidence_score": 0
+        **ai_data
     }
 
 
