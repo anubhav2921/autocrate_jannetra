@@ -3,12 +3,12 @@ import io
 import uuid
 import datetime
 import json
+import requests
+import base64
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
-from google import genai
-from google.genai import types
 
 from ..mongodb import (
     articles_collection, 
@@ -17,7 +17,8 @@ from ..mongodb import (
     signal_problems_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
-from ..services.gemini_config import gemini_client, GEMINI_MODEL
+NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+NVIDIA_MODEL = "google/gemma-3-27b-it"
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -102,68 +103,88 @@ async def analyze_reported_issue(
     """
     import time
     max_retries = 3
-    base_delay = 2 # seconds
-    
+    base_delay = 2  # seconds
+
     for attempt in range(max_retries):
         try:
-            import requests as req_lib
-            import base64
-            
-            print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
-            
-            b64_img = base64.b64encode(content).decode("utf-8")
-            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+            print(f"Calling NVIDIA API with {NVIDIA_MODEL} (Attempt {attempt + 1})...")
+
             api_key = os.getenv("NVIDIA_API_KEY", "")
+            b64_img = base64.b64encode(content).decode("utf-8")
+
             nv_headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Accept": "application/json"
+                "Accept": "text/event-stream"
             }
-            
-            # llama-3.2-11b-vision-instruct uses <img src> tag format in content string
-            img_tag = f'<img src="data:{mime_type};base64,{b64_img}" />'
-            full_prompt = f"{prompt}\n\n{img_tag}"
-            
+
+            # gemma-3-27b-it supports multimodal content via the content list format
             payload = {
-              "model": "meta/llama-3.2-11b-vision-instruct",
-              "messages": [
-                {
-                  "role": "user",
-                  "content": full_prompt
-                }
-              ],
-              "max_tokens": 1024,
-              "temperature": 0.2,
-              "top_p": 0.7
+                "model": NVIDIA_MODEL,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{b64_img}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 1024,
+                "temperature": 0.20,
+                "top_p": 0.70,
+                "stream": True
             }
-            
-            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=60)
+
+            response = requests.post(NVIDIA_INVOKE_URL, headers=nv_headers, json=payload, timeout=90)
             response.raise_for_status()
-            
-            response_json = response.json()
-            raw_text = response_json["choices"][0]["message"]["content"]
-            print(f"NVIDIA Raw Response: {raw_text}")
-            
-            # Safely extract JSON from Markdown if provided
+
+            # Accumulate the streamed SSE chunks into a single text
+            raw_text = ""
+            for line in response.iter_lines():
+                if line:
+                    decoded = line.decode("utf-8")
+                    if decoded.startswith("data: "):
+                        chunk_str = decoded[len("data: "):].strip()
+                        if chunk_str == "[DONE]":
+                            break
+                        try:
+                            chunk_json = json.loads(chunk_str)
+                            delta = chunk_json["choices"][0].get("delta", {})
+                            raw_text += delta.get("content", "")
+                        except Exception:
+                            pass
+
+            print(f"NVIDIA Streamed Response: {raw_text}")
+
+            # Safely extract JSON from Markdown code fences if present
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
             elif "```" in raw_text:
                 raw_text = raw_text.split("```")[1].strip()
-                
+
             ai_data = json.loads(raw_text)
-            break # Success!
+            break  # Success!
+
         except Exception as e:
             error_msg = str(e)
             print(f"NVIDIA Analysis Attempt {attempt + 1} Error: {error_msg}")
-            
-            # If it's a quota error, wait and retry
+
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
                 if attempt < max_retries - 1:
                     sleep_time = base_delay * (2 ** attempt)
                     print(f"Quota exhausted. Retrying in {sleep_time}s...")
                     time.sleep(sleep_time)
                     continue
-            
-            # For other errors or last attempt, fail gracefully following the Failsafe instructions
+
+            # Graceful fallback for all other errors or last attempt
             ai_data = {
                 "scene_type": "Pending Verification",
                 "detected_issue": "Manual Review Required",
