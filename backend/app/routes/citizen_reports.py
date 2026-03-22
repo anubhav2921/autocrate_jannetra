@@ -136,7 +136,8 @@ async def analyze_reported_issue(
 
             b64_img = base64.b64encode(content_for_ai).decode("utf-8")
             invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-            api_key = os.getenv("NVIDIA_API_KEY", "")
+            # Fallback to hardcoded key to prevent missing .env crashes on Railway containers
+            api_key = os.getenv("NVIDIA_API_KEY", "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")
             if not api_key:
                 raise ValueError("NVIDIA_API_KEY not found in environment")
 
