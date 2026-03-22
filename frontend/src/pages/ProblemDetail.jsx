@@ -213,8 +213,19 @@ export default function ProblemDetail() {
                                     {isResolved ? 'Problem Resolved' : 'Pending'}
                                 </span>
                             </div>
-                            <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                                {problem.title}
+                            <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                {problem.source_url ? (
+                                    <a href={problem.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none', cursor: 'pointer' }} className="hover-underline">
+                                        {problem.title}
+                                    </a>
+                                ) : (
+                                    <span>{problem.title}</span>
+                                )}
+                                {problem.source_type && problem.source_type !== 'unknown' && (
+                                    <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '4px', textTransform: 'capitalize', fontWeight: 600 }}>
+                                        [{problem.source_type}]
+                                    </span>
+                                )}
                             </h1>
                         </div>
 

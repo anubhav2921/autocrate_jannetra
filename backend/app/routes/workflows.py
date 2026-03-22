@@ -189,7 +189,9 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "ownerId": p.get("owner_id", p.get("assigned_to", None)),
             "collaborators": p.get("collaborators", []),
             "invitedBy": p.get("invited_by", "System Admin"),
-            "source": "Citizen Application"
+            "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source") or "Citizen Application",
+            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
+            "source_url": p.get("source_url")
         })
         
     async for a in news_articles_collection.find(q_news).sort("ingested_at", -1).limit(50):
@@ -209,7 +211,9 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "ownerId": a.get("owner_id", a.get("assigned_to", None)),
             "collaborators": a.get("collaborators", []),
             "invitedBy": a.get("invited_by", "System Admin"),
-            "source": "Automated Scanner"
+            "source": a.get("source_name", "Automated Scanner"),
+            "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
+            "source_url": a.get("source_url") or a.get("url")
         })
         
     return sorted(results, key=lambda x: x.get("priorityScore", 0), reverse=True)

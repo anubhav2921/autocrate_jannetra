@@ -126,11 +126,23 @@ export default function WorkingProblems() {
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '4px', letterSpacing: '0.5px' }}>
-                                        {p.id} • {p.source}
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '4px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>{p.id}</span>
+                                        {p.source_type && p.source_type !== 'unknown' && (
+                                            <span style={{ background: 'rgba(59,130,246,0.15)', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
+                                                [{p.source_type}]
+                                            </span>
+                                        )}
+                                        <span>• {p.source}</span>
                                     </div>
                                     <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                                        {p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title}
+                                        {p.source_url ? (
+                                            <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline" onClick={(e) => e.stopPropagation()}>
+                                                {p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title}
+                                            </a>
+                                        ) : (
+                                            <span>{p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title}</span>
+                                        )}
                                     </h3>
                                 </div>
                                 <div style={{ 

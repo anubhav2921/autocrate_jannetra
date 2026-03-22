@@ -328,6 +328,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "ward": "Unknown",
         "location": f"Lat {req.latitude}, Lng {req.longitude}",
         "detected_at": datetime.datetime.utcnow(),
+        "created_at": datetime.datetime.utcnow(),
         "last_updated": datetime.datetime.utcnow(),
         "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
         "report_description": ai_desc, # Explicitly mapped standalone description field
@@ -424,6 +425,10 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
         "status": {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
     }
     
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=5)
+    match_filter["created_at"] = {"$gte": cutoff}
+    
     # Optional: filter by department if leader
     if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):
         match_filter["department"] = current_user.get("department")
@@ -447,6 +452,9 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
             "priorityScore": p.get("priority_score", 0),
             "frequency": p.get("frequency", 1),
             "source": p.get("source", "Citizen Application"),
+            "source_url": p.get("source_url"),
+            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
+            "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
             "status": p.get("status", "Pending"),
             "image_url": p.get("image_url", ""),
             "audio_url": p.get("audio_url", "")

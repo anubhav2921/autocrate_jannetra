@@ -43,6 +43,11 @@ async def list_signal_problems(
     # Ignore Deleted items
     match["deleted"] = {"$ne": True}
         
+    # Enforce 5-day freshness rule
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=5)
+    match["created_at"] = {"$gte": cutoff}
+        
     # Add User Filter
     if user_id:
         match["resolved_by"] = user_id
@@ -74,6 +79,9 @@ async def list_signal_problems(
             "priorityScore": p.get("priority_score", 0.0),
             "frequency": p.get("frequency", 1),
             "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source"),
+            "source_url": p.get("source_url"),
+            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
+            "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
             "status": p.get("status"),
             "sampleRecords": p.get("sample_records", []),
             "resolutionReport": p.get("resolution_report"),
@@ -90,6 +98,8 @@ async def list_signal_problems(
     article_match = _build_location_match(state, district, city, ward)
     if user_role != "ADMIN" and user_dept and not user_id:
         article_match["department"] = user_dept
+        
+    article_match["created_at"] = {"$gte": cutoff}
         
     # We want to show unresolved/scraped articles alongside manual/resolved problems
     # Only fetch pending if status filter is "Pending" or None
@@ -128,6 +138,9 @@ async def list_signal_problems(
                     "priorityScore": round(a.get("risk_score") or 0, 1),
                     "frequency": 1,
                     "source": a.get("source_name", "Unknown"),
+                    "source_url": a.get("source_url") or a.get("url"),
+                    "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
+                    "created_at": a.get("created_at").isoformat() if hasattr(a.get("created_at"), "isoformat") else a.get("created_at"),
                     "status": "Pending",
                     "sampleRecords": [],
                     "resolutionReport": None,
@@ -205,6 +218,9 @@ async def get_signal_problem(problem_id: str):
             "priorityScore": p.get("priority_score") or p.get("risk_score") or 0.0,
             "frequency": p.get("frequency", 1),
             "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source"),
+            "source_url": p.get("source_url"),
+            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
+            "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
             "status": p.get("status"),
             "sampleRecords": p.get("sample_records", []),
             "resolutionReport": p.get("resolution_report"),
@@ -274,6 +290,9 @@ async def get_signal_problem(problem_id: str):
             "priorityScore": a.get("risk_score") or 0.0,
             "frequency": 1,
             "source": a.get("source_name"),
+            "source_url": a.get("source_url") or a.get("url"),
+            "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
+            "created_at": a.get("created_at").isoformat() if hasattr(a.get("created_at"), "isoformat") else a.get("created_at"),
             "status": "Pending",
             "sampleRecords": [],
             "resolutionReport": None,
