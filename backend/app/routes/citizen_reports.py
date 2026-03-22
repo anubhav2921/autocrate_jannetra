@@ -77,36 +77,34 @@ async def analyze_reported_issue(
     # 2. AI Vision Pipeline with NVIDIA Vision
     # Constructing prompt for specific issue detection
     prompt = """
-    You are an intelligent visual analysis system for JanNetra.
-    Critically analyze the provided image and generate a structured description of EXACTLY what you see.
+    You are an expert field inspector for JanNetra, a civic governance platform. 
+    Analyze the provided image and describe it as if you are reporting it to a senior city official.
+
+    NARRATIVE STYLE (For 'ai_description'):
+    - Write in a professional, human-like narrative. Avoid robotic headers or labels.
+    - Start by identifying the primary focus (e.g., "A significant area of waterlogging is visible...").
+    - Describe the specific details you see (the "vibe" and context) and how it affects the surroundings.
+    - Make it sound like a concise, helpful eyewitness report, not a data dump.
+
+    LEADERSHIP GUIDANCE (For 'recommended_solution'):
+    - Provide a specific, actionable task for the department to resolve this.
+    - Be technical and direct (e.g., "Deploy an electrical repair crew to replace the faulty wiring in the street light pillar" or "Immediate dispatch of a waste management truck is required to clear the blocking debris").
 
     STRICT RULES:
-    1. ONLY describe what is visible in the image. Focus heavily on precisely analyzing the image context.
-    2. DO NOT return any system errors, API errors, debug logs, or technical messages.
-    3. DO NOT mention words like "error", "quota", "API", or "resource exhausted".
-    4. If the image contains a person or a general scene:
-       - Describe posture, activity, visible items, and exact scene context (e.g., sitting, construction, city).
-    5. If the image contains an issue (road damage, garbage, waterlogging, etc.):
-       - Clearly describe the problem.
-       - Mention severity (low, medium, high if possible).
-    6. CRITICAL: EVEN IF the image DOES NOT contain an obvious civic issue, YOU MUST STILL describe exactly what you see in detail. Do NOT just say 'No issues detected'.
-    7. The `ai_description` MUST be a structured, readable format. Write it clearly using point form separated by double newlines (\\n\\n) like this:
-       Problem: <short issue title or general image subject>
-       
-       Observation: <specific details of EXACTLY what you see in the image>
-       
-       Impact: <how it affects the environment or community, or 'None'>
-       
-       Location Context: <what the surroundings look like>
+    1. ONLY describe what is visible. Do not invent details.
+    2. DO NOT return any technical errors, API status messages, or words like "error", "quota", or "API".
+    3. If the image is just a person or a general scene with no issue, describe the activity and surroundings respectfully.
+    4. EVEN IF no civic issue is found, describe the scene in detail. Never just say 'No issues'.
 
-    OUTPUT FORMAT: You MUST return a pure JSON object. Do not wrap in markdown or anything else.
+    OUTPUT FORMAT: Return a pure JSON object only.
     {
         "scene_type": "Human/Portrait | Civic Issue | Other",
         "detected_issue": "Garbage Dumping | Water Logging | Road Damage | Street Light issue | Infrastructure Damage | Others | None",
-        "ai_description": "<Your point-form description matching the rules above>",
+        "ai_description": "<A humanized, fluid narrative of what you see and its impact>",
+        "recommended_solution": "<A professional recommendation for the official to solve this specific problem>",
         "severity": "Low | Medium | High | None",
         "urgency": "Low | Medium | High | None",
-        "confidence_score": <0-100 integer>
+        "confidence_score": <int 0-100>
     }
     """
     import time
@@ -202,6 +200,7 @@ async def analyze_reported_issue(
                     "scene_type": "Other",
                     "detected_issue": "Others",
                     "ai_description": raw_text.strip(),
+                    "recommended_solution": "A site inspection is recommended to verify the severity and nature of the issue.",
                     "severity": "Medium",
                     "urgency": "Medium",
                     "confidence_score": 85
@@ -228,6 +227,7 @@ async def analyze_reported_issue(
                 "scene_type": "Pending Verification",
                 "detected_issue": "Manual Review Required",
                 "ai_description": "We successfully received your photo, but our real-time AI analysis is currently experiencing high traffic. You can still submit this report immediately, and our team will manually review and prioritize it.",
+                "recommended_solution": "Manual verification required by field staff due to AI processing delay.",
                 "severity": "Pending",
                 "urgency": "Pending",
                 "confidence_score": 0
@@ -336,7 +336,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "evidence_summary": ai_desc,
         "image_url": req.image_url,
         "audio_url": audio_evidence,
-        "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
+        "expected_solution": req.metadata.get("recommended_solution", "Immediate dispatch of field team to investigate the citizen report."),
         "risk_score": article["risk_score"],
         "priority_score": article["risk_score"],
         "severity": article["risk_level"],
@@ -458,6 +458,7 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
             "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
             "status": p.get("status", "Pending"),
             "image_url": p.get("image_url", ""),
-            "audio_url": p.get("audio_url", "")
+            "audio_url": p.get("audio_url", ""),
+            "expectedSolution": p.get("expected_solution", "")
         })
     return results
