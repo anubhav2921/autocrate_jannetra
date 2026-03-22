@@ -212,8 +212,7 @@ async def get_signal_problem(problem_id: str):
             "resolvedAt": p.get("resolved_at"),
             "image_url": p.get("image_url") if "mock-storage" not in p.get("image_url", "") else None,
             "audio_url": p.get("audio_url") if "mock-storage" not in p.get("audio_url", "") else None,
-            "department": p.get("department"),
-            "progress": p.get("progress", 0)
+            "department": p.get("department")
         }
 
     # 2. Try to find in synthetic (news articles) if not in signal_problems

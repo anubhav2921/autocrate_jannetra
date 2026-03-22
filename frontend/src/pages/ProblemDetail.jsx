@@ -406,10 +406,9 @@ export default function ProblemDetail() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
                     <input 
                         type="range" 
-                        min={problem?.progress || 0} 
-                        max="100" 
+                        min="0" max="100" 
                         value={progress} 
-                        onChange={e => setProgress(Math.max(problem?.progress || 0, e.target.value))}
+                        onChange={e => setProgress(e.target.value)}
                         disabled={isResolved || updatingProgress}
                         style={{ flex: 1, accentColor: 'var(--accent-purple)' }}
                     />
