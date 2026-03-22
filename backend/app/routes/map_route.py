@@ -33,7 +33,7 @@ async def get_map_markers():
     """Get problem location markers with risk data for the map."""
     # Use actual city data from NewsArticle collection
     pipeline = [
-        {"$match": {"city": {"$ne": None}, "latitude": {"$ne": None}, "longitude": {"$ne": None}}},
+        {"$match": {"city": {"$ne": None}, "city": {"$ne": ""}}},
         {"$group": {
             "_id": "$city",
             "avg_gri": {"$avg": "$risk_score"},
@@ -52,8 +52,15 @@ async def get_map_markers():
     markers = []
     for r in results:
         city = r["_id"]
+        if not city: continue
+        
         avg_gri = r.get("avg_gri") or 0
         risk_level = "HIGH" if avg_gri > 60 else "MODERATE" if avg_gri > 30 else "LOW"
+
+        # Fallback to predefined coordinates if DB lacks explicit spatial data
+        coords = CITY_COORDS.get(city, [22.5 + (hash(city) % 5), 78.5 + (hash(city) % 5)])
+        lat = r.get("lat") or coords[0]
+        lng = r.get("lng") or coords[1]
 
         # Find the most relevant article for this city
         top_article = await news_articles_collection.find_one(
@@ -63,8 +70,8 @@ async def get_map_markers():
 
         markers.append({
             "location": city,
-            "lat": r["lat"],
-            "lng": r["lng"],
+            "lat": lat,
+            "lng": lng,
             "avg_gri": round(avg_gri, 1),
             "max_gri": round(r.get("max_gri") or 0, 1),
             "signal_count": r["count"],
