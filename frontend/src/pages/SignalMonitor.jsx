@@ -250,14 +250,14 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => navigate(`/signal-monitor/${p.id}`)}
+                                            onClick={() => navigate(`/signal-monitor/${p.id}`, { state: { readonly: true } })}
                                             className="btn btn-primary"
                                             style={{
                                                 padding: '6px 14px', fontSize: '0.75rem',
                                                 display: 'flex', alignItems: 'center', gap: '5px',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                            Take Action
+                                            View Details
                                         </button>
                                         <ProblemActionMenu problem={p} onUpdate={() => window.location.reload()} />
                                     </td>

@@ -18,6 +18,8 @@ export default function ProblemDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const locationState = useLocation().state || {};
+    const isReadOnly = locationState.readonly || false;
     const [problem, setProblem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [resolving, setResolving] = useState(false);
@@ -419,207 +421,211 @@ export default function ProblemDetail() {
             </div>
 
             {/* Workflow Progress Engine */}
-            <div className="glass-card animate-in" style={{ padding: '24px', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Target size={18} style={{ color: 'var(--accent-purple)' }} /> Execution Workflow Progress
-                    </h3>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <button onClick={handleEscalate} className="btn" style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                            <Flame size={12} style={{ marginRight: '4px' }} /> Escalate Priority
-                        </button>
+            {!isReadOnly && (
+                <div className="glass-card animate-in" style={{ padding: '24px', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Target size={18} style={{ color: 'var(--accent-purple)' }} /> Execution Workflow Progress
+                        </h3>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button onClick={handleEscalate} className="btn" style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                                <Flame size={12} style={{ marginRight: '4px' }} /> Escalate Priority
+                            </button>
+                        </div>
                     </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-                    <input 
-                        type="range" 
-                        min="0" max="100" 
-                        value={progress} 
-                        onChange={e => setProgress(e.target.value)}
-                        disabled={isResolved || updatingProgress}
-                        style={{ flex: 1, accentColor: 'var(--accent-purple)' }}
-                    />
-                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-purple)', width: '60px', textAlign: 'right' }}>
-                        {progress}%
-                    </div>
-                    {!isResolved && progress != problem.progress && (
-                        <button onClick={handleUpdateProgress} disabled={updatingProgress} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                            {updatingProgress ? 'Saving...' : 'Save Progress'}
-                        </button>
-                    )}
-                </div>
-
-                {/* Activity & Notes */}
-                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
-                        Governance Audit Timeline
-                    </h4>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
-                        {activityLogs.length === 0 ? (
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No activity logs found.</div>
-                        ) : (
-                            activityLogs.map(log => (
-                                <div key={log._id} style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
-                                    <div style={{ width: '2px', background: 'var(--accent-blue)', opacity: 0.5, borderRadius: '2px' }} />
-                                    <div>
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
-                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.action}</span>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>by {log.performed_by} at {new Date(log.timestamp).toLocaleString()}</span>
-                                        </div>
-                                        {log.details && <div style={{ color: 'var(--text-secondary)' }}>{log.details}</div>}
-                                    </div>
-                                </div>
-                            ))
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                        <input 
+                            type="range" 
+                            min="0" max="100" 
+                            value={progress} 
+                            onChange={e => setProgress(e.target.value)}
+                            disabled={isResolved || updatingProgress}
+                            style={{ flex: 1, accentColor: 'var(--accent-purple)' }}
+                        />
+                        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-purple)', width: '60px', textAlign: 'right' }}>
+                            {progress}%
+                        </div>
+                        {!isResolved && progress != problem.progress && (
+                            <button onClick={handleUpdateProgress} disabled={updatingProgress} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                                {updatingProgress ? 'Saving...' : 'Save Progress'}
+                            </button>
                         )}
                     </div>
 
-                    {!isResolved && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input 
-                                    type="text" 
-                                    value={noteText}
-                                    onChange={e => setNoteText(e.target.value)}
-                                    placeholder="Add an official execution note or update..." 
-                                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
-                                />
-                                <button onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                                    {addingNote ? 'Adding...' : 'Attach Note'}
-                                </button>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
-                                <input 
-                                    type="text" 
-                                    value={inviteText}
-                                    onChange={e => setInviteText(e.target.value)}
-                                    placeholder="Enter Leader Account ID or Mail to attach to this workflow..." 
-                                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
-                                />
-                                <button onClick={handleInviteLeader} disabled={invitingLeader || !inviteText.trim()} className="btn" style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-                                    {invitingLeader ? 'Adding...' : 'Attach Leader'}
-                                </button>
-                            </div>
+                    {/* Activity & Notes */}
+                    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                        <h4 style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '8px' }}>
+                            Governance Audit Timeline
+                        </h4>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto', marginBottom: '16px' }}>
+                            {activityLogs.length === 0 ? (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No activity logs found.</div>
+                            ) : (
+                                activityLogs.map(log => (
+                                    <div key={log._id} style={{ display: 'flex', gap: '12px', fontSize: '0.8rem' }}>
+                                        <div style={{ width: '2px', background: 'var(--accent-blue)', opacity: 0.5, borderRadius: '2px' }} />
+                                        <div>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
+                                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{log.action}</span>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>by {log.performed_by} at {new Date(log.timestamp).toLocaleString()}</span>
+                                            </div>
+                                            {log.details && <div style={{ color: 'var(--text-secondary)' }}>{log.details}</div>}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                    )}
+
+                        {!isResolved && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input 
+                                        type="text" 
+                                        value={noteText}
+                                        onChange={e => setNoteText(e.target.value)}
+                                        placeholder="Add an official execution note or update..." 
+                                        style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
+                                    />
+                                    <button onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                        {addingNote ? 'Adding...' : 'Attach Note'}
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input 
+                                        type="text" 
+                                        value={inviteText}
+                                        onChange={e => setInviteText(e.target.value)}
+                                        placeholder="Enter Leader Account ID or Mail to attach to this workflow..." 
+                                        style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
+                                    />
+                                    <button onClick={handleInviteLeader} disabled={invitingLeader || !inviteText.trim()} className="btn" style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                        {invitingLeader ? 'Adding...' : 'Attach Leader'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Action Section */}
-            <div className="glass-card animate-in" style={{
-                marginTop: '20px', textAlign: 'center', padding: '32px',
-                border: isResolved ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)',
-                background: isResolved
-                    ? 'linear-gradient(135deg, rgba(16,185,129,0.04), rgba(16,185,129,0.01))'
-                    : 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(245,158,11,0.01))',
-            }}>
-                {isResolved ? (
-                    <>
-                        <CheckCircle2 size={48} style={{ color: '#10b981', marginBottom: '12px' }} />
-                        <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#10b981', marginBottom: '8px' }}>
-                            Problem Resolved
-                        </h2>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            This signal has been confirmed as resolved by the Leader.
-                        </p>
-                    </>
-                ) : (
-                    <>
-                        <Shield size={48} style={{ color: '#f59e0b', marginBottom: '12px' }} />
-                        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                            Action Required
-                        </h2>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px' }}>
-                            Review the problem details above. If this issue has been addressed and resolved,
-                            please provide the resolution details below. The status will remain <strong style={{ color: '#f59e0b' }}>Pending</strong> until confirmed.
-                        </p>
+            {!isReadOnly && (
+                <div className="glass-card animate-in" style={{
+                    marginTop: '20px', textAlign: 'center', padding: '32px',
+                    border: isResolved ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)',
+                    background: isResolved
+                        ? 'linear-gradient(135deg, rgba(16,185,129,0.04), rgba(16,185,129,0.01))'
+                        : 'linear-gradient(135deg, rgba(245,158,11,0.04), rgba(245,158,11,0.01))',
+                }}>
+                    {isResolved ? (
+                        <>
+                            <CheckCircle2 size={48} style={{ color: '#10b981', marginBottom: '12px' }} />
+                            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#10b981', marginBottom: '8px' }}>
+                                Problem Resolved
+                            </h2>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                This signal has been confirmed as resolved by the Leader.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <Shield size={48} style={{ color: '#f59e0b', marginBottom: '12px' }} />
+                            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                                Action Required
+                            </h2>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px' }}>
+                                Review the problem details above. If this issue has been addressed and resolved,
+                                please provide the resolution details below. The status will remain <strong style={{ color: '#f59e0b' }}>Pending</strong> until confirmed.
+                            </p>
 
-                        {!showResolveForm ? (
-                            <button
-                                onClick={() => {
-                                    setShowResolveForm(true);
-                                    if (problem.expectedSolution && !report) {
-                                        setReport(`Proposed Action Plan:\n${problem.expectedSolution}\n\nActual Resolution Details:\n`);
-                                    }
-                                }}
-                                className="btn btn-primary"
-                                style={{
-                                    padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
-                                    display: 'inline-flex', alignItems: 'center', gap: '10px',
-                                    background: 'linear-gradient(135deg, #10b981, #059669)',
-                                    border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
-                                    transition: 'all 0.3s ease',
-                                }}
-                            >
-                                <CheckCircle2 size={20} />
-                                Start Resolution Process
-                            </button>
-                        ) : (
-                            <div className="animate-in" style={{
-                                maxWidth: '600px', margin: '0 auto', background: 'rgba(255,255,255,0.03)',
-                                padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)',
-                                textAlign: 'left'
-                            }}>
-                                <div style={{ marginBottom: '16px' }}>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                                        Resolution Report / Details *
-                                    </label>
-                                    <textarea
-                                        value={report}
-                                        onChange={(e) => setReport(e.target.value)}
-                                        placeholder="Describe what steps were taken to resolve this issue..."
-                                        style={{
-                                            width: '100%', height: '120px', padding: '12px', borderRadius: '8px',
-                                            background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
-                                            color: 'var(--text-primary)', fontSize: '0.9rem', resize: 'none'
-                                        }}
-                                    />
-                                </div>
-                                
-                                <div style={{ marginBottom: '24px' }}>
-                                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                                        Proof of Resolution (Photo)
-                                    </label>
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => setProofFile(e.target.files[0])}
-                                        style={{
-                                            width: '100%', padding: '10px', borderRadius: '8px',
-                                            background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
-                                            color: 'var(--text-muted)', fontSize: '0.85rem'
-                                        }}
-                                    />
-                                </div>
+                            {!showResolveForm ? (
+                                <button
+                                    onClick={() => {
+                                        setShowResolveForm(true);
+                                        if (problem.expectedSolution && !report) {
+                                            setReport(`Proposed Action Plan:\n${problem.expectedSolution}\n\nActual Resolution Details:\n`);
+                                        }
+                                    }}
+                                    className="btn btn-primary"
+                                    style={{
+                                        padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
+                                        display: 'inline-flex', alignItems: 'center', gap: '10px',
+                                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                                        border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                                        transition: 'all 0.3s ease',
+                                    }}
+                                >
+                                    <CheckCircle2 size={20} />
+                                    Start Resolution Process
+                                </button>
+                            ) : (
+                                <div className="animate-in" style={{
+                                    maxWidth: '600px', margin: '0 auto', background: 'rgba(255,255,255,0.03)',
+                                    padding: '24px', borderRadius: '12px', border: '1px solid var(--border-color)',
+                                    textAlign: 'left'
+                                }}>
+                                    <div style={{ marginBottom: '16px' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                            Resolution Report / Details *
+                                        </label>
+                                        <textarea
+                                            value={report}
+                                            onChange={(e) => setReport(e.target.value)}
+                                            placeholder="Describe what steps were taken to resolve this issue..."
+                                            style={{
+                                                width: '100%', height: '120px', padding: '12px', borderRadius: '8px',
+                                                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
+                                                color: 'var(--text-primary)', fontSize: '0.9rem', resize: 'none'
+                                            }}
+                                        />
+                                    </div>
+                                    
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                            Proof of Resolution (Photo)
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => setProofFile(e.target.files[0])}
+                                            style={{
+                                                width: '100%', padding: '10px', borderRadius: '8px',
+                                                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
+                                                color: 'var(--text-muted)', fontSize: '0.85rem'
+                                            }}
+                                        />
+                                    </div>
 
-                                <div style={{ display: 'flex', gap: '12px' }}>
-                                    <button
-                                        onClick={handleResolve}
-                                        disabled={resolving}
-                                        className="btn btn-primary"
-                                        style={{
-                                            flex: 1, padding: '12px', fontWeight: 700,
-                                            background: 'linear-gradient(135deg, #10b981, #059669)',
-                                            border: 'none'
-                                        }}
-                                    >
-                                        {resolving ? 'Confirming...' : 'Complete & Confirm Resolution'}
-                                    </button>
-                                    <button
-                                        onClick={() => setShowResolveForm(false)}
-                                        disabled={resolving}
-                                        className="btn btn-ghost"
-                                        style={{ padding: '12px 24px' }}
-                                    >
-                                        Cancel
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '12px' }}>
+                                        <button
+                                            onClick={handleResolve}
+                                            disabled={resolving}
+                                            className="btn btn-primary"
+                                            style={{
+                                                flex: 1, padding: '12px', fontWeight: 700,
+                                                background: 'linear-gradient(135deg, #10b981, #059669)',
+                                                border: 'none'
+                                            }}
+                                        >
+                                            {resolving ? 'Confirming...' : 'Complete & Confirm Resolution'}
+                                        </button>
+                                        <button
+                                            onClick={() => setShowResolveForm(false)}
+                                            disabled={resolving}
+                                            className="btn btn-ghost"
+                                            style={{ padding: '12px 24px' }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
