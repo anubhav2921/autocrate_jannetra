@@ -163,45 +163,48 @@ async def escalate_problem(problem_id: str, req: EscalateRequest, user: dict = D
 
 @router.get("/working")
 async def get_working_problems(user: dict = Depends(get_current_user_optional)):
-    # Returns problems assigned to current user, or all in_progress if no auth
+    current_uid = user.get("uid", "anubhav") if user else "anubhav"
+    current_name = user.get("name", "Anubhav Agrawal") if user else "Anubhav Agrawal"
+    
     q_sig = {"status": "In Progress", "deleted": {"$ne": True}}
     q_news = {"status": "In Progress", "deleted": {"$ne": True}}
     
-    # In a real system we'd filter by assignee_id == user["uid"], but for this demo 
-    # we allow seeing all "Working Problems" to show functionality.
+    owned = []
+    collaborative = []
     
-    results = []
-    
+    async def process_doc(doc, source_name):
+        item = {
+            "id": doc["id"],
+            "title": doc.get("title", ""),
+            "severity": doc.get("severity", doc.get("risk_level", "Medium")).capitalize(),
+            "category": doc.get("category", "General"),
+            "location": doc.get("location_detail") or doc.get("location") or doc.get("city") or "Unknown",
+            "detectedAt": doc.get("detected_at") or doc.get("ingested_at"),
+            "priorityScore": doc.get("priority_score") or doc.get("risk_score", 50),
+            "frequency": doc.get("frequency", 1),
+            "status": doc.get("status", "In Progress"),
+            "progress": doc.get("progress", 0),
+            "assignedName": doc.get("assigned_name", "Unknown"),
+            "assigneeId": doc.get("assigned_to", "unknown"),
+            "collaborators": doc.get("collaborators", []),
+            "source": source_name
+        }
+        
+        is_collab = current_uid in item["collaborators"] or current_name in item["collaborators"]
+        is_owner = item["assignedName"] in [current_name, "Unknown"] or item["assigneeId"] in [current_uid, "unknown"]
+        
+        if is_collab and not is_owner:
+            collaborative.append(item)
+        elif is_owner:
+            owned.append(item)
+
     async for p in signal_problems_collection.find(q_sig).sort("last_updated", -1).limit(50):
-        results.append({
-            "id": p["id"],
-            "title": p.get("title", ""),
-            "severity": p.get("severity", "Medium").capitalize(),
-            "category": p.get("category", "General"),
-            "location": p.get("location_detail") or p.get("location") or "Unknown",
-            "detectedAt": p.get("detected_at"),
-            "priorityScore": p.get("priority_score", 50),
-            "frequency": p.get("frequency", 1),
-            "status": p.get("status", "In Progress"),
-            "progress": p.get("progress", 0),
-            "assignedName": p.get("assigned_name", "Unknown"),
-            "source": "Citizen Application"
-        })
+        await process_doc(p, "Citizen Application")
         
     async for a in news_articles_collection.find(q_news).sort("ingested_at", -1).limit(50):
-        results.append({
-            "id": a["id"],
-            "title": a.get("title", ""),
-            "severity": a.get("risk_level", "Medium").capitalize(),
-            "category": a.get("category", "General"),
-            "location": a.get("city") or "Unknown",
-            "detectedAt": a.get("ingested_at"),
-            "priorityScore": a.get("risk_score", 50),
-            "frequency": 1,
-            "status": a.get("status", "In Progress"),
-            "progress": a.get("progress", 0),
-            "assignedName": a.get("assigned_name", "Unknown"),
-            "source": "Automated Scanner"
-        })
+        await process_doc(a, "Automated Scanner")
         
-    return sorted(results, key=lambda x: x.get("priorityScore", 0), reverse=True)
+    owned.sort(key=lambda x: x.get("priorityScore", 0), reverse=True)
+    collaborative.sort(key=lambda x: x.get("priorityScore", 0), reverse=True)
+    
+    return {"owned": owned, "collaborative": collaborative}

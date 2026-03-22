@@ -7,7 +7,8 @@ import {
 import api from '../services/api';
 
 export default function WorkingProblems() {
-    const [problems, setProblems] = useState([]);
+    const [problems, setProblems] = useState({ owned: [], collaborative: [] });
+    const [activeTab, setActiveTab] = useState('owned');
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const navigate = useNavigate();
@@ -16,7 +17,12 @@ export default function WorkingProblems() {
         const fetchWorking = async () => {
             try {
                 const res = await api.get('/workflows/working');
-                setProblems(res || []);
+                if (res && typeof res === 'object' && res.owned) {
+                    setProblems(res);
+                } else {
+                    // Fallback
+                    setProblems({ owned: res || [], collaborative: [] });
+                }
             } catch (err) {
                 console.error("Failed to fetch working problems", err);
             } finally {
@@ -26,20 +32,22 @@ export default function WorkingProblems() {
         fetchWorking();
     }, []);
 
-    const filtered = problems.filter(p => 
+    const currentList = activeTab === 'owned' ? problems.owned : problems.collaborative;
+    
+    const filtered = currentList.filter(p => 
         (p.title || p.id).toLowerCase().includes(search.toLowerCase())
     );
 
     return (
         <div className="page-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                         <Briefcase size={28} /> Working Problems
                     </h1>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                        Manage and track progress on issues currently logged under your custody.
+                        Manage workflows under your custody and access collaborative assignments.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
@@ -60,13 +68,75 @@ export default function WorkingProblems() {
                 </div>
             </div>
 
+            {/* Quick Stats Panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '32px' }}>
+                <div style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.1)', padding: '16px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '10px' }}><Shield size={24} style={{ color: '#3b82f6' }} /></div>
+                    <div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px' }}>Owned Workflows</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems.owned.length}</div>
+                    </div>
+                </div>
+                <div style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.1)', padding: '16px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '12px', borderRadius: '10px' }}><Users size={24} style={{ color: '#8b5cf6' }} /></div>
+                    <div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px' }}>Collaborations</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems.collaborative.length}</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '32px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)' }}>
+                <button 
+                    onClick={() => setActiveTab('owned')}
+                    style={{ 
+                        padding: '0 0 12px 0', border: 'none', background: 'none', cursor: 'pointer',
+                        fontSize: '1.05rem', fontWeight: activeTab === 'owned' ? 700 : 500,
+                        color: activeTab === 'owned' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        borderBottom: activeTab === 'owned' ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                >
+                    <UserCheck size={18} /> My Problems
+                    <span style={{ background: activeTab === 'owned' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: activeTab === 'owned' ? '#fff' : 'var(--text-muted)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                        {problems.owned.length}
+                    </span>
+                </button>
+                <button 
+                    onClick={() => setActiveTab('collaborative')}
+                    style={{ 
+                        padding: '0 0 12px 0', border: 'none', background: 'none', cursor: 'pointer',
+                        fontSize: '1.05rem', fontWeight: activeTab === 'collaborative' ? 700 : 500,
+                        color: activeTab === 'collaborative' ? 'var(--text-primary)' : 'var(--text-muted)',
+                        borderBottom: activeTab === 'collaborative' ? '2px solid var(--accent-purple)' : '2px solid transparent',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                >
+                    <Users size={18} /> Collaborations
+                    <span style={{ background: activeTab === 'collaborative' ? 'var(--accent-purple)' : 'rgba(255,255,255,0.1)', color: activeTab === 'collaborative' ? '#fff' : 'var(--text-muted)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
+                        {problems.collaborative.length}
+                    </span>
+                </button>
+            </div>
+
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Loading workflows...</div>
             ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <Briefcase size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
-                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>No Active Problems</h3>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>You haven't assigned any problems to your workspace yet.</p>
+                    {activeTab === 'owned' ? (
+                        <>
+                            <Briefcase size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
+                            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>No Assigned Problems</h3>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>You haven't been assigned any problems to your workspace yet.</p>
+                        </>
+                    ) : (
+                        <>
+                            <Users size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
+                            <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>No Collaboration Invites</h3>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>You haven't been invited to collaborate on any cross-department workflows.</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
@@ -94,12 +164,22 @@ export default function WorkingProblems() {
                                         {p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title}
                                     </h3>
                                 </div>
-                                <div style={{ 
-                                    background: 'rgba(255,255,255,0.06)', padding: '6px 12px', borderRadius: '20px', 
-                                    fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px'
-                                }}>
-                                    <UserCheck size={12} /> Under Custody
-                                </div>
+                                
+                                {activeTab === 'owned' ? (
+                                    <div style={{ 
+                                        background: 'rgba(59, 130, 246, 0.1)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(59,130,246,0.3)',
+                                        fontSize: '0.7rem', fontWeight: 600, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '4px'
+                                    }}>
+                                        <Shield size={12} /> Owner
+                                    </div>
+                                ) : (
+                                    <div style={{ 
+                                        background: 'rgba(139, 92, 246, 0.1)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(139,92,246,0.3)',
+                                        fontSize: '0.7rem', fontWeight: 600, color: '#a78bfa', display: 'flex', alignItems: 'center', gap: '4px'
+                                    }}>
+                                        <Users size={12} /> Contributor
+                                    </div>
+                                )}
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -111,24 +191,35 @@ export default function WorkingProblems() {
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Clock size={13} style={{ color: 'var(--text-muted)' }} />
-                                    Assigned recently
+                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {p.status}
+                                    </span>
                                 </div>
                             </div>
+                            
+                            {activeTab === 'collaborative' && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', padding: '6px 10px', borderRadius: '6px' }}>
+                                    Owner: <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{p.assignedName}</span>
+                                </div>
+                            )}
 
                             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px', marginTop: 'auto' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 600 }}>
                                     <span style={{ color: 'var(--text-secondary)' }}>Workflow Progress</span>
-                                    <span style={{ color: 'var(--accent-purple)' }}>{p.progress}%</span>
+                                    <span style={{ color: activeTab === 'owned' ? 'var(--accent-blue)' : 'var(--accent-purple)' }}>{p.progress}%</span>
                                 </div>
                                 <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${p.progress}%`, height: '100%', background: 'var(--accent-purple)', borderRadius: '3px', transition: 'width 0.4s ease' }} />
+                                    <div style={{ width: `${p.progress}%`, height: '100%', background: activeTab === 'owned' ? 'var(--accent-blue)' : 'var(--accent-purple)', borderRadius: '3px', transition: 'width 0.4s ease' }} />
                                 </div>
                             </div>
 
                             <button 
                                 onClick={() => navigate(`/signal-monitor/${p.id}`)}
-                                className="btn btn-primary" 
-                                style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '8px' }}
+                                className="btn" 
+                                style={{ 
+                                    width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '8px',
+                                    background: activeTab === 'owned' ? 'var(--accent-blue)' : 'var(--accent-purple)', color: 'white', border: 'none'
+                                }}
                             >
                                 Open Workspace <ArrowRight size={14} />
                             </button>
