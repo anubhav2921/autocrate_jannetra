@@ -116,17 +116,41 @@
   --landing-card-bg: #ffffff;
 }
 
-/* ── Reset ────────────────────────────────────────────────── */
-*,
-*::before,
-*::after {
+/* 1. Box model reset */
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html {
-  font-size: 16px;
+/* 2. Prevent horizontal overflow at the root */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* 3. Fluid images — applied globally, no exceptions */
+img, video, iframe, embed, object {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 4. Fluid container system — replace ALL fixed-px wrappers */
+.container,
+.wrapper,
+.section-inner,
+[class*="container"],
+[class*="wrapper"] {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2rem);
+}
+
+/* 5. Base typography in rem + Theme Preservation */
+html { 
+  font-size: 100%; /* 1rem = 16px */
   scroll-behavior: smooth;
 }
 
