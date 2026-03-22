@@ -141,6 +141,10 @@ async def analyze_reported_issue(
                     time.sleep(sleep_time)
                     continue
             
+            # Catch unauthorized and rate limits explicitly for Dev Log tracing
+            if "401" in error_msg:
+                print("[NVIDIA API FATAL] 401 Unauthorized. Key invalid or missing.")
+            
             # For other errors or last attempt, fail gracefully following the Failsafe instructions
             ai_data = {
                 "scene_type": "Pending Verification",
@@ -248,6 +252,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "detected_at": datetime.datetime.utcnow(),
         "last_updated": datetime.datetime.utcnow(),
         "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
+        "report_description": ai_desc, # Explicitly mapped standalone description field
         "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
         "evidence_summary": ai_desc,
         "image_url": req.image_url,
