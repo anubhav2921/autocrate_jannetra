@@ -190,12 +190,21 @@ const ReportIssue = () => {
             formData.append('longitude', location?.longitude || 0);
             formData.append('timestamp', new Date().toISOString());
 
-            console.log("Starting backend AI analysis...");
-            // Axios automatically sets the proper multipart boundary when sending FormData.
-            // Do NOT manually override Content-Type here.
-            const res = await api.post('/report-issue', formData, {
-                timeout: 30000 
+            console.log("Starting native fetch AI analysis...");
+            const token = localStorage.getItem('token');
+            const BASE_URL = import.meta.env.VITE_API_URL || 'https://jannetra-web-production.up.railway.app';
+            
+            const rawRes = await fetch(`${BASE_URL}/api/report-issue`, {
+                method: 'POST',
+                body: formData,
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
+            
+            if (!rawRes.ok) {
+                const text = await rawRes.text();
+                throw new Error(`HTTP ${rawRes.status}: ${text}`);
+            }
+            const res = await rawRes.json();
 
             console.log("AI Analysis Success:", res);
             setAiResult(res);
