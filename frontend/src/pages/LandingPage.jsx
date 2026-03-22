@@ -136,7 +136,6 @@ const LandingPage = () => {
 
     return (
         <div className="landing-root">
-            <div className="landing-grid-bg" />
             <div className="landing-glow-1" />
             <div className="landing-glow-2" />
 
