@@ -13,8 +13,9 @@ export default function WorkingProblems() {
     const [activeTab, setActiveTab] = useState('my-problems');
     const navigate = useNavigate();
 
-    // Adapter layer for mocked user mapping
-    const currentUserId = 'demo-user-id';
+    // Safely retrieve current user ID from session to accurately map ownership/collaborations
+    const currentUser = JSON.parse(localStorage.getItem('user')) || { uid: 'u-1', name: 'Leader' };
+    const currentUserId = currentUser.uid || currentUser.id;
 
     useEffect(() => {
         const fetchWorking = async () => {
