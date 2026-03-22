@@ -18,6 +18,8 @@ DEPARTMENTS = ["health", "police", "municipal", "electricity", "water", "educati
 # In-memory OTP stores
 _otp_store: Dict[str, Dict[str, Any]] = {}
 _phone_otp_store: Dict[str, Dict[str, Any]] = {}
+logger = logging.getLogger("jannetra.auth")
+IS_DEV = os.getenv("APP_ENV", "development") == "development"
 
 
 class SignupRequest(BaseModel):
@@ -56,7 +58,7 @@ async def signup(req: SignupRequest):
         "signup_data": {
             "name": req.name,
             "email": req.email,
-            "password": req.password,
+            "password_hash": _hash_password(req.password),
             "role": req.role,
             "department": req.department,
         },
@@ -64,12 +66,14 @@ async def signup(req: SignupRequest):
 
     send_email_otp(req.email, otp)
 
-    return {
+    resp = {
         "success": True,
         "otp_sent": True,
         "message": "OTP sent to your email",
-        "demo_otp": otp,
     }
+    if IS_DEV:
+        resp["demo_otp"] = otp
+    return resp
 
 
 @router.post("/verify-otp")
@@ -92,7 +96,7 @@ async def verify_otp(req: OTPVerifyRequest):
         "id": gen_uuid(),
         "name": str(data["name"]),
         "email": str(data["email"]),
-        "password_hash": _hash_password(str(data["password"])),
+        "password_hash": data["password_hash"],
         "role": str(data.get("role", "LEADER")),
         "department": str(data.get("department", "")),
         "is_active": True,
@@ -334,11 +338,14 @@ def send_phone_otp(req: PhoneOTPRequest):
         "otp": otp,
         "expires": time.time() + 300,
         "name": req.name or "",
-        "password": req.password or "",
+        "password_hash": _hash_password(req.password) if req.password else "",
         "department": req.department or "",
     }
     send_otp_sms(phone, otp)
-    return {"success": True, "message": f"OTP sent to {phone}", "demo_otp": otp}
+    resp = {"success": True, "message": f"OTP sent to {phone}"}
+    if IS_DEV:
+        resp["demo_otp"] = otp
+    return resp
 
 
 @router.post("/register-phone")
@@ -379,14 +386,14 @@ async def register_phone(req: PhoneOTPVerify):
     
     # Use data from request or fallback to stored
     name = req.name or stored.get("name") or f"User {phone_suffix}"
-    password = req.password or stored.get("password") or ""
+    password_hash = _hash_password(req.password) if req.password else stored.get("password_hash", "")
     department = req.department or stored.get("department") or ""
 
     user = {
         "id": gen_uuid(),
         "name": name,
         "email": None,
-        "password_hash": _hash_password(password) if password else "",
+        "password_hash": password_hash,
         "role": "LEADER",
         "department": department,
         "phone_number": phone,
@@ -501,7 +508,6 @@ async def create_user_profile(req: CreateUserRequest):
         if update:
             await users_collection.update_one({"id": user["id"]}, {"$set": update})
             user.update(update)
-        print(f"[AUTH] User profile updated for {email or phone_number}")
     else:
         auth_provider = "email" if email else "phone"
         user = {
@@ -518,7 +524,7 @@ async def create_user_profile(req: CreateUserRequest):
             "created_at": datetime.utcnow(),
         }
         await users_collection.insert_one(user)
-        print(f"[AUTH] New user profile created for {email or phone_number}")
+    logger.info("[AUTH] User profile updated/created for %s", email or phone_number)
 
     # Create token for the user profile
     token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})

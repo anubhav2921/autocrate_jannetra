@@ -58,11 +58,11 @@ def send_otp_sms(phone_number: str, otp: str) -> bool:
             except Exception as e:
                 logger.error("[SMS] Twilio send failed for %s: %s", phone_number, e)
                 # Fall through to console fallback
-                print(f"[SMS] Twilio send failed, falling back to console. Error: {e}")
+                logger.error("[SMS] Twilio send failed for %s: %s", phone_number, e)
 
     # Development: print to console
-    print(f"[OTP] Phone verification code for {phone_number}: {otp}")
-    print(f"[SMS] (SMS_ENABLED={SMS_ENABLED}) — OTP printed to console only.")
+    logger.debug("[OTP] Phone verification code for %s: %s", phone_number, otp)
+    logger.debug("[SMS] (SMS_ENABLED=%s) — OTP processed.", SMS_ENABLED)
     return True
 
 
@@ -71,5 +71,5 @@ def send_email_otp(email: str, otp: str) -> bool:
     Send an OTP via email (console fallback in dev).
     In production, integrate with SendGrid, AWS SES, etc.
     """
-    print(f"[OTP] Verification code for {email}: {otp}")
+    logger.debug("[OTP] Verification code for %s: %s", email, otp)
     return True

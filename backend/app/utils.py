@@ -1,3 +1,4 @@
+import os
 import re
 import uuid
 from bson import ObjectId
@@ -8,7 +9,7 @@ from fastapi import Request, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # JWT CONFIGURATION
-SECRET_KEY = "DEV_SECRET_KEY_FOR_JANNETRA_CHANGE_IN_PROD"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "DEV_SECRET_KEY_FOR_JANNETRA_CHANGE_IN_PROD")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 # 24 hours
 
