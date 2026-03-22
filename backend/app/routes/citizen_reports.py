@@ -106,32 +106,58 @@ async def analyze_reported_issue(
     
     for attempt in range(max_retries):
         try:
-            print(f"Calling Gemini API (Attempt {attempt + 1})...")
-            # Include baseline safety settings to ensure civic issues aren't blocked
-            # SAFETY_OFF = [
-            #     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH",        threshold="BLOCK_NONE"),
-            #     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT",         threshold="BLOCK_NONE"),
-            #     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold="BLOCK_NONE"),
-            #     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT",  threshold="BLOCK_NONE"),
-            # ]
+            import requests
+            import base64
             
-            response = gemini_client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=[
-                    types.Part.from_bytes(data=content, mime_type=mime_type),
-                    prompt
-                ],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    # safety_settings=SAFETY_OFF,
-                )
-            )
-            print(f"Gemini Raw Response: {response.text}")
-            ai_data = json.loads(response.text)
+            print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
+            
+            b64_img = base64.b64encode(content).decode("utf-8")
+            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+            api_key = os.getenv("NVIDIA_API_KEY", "")
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json"
+            }
+            
+            payload = {
+              "model": "meta/llama-3.2-90b-vision-instruct",
+              "messages": [
+                {
+                  "role": "user",
+                  "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                      "type": "image_url",
+                      "image_url": {
+                        "url": f"data:{mime_type};base64,{b64_img}"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "max_tokens": 1024,
+              "temperature": 0.2,
+              "top_p": 0.7
+            }
+            
+            response = requests.post(invoke_url, headers=headers, json=payload)
+            response.raise_for_status()
+            
+            response_json = response.json()
+            raw_text = response_json["choices"][0]["message"]["content"]
+            print(f"NVIDIA Raw Response: {raw_text}")
+            
+            # Safely extract JSON from Markdown if provided
+            if "```json" in raw_text:
+                raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
+            elif "```" in raw_text:
+                raw_text = raw_text.split("```")[-1].split("```")[0].strip()
+                
+            ai_data = json.loads(raw_text)
             break # Success!
         except Exception as e:
             error_msg = str(e)
-            print(f"Gemini Analysis Attempt {attempt + 1} Error: {error_msg}")
+            print(f"NVIDIA Analysis Attempt {attempt + 1} Error: {error_msg}")
             
             # If it's a quota error, wait and retry
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
