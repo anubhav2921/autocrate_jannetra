@@ -55,11 +55,9 @@ async def list_signal_problems(
     match["category"] = {"$ne": "Citizen Report"}
 
     # Fetch from the aggregated collection
-    # We sort by priority_score descending to show high-impact issues first
+    # We sort chronologically to ensure new scraped data stays on top
     problems_cursor = await signal_problems_collection.find(match).sort([
-        ("priority_score", -1), 
-        ("frequency", -1),
-        ("last_updated", -1)
+        ("_id", -1)
     ]).to_list(100)
     
     results = [
@@ -98,7 +96,7 @@ async def list_signal_problems(
     if not status or status == "Pending":
         needed = 100 - len(results)
         if needed > 0:
-            articles_cursor = await news_articles_collection.find(article_match).sort("risk_score", -1).limit(needed + 100).to_list(needed + 100)
+            articles_cursor = await news_articles_collection.find(article_match).sort("_id", -1).limit(needed + 100).to_list(needed + 100)
             
             def get_severity(score):
                 if score >= 85: return "Critical"
@@ -141,8 +139,8 @@ async def list_signal_problems(
                 if len(results) >= 100:
                     break
 
-    # Sort combined results by priority/risk score
-    results.sort(key=lambda x: x.get("priorityScore", 0), reverse=True)
+    # We no longer resort by priority; we keep the chronological DB order
+    pass
 
     return results
 

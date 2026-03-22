@@ -337,7 +337,7 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
     if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):
         match_filter["department"] = current_user.get("department")
 
-    cursor = signal_problems_collection.find(match_filter).sort("priority_score", -1).limit(200)
+    cursor = signal_problems_collection.find(match_filter).sort("_id", -1).limit(200)
     reports = await cursor.to_list(200)
     
     # We map the data slightly to match the SignalMonitor format exactly

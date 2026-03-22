@@ -19,7 +19,7 @@ async def list_articles(
         match["fake_news_label"] = label
 
     total = await news_articles_collection.count_documents(match)
-    cursor = news_articles_collection.find(match).sort("risk_score", -1).skip((page - 1) * limit).limit(limit)
+    cursor = news_articles_collection.find(match).sort("_id", -1).skip((page - 1) * limit).limit(limit)
     articles = await cursor.to_list(None)
 
     return {

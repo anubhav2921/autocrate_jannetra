@@ -53,7 +53,7 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
         cat_res = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
 
         # Top risk articles
-        top_articles = await news_articles_collection.find(match_filter).sort("risk_score", -1).limit(10).to_list(10)
+        top_articles = await news_articles_collection.find(match_filter).sort("_id", -1).limit(10).to_list(10)
 
         # Active alerts
         active_alerts = await alerts_collection.count_documents({**match_filter, "is_active": True})
