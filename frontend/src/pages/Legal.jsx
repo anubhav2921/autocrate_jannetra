@@ -29,7 +29,7 @@ const Legal = () => {
                         </section>
                         <section>
                             <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>2. AI Processing</h3>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Your reports are processed by Gemini AI to categorize and verify civic issues. Image data is used solely for verification purposes.</p>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Your reports are processed by AI to categorize and verify civic issues. Image data is used solely for verification purposes.</p>
                         </section>
                         <section>
                             <h3 style={{ color: 'var(--text-primary)', marginBottom: '12px' }}>3. User Rights</h3>

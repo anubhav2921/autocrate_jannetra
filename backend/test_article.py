@@ -1,5 +1,5 @@
 from app.mongodb import news_articles_collection
-from app.services.gemini_service import summarize_news_article
+from app.services.ai_service import summarize_news_article
 import asyncio
 
 async def test_update():
@@ -9,7 +9,7 @@ async def test_update():
         return
     print(f"Article: {a.get('title')}")
     print(f"Content length: {len(a.get('content', ''))}")
-    print(f"Has Gemini Summary: {a.get('has_gemini_summary')}")
+    print(f"Has AI Summary: {a.get('has_ai_summary')}")
     
     loc_parts = [x for x in [a.get("city"), a.get("district"), a.get("state")] if x]
     location_str = ", ".join(loc_parts) if loc_parts else (a.get("source_name") or "Unknown")

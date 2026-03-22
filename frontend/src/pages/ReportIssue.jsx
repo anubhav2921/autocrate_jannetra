@@ -522,7 +522,7 @@ const ReportIssue = () => {
                                             value={description}
                                             onChange={(e) => setDescription(e.target.value)}
                                             placeholder="Add more details..."
-                                            rows={3}
+                                            rows={7}
                                             style={{ paddingRight: '16px' }}
                                         />
                                     </div>

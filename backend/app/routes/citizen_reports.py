@@ -7,8 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
-from google import genai
-from google.genai import types
+
 
 from ..mongodb import (
     articles_collection, 
@@ -17,7 +16,7 @@ from ..mongodb import (
     signal_problems_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
-from ..services.gemini_config import gemini_client, GEMINI_MODEL
+
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -57,7 +56,7 @@ async def analyze_reported_issue(
     timestamp: str = Form(...),
 ):
     """
-    Analyzes an uploaded image using Gemini Vision and extracts issue details.
+    Analyzes an uploaded image using NVIDIA Vision and extracts issue details.
     """
     print(f"--- Analysis Started for {image.filename} ---")
     content = await image.read()
@@ -71,7 +70,7 @@ async def analyze_reported_issue(
     image_url = await _upload_to_firebase(content, filename, mime_type)
     print(f"Image uploaded to: {image_url} with mime: {mime_type}")
     
-    # 2. AI Vision Pipeline with Gemini
+    # 2. AI Vision Pipeline
     # Constructing prompt for specific issue detection
     prompt = """
     You are an intelligent image analysis system for JanNetra, a civic health monitoring platform.
@@ -88,13 +87,20 @@ async def analyze_reported_issue(
        - Mention severity (low, medium, high if possible).
        - Mention surroundings (roadside, residential area, public place, etc.).
     6. Keep the description natural, like a real human reporting the issue.
-    7. Maximum length for the description is 3-5 sentences.
+    7. The `ai_description` MUST be a structured, readable format. Write it clearly using point form separated by double newlines (\n\n) like this:
+       Problem: <short issue title>
+       
+       Observation: <specific details of the issue>
+       
+       Impact: <how it affects the environment or community>
+       
+       Location Context: <what the surroundings look like>
 
     OUTPUT FORMAT: You MUST return a pure JSON object. Do not wrap in markdown or anything else.
     {
         "scene_type": "Human/Portrait | Civic Issue | Other",
         "detected_issue": "Garbage Dumping | Water Logging | Road Damage | Street Light issue | Infrastructure Damage | Others | None",
-        "ai_description": "<Your 3-5 sentence description following the rules above. FAILSAFE: If the image analysis fails or is completely unclear, return EXACTLY: 'Unable to clearly analyze the image. Please try again with a clearer photo.'>",
+        "ai_description": "<Your structured text description exactly matching the format specified above>",
         "severity": "Low | Medium | High | None",
         "urgency": "Low | Medium | High | None",
         "confidence_score": <0-100 integer>
@@ -119,16 +125,21 @@ async def analyze_reported_issue(
                 "Accept": "application/json"
             }
             
-            # llama-3.2-11b-vision-instruct uses <img src> tag format in content string
-            img_tag = f'<img src="data:{mime_type};base64,{b64_img}" />'
-            full_prompt = f"{prompt}\n\n{img_tag}"
-            
+            # NVIDIA Vision NIM uses standard OpenAI-compatible payload format
             payload = {
               "model": "meta/llama-3.2-11b-vision-instruct",
               "messages": [
                 {
                   "role": "user",
-                  "content": full_prompt
+                  "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                      "type": "image_url",
+                      "image_url": {
+                         "url": f"data:{mime_type};base64,{b64_img}"
+                      }
+                    }
+                  ]
                 }
               ],
               "max_tokens": 1024,
@@ -136,7 +147,7 @@ async def analyze_reported_issue(
               "top_p": 0.7
             }
             
-            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=60)
+            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=120)
             response.raise_for_status()
             
             response_json = response.json()
@@ -287,7 +298,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "frequency": 1,
         "source": "Citizen Application",
         "status": "Pending",
-        "has_gemini_summary": True, # Pre-summarized conceptually
+        "has_ai_summary": True, # Pre-summarized conceptually
         "sample_records": [{
              "title": req.detected_issue, 
              "severity": article["risk_level"], 

@@ -85,7 +85,7 @@ async def generate_metrics_with_ai(body: GenerateRequest):
     count = min(body.count or 5, 15)
     generated = generate_system_metrics(count)
     if not generated:
-        raise HTTPException(status_code=500, detail="Gemini AI failed to generate metrics. Check API key.")
+        raise HTTPException(status_code=500, detail="AI failed to generate metrics. Check API")
 
     existing = await system_metrics_collection.find({}, {"id": 1}).to_list(None)
     existing_ids = {m["id"] for m in existing}
@@ -152,7 +152,7 @@ async def get_system_monitoring_insights():
     if not metrics:
         return {"summary": "No active systems detected. Start by generating or connecting data sources.", "critical_count": 0, "status": "Idle"}
     
-    # Simple rule-based aggregation for intelligence if Gemini fails
+    # Simple rule-based aggregation for intelligence if AI fails
     critical_systems = [m for m in metrics if m.get("status") == "Critical" or m.get("status") == "Degraded"]
     warning_systems = [m for m in metrics if m.get("status") == "Warning"]
     
@@ -169,7 +169,7 @@ async def get_system_monitoring_insights():
         insight = "SYSTEM HEALTH: All infrastructure components operating within optimal parameters. Stability index at 98.4%."
         status = "Healthy"
 
-    # In a real app, we'd pass the aggregated data to Gemini here
+    # In a real app, we'd pass the aggregated data to AI here
     return {
         "summary": insight,
         "critical_count": len(critical_systems),

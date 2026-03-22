@@ -111,7 +111,7 @@ def test_nvidia_vision(image_path: str):
     # 3. Call API
     print(f"[→] Calling NVIDIA API  (model: {MODEL}) ...")
     try:
-        resp = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
         resp.raise_for_status()
     except requests.exceptions.HTTPError as e:
         print(f"[ERROR] HTTP {resp.status_code}: {resp.text}")
@@ -136,6 +136,10 @@ def test_nvidia_vision(image_path: str):
 
     try:
         ai_data = json.loads(raw_text)
+        with open("desc.txt", "w") as f:
+            f.write(ai_data.get("ai_description", "N/A"))
+        print("\nAI description written to desc.txt")
+        
         print(f"{'='*60}")
         print("  ✅  PARSED RESULT")
         print(f"{'='*60}")

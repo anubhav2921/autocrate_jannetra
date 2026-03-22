@@ -268,16 +268,16 @@ export default function ProblemDetail() {
                 {/* Problem Summary & Intelligence Summary */}
                 <div className="glass-card animate-in">
                     <div className="section-title" style={{ marginBottom: '16px' }}>
-                        <FileText size={18} /> {problem.hasGeminiSummary ? 'AI Intelligence Summary' : 'Problem Summary'}
+                        <FileText size={18} /> {problem.hasAiSummary ? 'AI Intelligence Summary' : 'Problem Summary'}
                     </div>
                     
-                    {problem.hasGeminiSummary ? (
+                    {problem.hasAiSummary ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             <div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
                                     Problem Description
                                 </div>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                                     {problem.description}
                                 </p>
                             </div>
@@ -318,7 +318,7 @@ export default function ProblemDetail() {
                         </div>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '24px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: '20px' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.8, marginBottom: '20px', whiteSpace: 'pre-wrap' }}>
                                 {problem.description || problem.title}
                             </p>
                             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>

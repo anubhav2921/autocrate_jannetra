@@ -6,7 +6,7 @@ from datetime import datetime
 from ..mongodb import (
     news_articles_collection, signal_problems_collection
 )
-from ..services.gemini_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
+from ..services.ai_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
 from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
@@ -79,7 +79,7 @@ async def list_signal_problems(
             "resolutionReport": p.get("resolution_report"),
             "resolutionProofUrl": p.get("resolution_proof_url"),
             "resolvedAt": p.get("resolved_at").strftime("%Y-%m-%d %H:%M") if hasattr(p.get("resolved_at"), "strftime") else None,
-            "hasGeminiSummary": p.get("has_gemini_summary", False)
+            "hasAiSummary": p.get("has_ai_summary", False)
         }
         for p in problems_cursor
     ]
@@ -133,7 +133,7 @@ async def list_signal_problems(
                     "resolutionReport": None,
                     "resolutionProofUrl": None,
                     "resolvedAt": None,
-                    "hasGeminiSummary": False
+                    "hasAiSummary": False
                 })
                 existing_ids.add(a_id)
                 if len(results) >= 100:
@@ -155,7 +155,7 @@ async def get_signal_problem(problem_id: str):
         current_sol = p.get("expected_solution", "")
         
         needs_summary = (
-            not p.get("has_gemini_summary") or 
+            not p.get("has_ai_summary") or 
             current_sol == FALLBACK_SOL or
             not current_sol or
             len(p.get("description", "")) < 30
@@ -184,7 +184,7 @@ async def get_signal_problem(problem_id: str):
                     "location_detail": summary["location_detail"],
                     "evidence_summary": summary["evidence_summary"],
                     "expected_solution": summary["expected_solution"],
-                    "has_gemini_summary": True
+                    "has_ai_summary": True
                 }
                 await signal_problems_collection.update_one({"id": problem_id}, {"$set": update_fields})
                 p.update(update_fields)
@@ -201,7 +201,7 @@ async def get_signal_problem(problem_id: str):
             "locationDetail": p.get("location_detail"),
             "evidenceSummary": p.get("evidence_summary"),
             "expectedSolution": p.get("expected_solution"),
-            "hasGeminiSummary": p.get("has_gemini_summary", False),
+            "hasAiSummary": p.get("has_ai_summary", False),
             "priorityScore": p.get("priority_score") or p.get("risk_score") or 0.0,
             "frequency": p.get("frequency", 1),
             "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source"),
@@ -236,8 +236,8 @@ async def get_signal_problem(problem_id: str):
 
         # Generate structured report if missing
         needs_summary = (
-            not a.get("has_gemini_summary") or
-            not a.get("gemini_description")
+            not a.get("has_ai_summary") or
+            not a.get("ai_description")
         )
 
         if needs_summary and a.get("content"):
@@ -249,11 +249,11 @@ async def get_signal_problem(problem_id: str):
             )
             if summary:
                 update_fields = {
-                    "gemini_description": summary["description"],
+                    "ai_description": summary["description"],
                     "location_detail": summary["location_detail"],
                     "evidence_summary": summary["evidence_summary"],
                     "expected_solution": summary["expected_solution"],
-                    "has_gemini_summary": True
+                    "has_ai_summary": True
                 }
                 await news_articles_collection.update_one({"_id": a["_id"]}, {"$set": update_fields})
                 a.update(update_fields)
@@ -266,11 +266,11 @@ async def get_signal_problem(problem_id: str):
             "location": location_str,
             "detectedAt": a.get("scraped_at"),
             "lastUpdated": a.get("scraped_at"),
-            "description": a.get("gemini_description") if a.get("has_gemini_summary") else (a.get("content") or a.get("title") or ""),
+            "description": a.get("ai_description") if a.get("has_ai_summary") else (a.get("content") or a.get("title") or ""),
             "locationDetail": a.get("location_detail") or location_str,
             "evidenceSummary": a.get("evidence_summary") or "Synthetic problem derived from news article.",
             "expectedSolution": a.get("expected_solution") or "Investigation required by concerned department.",
-            "hasGeminiSummary": a.get("has_gemini_summary", False),
+            "hasAiSummary": a.get("has_ai_summary", False),
             "priorityScore": a.get("risk_score") or 0.0,
             "frequency": 1,
             "source": a.get("source_name"),
@@ -357,7 +357,7 @@ async def generate_problems_with_ai(body: GenerateRequest):
     count = min(body.count or 5, 15)
     generated = generate_signal_problems(count)
     if not generated:
-        raise HTTPException(status_code=500, detail="Gemini AI failed to generate problems. Check API key.")
+        raise HTTPException(status_code=500, detail="AI failed to generate problems. Check API key.")
 
     existing = await signal_problems_collection.find({}, {"id": 1}).to_list(None)
     existing_ids = {p["id"] for p in existing}
