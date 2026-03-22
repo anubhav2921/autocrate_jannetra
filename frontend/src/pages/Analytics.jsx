@@ -148,7 +148,7 @@ export default function Analytics() {
                                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                             <MapPin size={13} style={{ color: RISK_COLORS[h.risk_level] }} />
-                                            {h.location}
+                                            {h.location ? h.location.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>') : 'Unknown'}
                                         </div>
                                     </td>
                                     <td style={{ fontWeight: 700, color: RISK_COLORS[h.risk_level] }}>
