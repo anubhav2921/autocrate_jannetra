@@ -30,6 +30,8 @@ export default function ProblemDetail() {
     const [updatingProgress, setUpdatingProgress] = useState(false);
     const [noteText, setNoteText] = useState('');
     const [addingNote, setAddingNote] = useState(false);
+    const [inviteText, setInviteText] = useState('');
+    const [invitingLeader, setInvitingLeader] = useState(false);
 
     useEffect(() => {
         setLoading(true);
@@ -109,6 +111,21 @@ export default function ProblemDetail() {
             console.error(err);
         } finally {
             setAddingNote(false);
+        }
+    };
+
+    const handleInviteLeader = async () => {
+        if (!inviteText.trim()) return;
+        setInvitingLeader(true);
+        try {
+            await api.post(`/workflows/${id}/invite`, { account_id: inviteText });
+            setInviteText('');
+            const logs = await api.get(`/workflows/${id}/activity`);
+            setActivityLogs(logs);
+        } catch(err) {
+            console.error(err);
+        } finally {
+            setInvitingLeader(false);
         }
     };
 
@@ -448,17 +465,31 @@ export default function ProblemDetail() {
                     </div>
 
                     {!isResolved && (
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <input 
-                                type="text" 
-                                value={noteText}
-                                onChange={e => setNoteText(e.target.value)}
-                                placeholder="Add an official execution note or update..." 
-                                style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
-                            />
-                            <button onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem' }}>
-                                {addingNote ? 'Adding...' : 'Attach Note'}
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text" 
+                                    value={noteText}
+                                    onChange={e => setNoteText(e.target.value)}
+                                    placeholder="Add an official execution note or update..." 
+                                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
+                                />
+                                <button onClick={handleAddNote} disabled={addingNote || !noteText.trim()} className="btn" style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                    {addingNote ? 'Adding...' : 'Attach Note'}
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text" 
+                                    value={inviteText}
+                                    onChange={e => setInviteText(e.target.value)}
+                                    placeholder="Enter Leader Account ID or Mail to attach to this workflow..." 
+                                    style={{ flex: 1, padding: '10px 14px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', color: 'white', fontSize: '0.85rem' }}
+                                />
+                                <button onClick={handleInviteLeader} disabled={invitingLeader || !inviteText.trim()} className="btn" style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '0 16px', borderRadius: '6px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                                    {invitingLeader ? 'Adding...' : 'Attach Leader'}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

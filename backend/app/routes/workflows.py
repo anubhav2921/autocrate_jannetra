@@ -28,6 +28,9 @@ class NoteRequest(BaseModel):
 class EscalateRequest(BaseModel):
     reason: str
 
+class InviteRequest(BaseModel):
+    account_id: str
+
 async def log_activity(problem_id: str, action: str, user_name: str, details: str = ""):
     log_entry = {
         "id": gen_uuid(),
@@ -132,6 +135,12 @@ async def update_progress(problem_id: str, req: ProgressRequest, user: dict = De
 async def add_note(problem_id: str, req: NoteRequest, user: dict = Depends(get_current_user_optional)):
     performer = user["name"] if user else "System"
     await log_activity(problem_id, "Note Added", performer, req.note)
+    return {"success": True}
+
+@router.post("/{problem_id}/invite")
+async def invite_leader(problem_id: str, req: InviteRequest, user: dict = Depends(get_current_user_optional)):
+    performer = user["name"] if user else "System Admin"
+    await log_activity(problem_id, "Leader Invited", performer, f"Invited Department Leader Account ID: {req.account_id} to collaborate")
     return {"success": True}
 
 @router.post("/{problem_id}/escalate")
