@@ -8,6 +8,9 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from ..mongodb import (
     articles_collection, 
@@ -117,9 +120,26 @@ async def analyze_reported_issue(
             
             print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
             
-            b64_img = base64.b64encode(content).decode("utf-8")
+            # Compress for NVIDIA Vision to avoid Payload Too Large limits
+            try:
+                from PIL import Image
+                img = Image.open(io.BytesIO(content)).convert("RGB")
+                img.thumbnail((1024, 1024), Image.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=85, optimize=True)
+                content_for_ai = buf.getvalue()
+                mime_type_for_ai = "image/jpeg"
+            except Exception as e:
+                print(f"Image compression failed: {e}")
+                content_for_ai = content
+                mime_type_for_ai = mime_type
+
+            b64_img = base64.b64encode(content_for_ai).decode("utf-8")
             invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
             api_key = os.getenv("NVIDIA_API_KEY", "")
+            if not api_key:
+                raise ValueError("NVIDIA_API_KEY not found in environment")
+
             nv_headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json"
@@ -136,7 +156,7 @@ async def analyze_reported_issue(
                     {
                       "type": "image_url",
                       "image_url": {
-                         "url": f"data:{mime_type};base64,{b64_img}"
+                         "url": f"data:{mime_type_for_ai};base64,{b64_img}"
                       }
                     }
                   ]
