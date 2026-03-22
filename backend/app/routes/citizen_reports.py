@@ -147,7 +147,7 @@ async def analyze_reported_issue(
             
             # NVIDIA Vision NIM uses standard OpenAI-compatible payload format
             payload = {
-              "model": "meta/llama-3.2-11b-vision-instruct",
+              "model": "meta/llama-3.2-90b-vision-instruct",
               "messages": [
                 {
                   "role": "user",
