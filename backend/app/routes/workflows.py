@@ -185,6 +185,10 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "status": p.get("status", "In Progress"),
             "progress": p.get("progress", 0),
             "assignedName": p.get("assigned_name", "Unknown"),
+            "assignedTo": p.get("assigned_to", "demo-user-id"),
+            "ownerId": p.get("owner_id", p.get("assigned_to", "demo-user-id")),
+            "collaborators": p.get("collaborators", []),
+            "invitedBy": p.get("invited_by", "System Admin"),
             "source": "Citizen Application"
         })
         
@@ -201,6 +205,10 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "status": a.get("status", "In Progress"),
             "progress": a.get("progress", 0),
             "assignedName": a.get("assigned_name", "Unknown"),
+            "assignedTo": a.get("assigned_to", "demo-user-id"),
+            "ownerId": a.get("owner_id", a.get("assigned_to", "demo-user-id")),
+            "collaborators": a.get("collaborators", []),
+            "invitedBy": a.get("invited_by", "System Admin"),
             "source": "Automated Scanner"
         })
         

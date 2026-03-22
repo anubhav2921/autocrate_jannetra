@@ -10,7 +10,11 @@ export default function WorkingProblems() {
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState('my-problems');
     const navigate = useNavigate();
+
+    // Adapter layer for mocked user mapping
+    const currentUserId = 'demo-user-id';
 
     useEffect(() => {
         const fetchWorking = async () => {
@@ -26,9 +30,19 @@ export default function WorkingProblems() {
         fetchWorking();
     }, []);
 
-    const filtered = problems.filter(p => 
+    const searched = problems.filter(p => 
         (p.title || p.id).toLowerCase().includes(search.toLowerCase())
     );
+
+    const myProblems = searched.filter(p => 
+        p.assignedTo === currentUserId || p.ownerId === currentUserId
+    );
+
+    const collaborations = searched.filter(p => 
+        (p.collaborators || []).includes(currentUserId) && p.assignedTo !== currentUserId && p.ownerId !== currentUserId
+    );
+
+    const displayedProblems = activeTab === 'my-problems' ? myProblems : collaborations;
 
     return (
         <div className="page-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -60,17 +74,41 @@ export default function WorkingProblems() {
                 </div>
             </div>
 
+            {/* Custom Tab UI Segment */}
+            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
+                <button 
+                    onClick={() => setActiveTab('my-problems')}
+                    style={{ 
+                        background: 'none', border: 'none', padding: '10px 16px', fontSize: '1rem', fontWeight: 600,
+                        color: activeTab === 'my-problems' ? 'var(--accent-blue)' : 'var(--text-muted)',
+                        borderBottom: activeTab === 'my-problems' ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                        cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}>
+                    <Briefcase size={16} /> My Problems ({myProblems.length})
+                </button>
+                <button 
+                    onClick={() => setActiveTab('collaborations')}
+                    style={{ 
+                        background: 'none', border: 'none', padding: '10px 16px', fontSize: '1rem', fontWeight: 600,
+                        color: activeTab === 'collaborations' ? 'var(--accent-purple)' : 'var(--text-muted)',
+                        borderBottom: activeTab === 'collaborations' ? '2px solid var(--accent-purple)' : '2px solid transparent',
+                        cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}>
+                    <Shield size={16} /> Collaborations ({collaborations.length})
+                </button>
+            </div>
+
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Loading workflows...</div>
-            ) : filtered.length === 0 ? (
+            ) : displayedProblems.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    <Briefcase size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />
+                    {activeTab === 'my-problems' ? <Briefcase size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} /> : <Shield size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />}
                     <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>No Active Problems</h3>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>You haven't assigned any problems to your workspace yet.</p>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{activeTab === 'my-problems' ? "You haven't assigned any problems to your workspace yet." : "You haven't been invited to collaborate on any problems yet."}</p>
                 </div>
             ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                    {filtered.map((p, idx) => (
+                    {displayedProblems.map((p, idx) => (
                         <div 
                             key={p.id} 
                             className="glass-card animate-in"
@@ -96,9 +134,14 @@ export default function WorkingProblems() {
                                 </div>
                                 <div style={{ 
                                     background: 'rgba(255,255,255,0.06)', padding: '6px 12px', borderRadius: '20px', 
-                                    fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px'
+                                    fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px',
+                                    whiteSpace: 'nowrap'
                                 }}>
-                                    <UserCheck size={12} /> Under Custody
+                                    {activeTab === 'my-problems' ? (
+                                        <><UserCheck size={12} /> Under Custody</>
+                                    ) : (
+                                        <><Shield size={12} style={{ color: 'var(--accent-purple)' }}/> Collaborator</>
+                                    )}
                                 </div>
                             </div>
 
@@ -109,10 +152,17 @@ export default function WorkingProblems() {
                                         {p.location}
                                     </span>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Clock size={13} style={{ color: 'var(--text-muted)' }} />
-                                    Assigned recently
-                                </div>
+                                {activeTab === 'my-problems' ? (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Clock size={13} style={{ color: 'var(--text-muted)' }} />
+                                        Assigned recently
+                                    </div>
+                                ) : (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}><UserCheck size={12}/> {p.assignedName}</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Invited by {p.invitedBy}</div>
+                                    </div>
+                                )}
                             </div>
 
                             <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px', marginTop: 'auto' }}>
