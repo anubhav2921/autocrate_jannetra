@@ -133,6 +133,7 @@ export default function App() {
                                 <Route path="/scanner" element={<Scanner />} />
                                 <Route path="/signal-monitor" element={<SignalMonitor />} />
                                 <Route path="/citizen-reports" element={<CitizenReports />} />
+                                <Route path="/citizen-reports/:id" element={<ProblemDetail />} />
                                 <Route path="/working" element={<WorkingProblems />} />
                                 <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
                                 <Route path="/system-monitoring" element={<SystemMonitoring />} />

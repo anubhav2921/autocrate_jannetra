@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     ArrowLeft, AlertTriangle, MapPin, Clock, Shield, Zap, CheckCircle2,
     Circle, FileText, Radio, Target, Flame, Image, Mic
@@ -17,6 +17,7 @@ import api from '../services/api';
 export default function ProblemDetail() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [problem, setProblem] = useState(null);
     const [loading, setLoading] = useState(true);
     const [resolving, setResolving] = useState(false);
@@ -138,8 +139,8 @@ export default function ProblemDetail() {
                     <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
                         {problem?.detail || `The signal "${id}" does not exist.`}
                     </p>
-                    <button onClick={() => navigate('/signal-monitor')} className="btn btn-primary" style={{ marginTop: '16px' }}>
-                        <ArrowLeft size={14} /> Back to Signal Monitor
+                    <button onClick={() => navigate(location.pathname.startsWith('/citizen-reports') ? '/citizen-reports' : '/signal-monitor')} className="btn btn-primary" style={{ marginTop: '16px' }}>
+                        <ArrowLeft size={14} /> {location.pathname.startsWith('/citizen-reports') ? 'Back to Citizen Reports' : 'Back to Signal Monitor'}
                     </button>
                 </div>
             </div>
@@ -152,9 +153,9 @@ export default function ProblemDetail() {
     return (
         <div className="page-container">
             {/* Back Button */}
-            <button onClick={() => navigate('/signal-monitor')} className="btn btn-ghost animate-in"
+            <button onClick={() => navigate(location.pathname.startsWith('/citizen-reports') ? '/citizen-reports' : '/signal-monitor')} className="btn btn-ghost animate-in"
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', padding: '8px 14px' }}>
-                <ArrowLeft size={16} /> Back to Signal Monitor
+                <ArrowLeft size={16} /> {location.pathname.startsWith('/citizen-reports') ? 'Back to Citizen Reports' : 'Back to Signal Monitor'}
             </button>
 
             {/* Header Card */}

@@ -234,7 +234,7 @@ export default function CitizenReports() {
                                     </td>
                                     <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => navigate(`/signal-monitor/${p.id}`)}
+                                            onClick={() => navigate(`/citizen-reports/${p.id}`)}
                                             className="btn btn-primary"
                                             style={{
                                                 padding: '6px 14px', fontSize: '0.75rem',
