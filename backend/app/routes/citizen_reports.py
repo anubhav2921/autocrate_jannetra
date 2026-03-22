@@ -18,7 +18,7 @@ from ..mongodb import (
 )
 from ..utils import gen_uuid, get_current_user_optional
 NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-NVIDIA_MODEL = "google/gemma-3-27b-it"
+NVIDIA_VISION_MODEL = "meta/llama-3.2-11b-vision-instruct"  # Vision-capable model on NVIDIA NIM
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -107,62 +107,40 @@ async def analyze_reported_issue(
 
     for attempt in range(max_retries):
         try:
-            print(f"Calling NVIDIA API with {NVIDIA_MODEL} (Attempt {attempt + 1})...")
+            print(f"Calling NVIDIA Vision API with {NVIDIA_VISION_MODEL} (Attempt {attempt + 1})...")
 
             api_key = os.getenv("NVIDIA_API_KEY", "")
             b64_img = base64.b64encode(content).decode("utf-8")
 
             nv_headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Accept": "text/event-stream"
+                "Accept": "application/json"
             }
 
-            # gemma-3-27b-it supports multimodal content via the content list format
+            # llama-3.2-11b-vision-instruct uses <img src> tag in the content string
+            img_tag = f'<img src="data:{mime_type};base64,{b64_img}" />'
+            full_prompt = f"{prompt}\n\n{img_tag}"
+
             payload = {
-                "model": NVIDIA_MODEL,
+                "model": NVIDIA_VISION_MODEL,
                 "messages": [
                     {
                         "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": prompt
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{b64_img}"
-                                }
-                            }
-                        ]
+                        "content": full_prompt
                     }
                 ],
                 "max_tokens": 1024,
                 "temperature": 0.20,
                 "top_p": 0.70,
-                "stream": True
+                "stream": False
             }
 
             response = requests.post(NVIDIA_INVOKE_URL, headers=nv_headers, json=payload, timeout=90)
             response.raise_for_status()
 
-            # Accumulate the streamed SSE chunks into a single text
-            raw_text = ""
-            for line in response.iter_lines():
-                if line:
-                    decoded = line.decode("utf-8")
-                    if decoded.startswith("data: "):
-                        chunk_str = decoded[len("data: "):].strip()
-                        if chunk_str == "[DONE]":
-                            break
-                        try:
-                            chunk_json = json.loads(chunk_str)
-                            delta = chunk_json["choices"][0].get("delta", {})
-                            raw_text += delta.get("content", "")
-                        except Exception:
-                            pass
-
-            print(f"NVIDIA Streamed Response: {raw_text}")
+            response_json = response.json()
+            raw_text = response_json["choices"][0]["message"]["content"]
+            print(f"NVIDIA Raw Response: {raw_text}")
 
             # Safely extract JSON from Markdown code fences if present
             if "```json" in raw_text:
