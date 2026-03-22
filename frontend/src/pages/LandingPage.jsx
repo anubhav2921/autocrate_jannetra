@@ -358,6 +358,7 @@ const LandingPage = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.3 }}
+                                    style={{ flexWrap: 'wrap', gap: '20px' }}
                                 >
                                     <div className="res-item">
                                         <span className="res-label">Status</span>
@@ -374,6 +375,22 @@ const LandingPage = () => {
                                     <div className="res-item">
                                         <span className="res-label">Updated</span>
                                         <div className="res-val">{trackingResult.lastUpdate}</div>
+                                    </div>
+
+                                    {/* Workflow Progress Bar */}
+                                    <div style={{ width: '100%', marginTop: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Workflow Progress</span>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--landing-accent)', fontWeight: 800 }}>{trackingResult.progress || 0}%</span>
+                                        </div>
+                                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${trackingResult.progress || 0}%` }}
+                                                transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
+                                                style={{ height: '100%', background: 'linear-gradient(90deg, var(--landing-accent), var(--landing-purple))', borderRadius: '4px' }} 
+                                            />
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}

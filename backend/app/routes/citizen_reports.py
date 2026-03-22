@@ -290,8 +290,10 @@ async def get_report_status(report_id: str):
     
     status = "Escalated to Dept"
     last_update = "Just Now"
+    progress = 0
     
     if signal_problem:
+        progress = signal_problem.get("progress", 0)
         # Give priority to Leader Dashboard status updates
         if signal_problem.get("status"):
             status = signal_problem["status"]
@@ -308,6 +310,7 @@ async def get_report_status(report_id: str):
         # Fallback to article tracking
         risk_score = article.get("risk_score", 50)
         status = "Escalated to Dept" if risk_score >= 75 else "AI Analysis Complete"
+        progress = int(risk_score / 2) if risk_score < 100 else 50
         if "ingested_at" in article:
             dt = article["ingested_at"]
             if isinstance(dt, datetime.datetime):
@@ -318,7 +321,8 @@ async def get_report_status(report_id: str):
         "status": status,
         "category": article.get("category", "General Civic Issue"),
         "lastUpdate": last_update,
-        "severity": article.get("risk_level", "MEDIUM")
+        "severity": article.get("risk_level", "MEDIUM"),
+        "progress": progress
     }
 
 @router.get("/citizen-reports/list")
