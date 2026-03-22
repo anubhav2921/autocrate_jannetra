@@ -251,6 +251,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
         "evidence_summary": ai_desc,
         "image_url": req.image_url,
+        "images": req.metadata.get("images", []),
         "audio_url": audio_evidence,
         "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
         "risk_score": article["risk_score"],

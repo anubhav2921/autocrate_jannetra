@@ -210,6 +210,7 @@ async def get_signal_problem(problem_id: str):
             "resolutionReport": p.get("resolution_report"),
             "resolutionProofUrl": p.get("resolution_proof_url"),
             "resolvedAt": p.get("resolved_at"),
+            "images": p.get("images", []),
             "image_url": p.get("image_url") if "mock-storage" not in p.get("image_url", "") else None,
             "audio_url": p.get("audio_url") if "mock-storage" not in p.get("audio_url", "") else None,
             "department": p.get("department")
