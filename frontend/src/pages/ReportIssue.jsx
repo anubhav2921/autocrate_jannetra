@@ -191,9 +191,9 @@ const ReportIssue = () => {
             formData.append('timestamp', new Date().toISOString());
 
             console.log("Starting backend AI analysis...");
-            // Use specific timeout for heavy vision calls
+            // Axios automatically sets the proper multipart boundary when sending FormData.
+            // Do NOT manually override Content-Type here.
             const res = await api.post('/report-issue', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
                 timeout: 30000 
             });
 
@@ -480,7 +480,7 @@ const ReportIssue = () => {
                                         </span>
                                         <h3>{issueType}</h3>
                                         <div className="confidence-label">
-                                            {aiResult?.confidence_score ? `${aiResult.confidence_score}%` : aiResult?.confidence} confidence
+                                            {aiResult?.confidence_score ?? aiResult?.confidence ?? 0}% confidence
                                         </div>
                                     </div>
                                 </div>

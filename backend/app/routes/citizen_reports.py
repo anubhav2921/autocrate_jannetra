@@ -10,7 +10,10 @@ from firebase_admin import storage
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Ensure dotenv always strictly loads the backend .env path
+backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+env_path = os.path.join(backend_dir, ".env")
+load_dotenv(dotenv_path=env_path)
 
 from ..mongodb import (
     articles_collection, 
@@ -168,6 +171,10 @@ async def analyze_reported_issue(
             }
             
             response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=120)
+            
+            if response.status_code != 200:
+                print(f"NVIDIA API Error {response.status_code}: {response.text}")
+                
             response.raise_for_status()
             
             response_json = response.json()
@@ -176,17 +183,31 @@ async def analyze_reported_issue(
             
             # Safely extract JSON from Markdown code blocks or raw text
             import re
+            extracted_json = raw_text
             if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
+                extracted_json = raw_text.split("```json")[-1].split("```")[0].strip()
             elif "```" in raw_text:
-                raw_text = raw_text.split("```")[1].strip()
+                extracted_json = raw_text.split("```")[1].strip()
             else:
-                # Fallback: extract first JSON object using regex
                 json_match = re.search(r'\{[\s\S]*\}', raw_text)
                 if json_match:
-                    raw_text = json_match.group(0)
+                    extracted_json = json_match.group(0)
                     
-            ai_data = json.loads(raw_text)
+            try:
+                ai_data = json.loads(extracted_json)
+                if not isinstance(ai_data, dict):
+                    raise ValueError("JSON is not a dictionary")
+            except Exception as json_err:
+                print(f"Warning: AI didn't return valid JSON. Fallback to raw text parsing. Error: {json_err}")
+                ai_data = {
+                    "scene_type": "Other",
+                    "detected_issue": "Others",
+                    "ai_description": raw_text.strip(),
+                    "severity": "Medium",
+                    "urgency": "Medium",
+                    "confidence_score": 85
+                }
+            
             break # Success!
         except Exception as e:
             error_msg = str(e)
