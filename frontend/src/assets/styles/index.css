@@ -76,12 +76,6 @@
   
   --navbar-bg: rgba(10, 14, 26, 0.85);
   --card-shadow: var(--shadow-md);
-
-  /* Global Grid System */
-  --grid-color-dark: rgba(255, 255, 255, 0.05);
-  --grid-color-light: rgba(0, 0, 0, 0.08); /* Darker grid for light mode */
-  --grid-color: var(--grid-color-dark);
-  --grid-pattern: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
 }
 
 [data-theme="light"] {
@@ -120,9 +114,6 @@
   --landing-glass: rgba(255, 255, 255, 0.7);
   --landing-border: rgba(15, 23, 42, 0.05);
   --landing-card-bg: #ffffff;
-
-  /* Global Grid System - Light Mode */
-  --grid-color: var(--grid-color-light);
 }
 
 /* 1. Box model reset */
@@ -165,15 +156,12 @@ html {
 
 body {
   font-family: var(--font-family);
-  background-color: var(--bg-primary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
+  background: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
-  transition: background-color var(--transition-base), color var(--transition-base);
+  transition: background var(--transition-base), color var(--transition-base);
 }
 
 a {
@@ -199,10 +187,7 @@ a:hover {
   min-width: 0;
   overflow-x: hidden;
   padding-top: var(--navbar-height);
-  background-color: var(--bg-primary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
+  background: var(--bg-primary);
   min-height: 100vh;
 }
 

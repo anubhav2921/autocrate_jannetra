@@ -12,10 +12,7 @@
 }
 
 .landing-root {
-  background-image: var(--grid-pattern), linear-gradient(180deg, var(--landing-bg-start) 0%, var(--landing-bg-end) 100%);
-  background-size: 80px 80px, 100% 100%;
-  background-attachment: fixed, scroll;
-  background-color: transparent;
+  background: linear-gradient(180deg, var(--landing-bg-start) 0%, var(--landing-bg-end) 100%);
   color: var(--landing-text-main);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
@@ -24,7 +21,21 @@
   transition: all var(--transition-base);
 }
 
-/* Background Noise (Grid is now handled globally) */
+/* Background Noise and Grid */
+.landing-grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 0;
+}
 
 .landing-root::before {
   content: "";
@@ -498,12 +509,9 @@
 /* Stats Section */
 .stats-section {
   padding: 80px 5%;
-  background-color: var(--bg-secondary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
+  background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
-  transition: background-color var(--transition-base);
+  transition: background var(--transition-base);
 }
 
 .stats-container {
@@ -541,11 +549,8 @@
 /* How It Works Section */
 .how-section {
   padding: 60px var(--container-padding); /* Reduced from 120px */
-  background-color: var(--bg-primary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
-  transition: background-color var(--transition-base);
+  background: var(--bg-primary);
+  transition: background var(--transition-base);
 }
 
 .section-head {
@@ -716,12 +721,9 @@
 /* Alerts Section (Live Feed) */
 .alerts-section {
   padding: 60px 5%; /* Reduced from 120px */
-  background-color: var(--bg-secondary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
+  background: var(--bg-secondary);
   color: var(--text-primary);
-  transition: background-color var(--transition-base);
+  transition: background var(--transition-base);
 }
 
 .alerts-grid {
@@ -759,15 +761,27 @@
 /* Footer */
 .landing-footer {
   padding: 60px 80px 40px; /* Top reduced from 100px */
-  background-color: var(--bg-primary);
-  background-image: var(--grid-pattern);
-  background-size: 80px 80px;
-  background-attachment: fixed;
+  background: var(--bg-primary);
   color: var(--landing-text-sub);
   border-top: 1px solid var(--border-color);
   position: relative;
   overflow: hidden;
-  transition: background-color var(--transition-base);
+  transition: background var(--transition-base);
+}
+
+/* Subtle Grid Overlay */
+.landing-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
 }
 
 .footer-grid {
