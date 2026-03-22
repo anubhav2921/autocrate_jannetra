@@ -83,22 +83,21 @@ async def analyze_reported_issue(
     Your task is to generate a clear, human-like description of the given image.
 
     STRICT RULES:
-    1. ONLY describe what is visible in the image.
+    1. ONLY describe what is visible in the image. Focus heavily on precisely analyzing the image context.
     2. DO NOT return any system errors, API errors, debug logs, or technical messages.
     3. DO NOT mention words like "error", "quota", "API", or "resource exhausted".
-    4. If the image contains a person:
-       - Describe posture, activity, and visible emotions (e.g., sitting, walking, smiling, injured).
+    4. If the image contains a person or a general scene:
+       - Describe posture, activity, visible items, and exact scene context (e.g., sitting, construction, city).
     5. If the image contains an issue (road damage, garbage, waterlogging, etc.):
        - Clearly describe the problem.
        - Mention severity (low, medium, high if possible).
-       - Mention surroundings (roadside, residential area, public place, etc.).
-    6. Keep the description natural, like a real human reporting the issue.
+    6. CRITICAL: EVEN IF the image DOES NOT contain an obvious civic issue, YOU MUST STILL describe exactly what you see in detail. Do NOT just say 'No issues detected'.
     7. The `ai_description` MUST be a structured, readable format. Write it clearly using point form separated by double newlines (\n\n) like this:
-       Problem: <short issue title>
+       Problem: <short issue title or general image subject>
        
-       Observation: <specific details of the issue>
+       Observation: <specific details of EXACTLY what you see in the image>
        
-       Impact: <how it affects the environment or community>
+       Impact: <how it affects the environment or community, or just 'None' if standard scene>
        
        Location Context: <what the surroundings look like>
 
