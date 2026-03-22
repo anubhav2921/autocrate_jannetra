@@ -68,27 +68,12 @@ export default function SignalMonitor() {
         resolved: problems.filter((p) => p.status === 'Problem Resolved').length,
     };
 
-    const [selectedDetail, setSelectedDetail] = useState(null);
-    const [detailLoading, setDetailLoading] = useState(false);
-
-    const handleViewDetails = async (id) => {
-        setDetailLoading(true);
-        try {
-            const data = await api.get(`/signal-problems/${id}`);
-            setSelectedDetail(data);
-        } catch (err) {
-            console.error("Failed to fetch details:", err);
-        } finally {
-            setDetailLoading(false);
-        }
-    };
-
     if (loading) {
         return <div className="loading-container"><div className="spinner" /></div>;
     }
 
     return (
-        <div className="page-container" style={{ position: 'relative' }}>
+        <div className="page-container">
             <div className="page-header animate-in">
                 <h1>Signal Monitor</h1>
                 <p>Real-time governance signal tracking — identify, investigate, and resolve detected problems</p>
@@ -265,7 +250,7 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => handleViewDetails(p.id)}
+                                            onClick={() => navigate(`/signal-monitor/${p.id}`, { state: { readonly: true } })}
                                             className="btn btn-primary"
                                             style={{
                                                 padding: '6px 14px', fontSize: '0.75rem',
@@ -289,90 +274,6 @@ export default function SignalMonitor() {
                     </div>
                 )}
             </div>
-
-            {/* AI Detail Modal */}
-            {selectedDetail && (
-                <div className="modal-overlay animate-in" style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-                    padding: '20px'
-                }} onClick={() => setSelectedDetail(null)}>
-                    <div className="glass-card" style={{
-                        maxWidth: '700px', width: '100%', padding: '32px',
-                        border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden',
-                        cursor: 'default', position: 'relative'
-                    }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '24px' }}>
-                            <div>
-                                <h2 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '8px' }}>Signal Detail Analysis</h2>
-                                <p style={{ color: 'var(--accent-blue)', fontSize: '0.85rem', fontWeight: 600 }}>ID: {selectedDetail.id}</p>
-                            </div>
-                            <button className="btn btn-secondary" onClick={() => setSelectedDetail(null)} style={{ padding: '6px 12px' }}>Close</button>
-                        </div>
-
-                        <div style={{ display: 'grid', gap: '24px' }}>
-                            <section>
-                                <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>Problem Description</h3>
-                                <p style={{ fontSize: '0.95rem', color: '#fff', lineHeight: 1.6 }}>{selectedDetail.description}</p>
-                            </section>
-
-                            <section>
-                                <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>Problem Location Context</h3>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '0.9rem' }}>
-                                    <MapPin size={16} style={{ color: 'var(--accent-blue)' }} />
-                                    <span>{selectedDetail.locationDetail || selectedDetail.location}</span>
-                                </div>
-                            </section>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <section>
-                                    <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>Evidence Category</h3>
-                                    <span style={{ 
-                                        display: 'inline-block', padding: '4px 12px', borderRadius: '4px', 
-                                        background: 'rgba(255,255,255,0.05)', color: 'var(--accent-blue)',
-                                        fontSize: '0.85rem', fontWeight: 600
-                                    }}>
-                                        {selectedDetail.evidenceSummary || "General Signal"}
-                                    </span>
-                                </section>
-                                <section>
-                                    <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>Severity Score</h3>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
-                                            <div style={{ 
-                                                width: `${selectedDetail.priorityScore}%`, height: '100%',
-                                                background: selectedDetail.priorityScore > 75 ? 'var(--accent-red)' : 'var(--accent-blue)'
-                                            }} />
-                                        </div>
-                                        <span style={{ fontWeight: 700, color: '#fff' }}>{Math.round(selectedDetail.priorityScore)}</span>
-                                    </div>
-                                </section>
-                            </div>
-
-                            <section style={{ 
-                                background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', 
-                                padding: '16px', borderRadius: '12px', marginTop: '10px' 
-                            }}>
-                                <h3 style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#10b981', letterSpacing: '0.1em', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <Shield size={14} /> Recommended Solution
-                                </h3>
-                                <p style={{ fontSize: '0.95rem', color: '#fff', lineHeight: 1.6, fontWeight: 500 }}>{selectedDetail.expectedSolution}</p>
-                            </section>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {detailLoading && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100
-                }}>
-                    <div className="spinner" />
-                </div>
-            )}
         </div>
     );
 }
