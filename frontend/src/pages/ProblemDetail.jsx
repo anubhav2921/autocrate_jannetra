@@ -164,14 +164,6 @@ export default function ProblemDetail() {
         );
     }
 
-    const currentUid = "anubhav";
-    const currentName = "Anubhav Agrawal";
-    const isOwner = problem?.assignedName === currentName || 
-                    problem?.assigneeId === currentUid || 
-                    problem?.assignedName === "Unknown" ||
-                    !problem?.assignedName;
-    const canResolve = isOwner;
-
     const sev = SEVERITY_CONFIG[problem.severity] || SEVERITY_CONFIG.Medium;
     const isResolved = resolved || problem.status === 'Problem Resolved';
 
@@ -422,15 +414,9 @@ export default function ProblemDetail() {
                         <Target size={18} style={{ color: 'var(--accent-purple)' }} /> Execution Workflow Progress
                     </h3>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        {canResolve ? (
-                            <button onClick={handleEscalate} className="btn" style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
-                                <Flame size={12} style={{ marginRight: '4px' }} /> Escalate Priority
-                            </button>
-                        ) : (
-                            <div style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-muted)', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                                Contributor View Only
-                            </div>
-                        )}
+                        <button onClick={handleEscalate} className="btn" style={{ fontSize: '0.75rem', padding: '6px 12px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            <Flame size={12} style={{ marginRight: '4px' }} /> Escalate Priority
+                        </button>
                     </div>
                 </div>
 
@@ -440,13 +426,13 @@ export default function ProblemDetail() {
                         min="0" max="100" 
                         value={progress} 
                         onChange={e => setProgress(e.target.value)}
-                        disabled={isResolved || updatingProgress || !canResolve}
+                        disabled={isResolved || updatingProgress}
                         style={{ flex: 1, accentColor: 'var(--accent-purple)' }}
                     />
                     <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--accent-purple)', width: '60px', textAlign: 'right' }}>
                         {progress}%
                     </div>
-                    {!isResolved && progress != problem.progress && canResolve && (
+                    {!isResolved && progress != problem.progress && (
                         <button onClick={handleUpdateProgress} disabled={updatingProgress} className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
                             {updatingProgress ? 'Saving...' : 'Save Progress'}
                         </button>
@@ -539,36 +525,25 @@ export default function ProblemDetail() {
                         </p>
 
                         {!showResolveForm ? (
-                            canResolve ? (
-                                <button
-                                    onClick={() => {
-                                        setShowResolveForm(true);
-                                        if (problem.expectedSolution && !report) {
-                                            setReport(`Proposed Action Plan:\n${problem.expectedSolution}\n\nActual Resolution Details:\n`);
-                                        }
-                                    }}
-                                    className="btn btn-primary"
-                                    style={{
-                                        padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
-                                        display: 'inline-flex', alignItems: 'center', gap: '10px',
-                                        background: 'linear-gradient(135deg, #10b981, #059669)',
-                                        border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
-                                        transition: 'all 0.3s ease',
-                                    }}
-                                >
-                                    <CheckCircle2 size={20} />
-                                    Start Resolution Process
-                                </button>
-                            ) : (
-                                <div style={{
-                                    padding: '16px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.05)',
-                                    border: '1px solid rgba(245, 158, 11, 0.2)', color: '#f59e0b', fontSize: '0.9rem',
-                                    maxWidth: '500px', margin: '0 auto'
-                                }}>
-                                    <Shield size={16} style={{ marginBottom: '-3px', marginRight: '6px' }} />
-                                    Only the Workflow Owner can mark this issue as resolved.
-                                </div>
-                            )
+                            <button
+                                onClick={() => {
+                                    setShowResolveForm(true);
+                                    if (problem.expectedSolution && !report) {
+                                        setReport(`Proposed Action Plan:\n${problem.expectedSolution}\n\nActual Resolution Details:\n`);
+                                    }
+                                }}
+                                className="btn btn-primary"
+                                style={{
+                                    padding: '14px 36px', fontSize: '0.95rem', fontWeight: 700,
+                                    display: 'inline-flex', alignItems: 'center', gap: '10px',
+                                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                                    border: 'none', boxShadow: '0 4px 20px rgba(16,185,129,0.3)',
+                                    transition: 'all 0.3s ease',
+                                }}
+                            >
+                                <CheckCircle2 size={20} />
+                                Start Resolution Process
+                            </button>
                         ) : (
                             <div className="animate-in" style={{
                                 maxWidth: '600px', margin: '0 auto', background: 'rgba(255,255,255,0.03)',
