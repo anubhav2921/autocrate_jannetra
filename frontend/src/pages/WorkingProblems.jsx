@@ -32,11 +32,15 @@ export default function WorkingProblems() {
         fetchWorking();
     }, []);
 
-    const currentList = activeTab === 'owned' ? problems.owned : problems.collaborative;
+    const currentList = activeTab === 'owned' ? (problems?.owned || []) : (problems?.collaborative || []);
     
-    const filtered = currentList.filter(p => 
-        (p.title || p.id).toLowerCase().includes(search.toLowerCase())
-    );
+    const safeSearch = (search || '').toLowerCase();
+    const filtered = (Array.isArray(currentList) ? currentList : []).filter(p => {
+        if (!p) return false;
+        const titleStr = p.title ? String(p.title).toLowerCase() : '';
+        const idStr = p.id ? String(p.id).toLowerCase() : '';
+        return titleStr.includes(safeSearch) || idStr.includes(safeSearch);
+    });
 
     return (
         <div className="page-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -74,14 +78,14 @@ export default function WorkingProblems() {
                     <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '12px', borderRadius: '10px' }}><Shield size={24} style={{ color: '#3b82f6' }} /></div>
                     <div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px' }}>Owned Workflows</div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems.owned.length}</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems?.owned?.length || 0}</div>
                     </div>
                 </div>
                 <div style={{ background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.1)', padding: '16px 20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '12px', borderRadius: '10px' }}><Users size={24} style={{ color: '#8b5cf6' }} /></div>
                     <div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '4px' }}>Collaborations</div>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems.collaborative.length}</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>{problems?.collaborative?.length || 0}</div>
                     </div>
                 </div>
             </div>
@@ -100,7 +104,7 @@ export default function WorkingProblems() {
                 >
                     <UserCheck size={18} /> My Problems
                     <span style={{ background: activeTab === 'owned' ? 'var(--accent-blue)' : 'rgba(255,255,255,0.1)', color: activeTab === 'owned' ? '#fff' : 'var(--text-muted)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
-                        {problems.owned.length}
+                        {problems?.owned?.length || 0}
                     </span>
                 </button>
                 <button 
@@ -115,7 +119,7 @@ export default function WorkingProblems() {
                 >
                     <Users size={18} /> Collaborations
                     <span style={{ background: activeTab === 'collaborative' ? 'var(--accent-purple)' : 'rgba(255,255,255,0.1)', color: activeTab === 'collaborative' ? '#fff' : 'var(--text-muted)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
-                        {problems.collaborative.length}
+                        {problems?.collaborative?.length || 0}
                     </span>
                 </button>
             </div>
