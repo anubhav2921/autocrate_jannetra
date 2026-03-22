@@ -212,7 +212,10 @@ async def get_signal_problem(problem_id: str):
             "resolvedAt": p.get("resolved_at"),
             "image_url": p.get("image_url") if "mock-storage" not in p.get("image_url", "") else None,
             "audio_url": p.get("audio_url") if "mock-storage" not in p.get("audio_url", "") else None,
-            "department": p.get("department")
+            "department": p.get("department"),
+            "assignedName": p.get("assigned_name", "Unknown"),
+            "assigneeId": p.get("assigned_to", "unknown"),
+            "collaborators": p.get("collaborators", [])
         }
 
     # 2. Try to find in synthetic (news articles) if not in signal_problems
@@ -281,7 +284,10 @@ async def get_signal_problem(problem_id: str):
             "resolvedAt": None,
             "image_url": a.get("image_url") or a.get("url"),
             "audio_url": None,
-            "department": a.get("department", "General")
+            "department": a.get("department", "General"),
+            "assignedName": a.get("assigned_name", "Unknown"),
+            "assigneeId": a.get("assigned_to", "unknown"),
+            "collaborators": a.get("collaborators", [])
         }
 
     raise HTTPException(status_code=404, detail=f"Signal problem '{problem_id}' not found.")
