@@ -269,8 +269,8 @@ def run_pipeline() -> dict:
  
     # Stage 1: Collect from all sources
     scrapers = [
-        ("RSS", scrape_rss_feeds),
-        ("News APIs", scrape_news_apis),
+        # NOTE: RSS feeds removed to strictly avoid scraping generic daily news.
+        ("News APIs", scrape_news_apis),      # Uses specific problem queries like "pothole"
         ("Gov Portals", scrape_government_portals),
         ("Reddit", scrape_reddit_complaints)
     ]
