@@ -332,7 +332,7 @@ def run_pipeline() -> dict:
                 "title": clean_text_simple(processed["title"]),
                 "content": processed["content"],
                 "source_name": processed["source_name"],
-                "source_url": processed.get("url", ""),
+                "source_url": processed.get("source_url") or processed.get("url", ""),
                 "source_type": processed.get("source_type", "NEWS").lower(),
                 "published_at": processed.get("published_at"),
                 "created_at": processed.get("published_at") or now,

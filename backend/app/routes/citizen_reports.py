@@ -342,6 +342,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "severity": article["risk_level"],
         "frequency": 1,
         "source": "Citizen Application",
+        "source_type": "citizen",
         "status": "Pending",
         "has_ai_summary": True, # Pre-summarized conceptually
         "sample_records": [{
