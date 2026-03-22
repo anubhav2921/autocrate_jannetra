@@ -7,13 +7,8 @@ from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
-
-from dotenv import load_dotenv
-
-# Ensure dotenv always strictly loads the backend .env path
-backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-env_path = os.path.join(backend_dir, ".env")
-load_dotenv(dotenv_path=env_path)
+from google import genai
+from google.genai import types
 
 from ..mongodb import (
     articles_collection, 
@@ -22,7 +17,7 @@ from ..mongodb import (
     signal_problems_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
-
+from ..services.gemini_config import gemini_client, GEMINI_MODEL
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -62,7 +57,7 @@ async def analyze_reported_issue(
     timestamp: str = Form(...),
 ):
     """
-    Analyzes an uploaded image using NVIDIA Vision and extracts issue details.
+    Analyzes an uploaded image using Gemini Vision and extracts issue details.
     """
     print(f"--- Analysis Started for {image.filename} ---")
     content = await image.read()
@@ -76,36 +71,30 @@ async def analyze_reported_issue(
     image_url = await _upload_to_firebase(content, filename, mime_type)
     print(f"Image uploaded to: {image_url} with mime: {mime_type}")
     
-    # 2. AI Vision Pipeline
+    # 2. AI Vision Pipeline with Gemini
     # Constructing prompt for specific issue detection
     prompt = """
     You are an intelligent image analysis system for JanNetra, a civic health monitoring platform.
     Your task is to generate a clear, human-like description of the given image.
 
     STRICT RULES:
-    1. ONLY describe what is visible in the image. Focus heavily on precisely analyzing the image context.
+    1. ONLY describe what is visible in the image.
     2. DO NOT return any system errors, API errors, debug logs, or technical messages.
     3. DO NOT mention words like "error", "quota", "API", or "resource exhausted".
-    4. If the image contains a person or a general scene:
-       - Describe posture, activity, visible items, and exact scene context (e.g., sitting, construction, city).
+    4. If the image contains a person:
+       - Describe posture, activity, and visible emotions (e.g., sitting, walking, smiling, injured).
     5. If the image contains an issue (road damage, garbage, waterlogging, etc.):
        - Clearly describe the problem.
        - Mention severity (low, medium, high if possible).
-    6. CRITICAL: EVEN IF the image DOES NOT contain an obvious civic issue, YOU MUST STILL describe exactly what you see in detail. Do NOT just say 'No issues detected'.
-    7. The `ai_description` MUST be a structured, readable format. Write it clearly using point form separated by double newlines (\n\n) like this:
-       Problem: <short issue title or general image subject>
-       
-       Observation: <specific details of EXACTLY what you see in the image>
-       
-       Impact: <how it affects the environment or community, or just 'None' if standard scene>
-       
-       Location Context: <what the surroundings look like>
+       - Mention surroundings (roadside, residential area, public place, etc.).
+    6. Keep the description natural, like a real human reporting the issue.
+    7. Maximum length for the description is 3-5 sentences.
 
     OUTPUT FORMAT: You MUST return a pure JSON object. Do not wrap in markdown or anything else.
     {
         "scene_type": "Human/Portrait | Civic Issue | Other",
         "detected_issue": "Garbage Dumping | Water Logging | Road Damage | Street Light issue | Infrastructure Damage | Others | None",
-        "ai_description": "<Your structured text description exactly matching the format specified above>",
+        "ai_description": "<Your 3-5 sentence description following the rules above. FAILSAFE: If the image analysis fails or is completely unclear, return EXACTLY: 'Unable to clearly analyze the image. Please try again with a clearer photo.'>",
         "severity": "Low | Medium | High | None",
         "urgency": "Low | Medium | High | None",
         "confidence_score": <0-100 integer>
@@ -117,100 +106,32 @@ async def analyze_reported_issue(
     
     for attempt in range(max_retries):
         try:
-            import requests as req_lib
-            import base64
+            print(f"Calling Gemini API (Attempt {attempt + 1})...")
+            # Include baseline safety settings to ensure civic issues aren't blocked
+            # SAFETY_OFF = [
+            #     types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH",        threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_HARASSMENT",         threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT",  threshold="BLOCK_NONE"),
+            #     types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT",  threshold="BLOCK_NONE"),
+            # ]
             
-            print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
-            
-            # Compress for NVIDIA Vision to avoid Payload Too Large limits
-            try:
-                from PIL import Image
-                img = Image.open(io.BytesIO(content)).convert("RGB")
-                img.thumbnail((1024, 1024), Image.LANCZOS)
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=85, optimize=True)
-                content_for_ai = buf.getvalue()
-                mime_type_for_ai = "image/jpeg"
-            except Exception as e:
-                print(f"Image compression failed: {e}")
-                content_for_ai = content
-                mime_type_for_ai = mime_type
-
-            b64_img = base64.b64encode(content_for_ai).decode("utf-8")
-            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-            api_key = os.getenv("NVIDIA_API_KEY", "")
-            if not api_key:
-                raise ValueError("NVIDIA_API_KEY not found in environment")
-
-            nv_headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Accept": "application/json"
-            }
-            
-            # NVIDIA Vision NIM uses standard OpenAI-compatible payload format
-            payload = {
-              "model": "meta/llama-3.2-90b-vision-instruct",
-              "messages": [
-                {
-                  "role": "user",
-                  "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                      "type": "image_url",
-                      "image_url": {
-                         "url": f"data:{mime_type_for_ai};base64,{b64_img}"
-                      }
-                    }
-                  ]
-                }
-              ],
-              "max_tokens": 1024,
-              "temperature": 0.2,
-              "top_p": 0.7
-            }
-            
-            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=120)
-            
-            if response.status_code != 200:
-                print(f"NVIDIA API Error {response.status_code}: {response.text}")
-                
-            response.raise_for_status()
-            
-            response_json = response.json()
-            raw_text = response_json["choices"][0]["message"]["content"]
-            print(f"NVIDIA Raw Response: {raw_text}")
-            
-            # Safely extract JSON from Markdown code blocks or raw text
-            import re
-            extracted_json = raw_text
-            if "```json" in raw_text:
-                extracted_json = raw_text.split("```json")[-1].split("```")[0].strip()
-            elif "```" in raw_text:
-                extracted_json = raw_text.split("```")[1].strip()
-            else:
-                json_match = re.search(r'\{[\s\S]*\}', raw_text)
-                if json_match:
-                    extracted_json = json_match.group(0)
-                    
-            try:
-                ai_data = json.loads(extracted_json)
-                if not isinstance(ai_data, dict):
-                    raise ValueError("JSON is not a dictionary")
-            except Exception as json_err:
-                print(f"Warning: AI didn't return valid JSON. Fallback to raw text parsing. Error: {json_err}")
-                ai_data = {
-                    "scene_type": "Other",
-                    "detected_issue": "Others",
-                    "ai_description": raw_text.strip(),
-                    "severity": "Medium",
-                    "urgency": "Medium",
-                    "confidence_score": 85
-                }
-            
+            response = gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=[
+                    types.Part.from_bytes(data=content, mime_type=mime_type),
+                    prompt
+                ],
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    # safety_settings=SAFETY_OFF,
+                )
+            )
+            print(f"Gemini Raw Response: {response.text}")
+            ai_data = json.loads(response.text)
             break # Success!
         except Exception as e:
             error_msg = str(e)
-            print(f"NVIDIA Analysis Attempt {attempt + 1} Error: {error_msg}")
+            print(f"Gemini Analysis Attempt {attempt + 1} Error: {error_msg}")
             
             # If it's a quota error, wait and retry
             if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
@@ -338,7 +259,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "frequency": 1,
         "source": "Citizen Application",
         "status": "Pending",
-        "has_ai_summary": True, # Pre-summarized conceptually
+        "has_gemini_summary": True, # Pre-summarized conceptually
         "sample_records": [{
              "title": req.detected_issue, 
              "severity": article["risk_level"], 
@@ -370,9 +291,12 @@ async def get_report_status(report_id: str):
     status = "Escalated to Dept"
     last_update = "Just Now"
     progress = 0
+    description = article.get("content", "")
     
     if signal_problem:
         progress = signal_problem.get("progress", 0)
+        if signal_problem.get("description"):
+            description = signal_problem["description"]
         # Give priority to Leader Dashboard status updates
         if signal_problem.get("status"):
             status = signal_problem["status"]
@@ -401,7 +325,8 @@ async def get_report_status(report_id: str):
         "category": article.get("category", "General Civic Issue"),
         "lastUpdate": last_update,
         "severity": article.get("risk_level", "MEDIUM"),
-        "progress": progress
+        "progress": progress,
+        "description": description
     }
 
 @router.get("/citizen-reports/list")

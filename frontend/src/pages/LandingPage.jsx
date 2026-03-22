@@ -392,6 +392,19 @@ const LandingPage = () => {
                                             />
                                         </div>
                                     </div>
+                                    
+                                    {/* AI Analysis Description Box */}
+                                    {trackingResult.description && (
+                                        <div style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--landing-accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                <Sparkles size={12} style={{ display: 'inline', marginRight: '4px', marginBottom: '-2px' }} />
+                                                AI Vision Analysis
+                                            </span>
+                                            <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                                {trackingResult.description}
+                                            </p>
+                                        </div>
+                                    )}
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -485,8 +498,13 @@ const LandingPage = () => {
                                     <div style={{ color: '#818cf8', fontSize: '0.8rem' }}><MapPin size={12} /> {c.location}</div>
                                     <span className="status-pill status-verified">Verified</span>
                                 </div>
-                                <h4 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '12px' }}>{c.title || c.type}</h4>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
+                                <h4 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px' }}>{c.title || c.type}</h4>
+                                {c.description && (
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                        {c.description}
+                                    </p>
+                                )}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
                                     <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Updated 12s ago</span>
                                     <button className="cta-btn cta-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/signal-monitor')}>Verify Now</button>
                                 </div>
