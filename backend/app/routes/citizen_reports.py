@@ -106,7 +106,7 @@ async def analyze_reported_issue(
     
     for attempt in range(max_retries):
         try:
-            import requests
+            import requests as req_lib
             import base64
             
             print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
@@ -114,25 +114,21 @@ async def analyze_reported_issue(
             b64_img = base64.b64encode(content).decode("utf-8")
             invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
             api_key = os.getenv("NVIDIA_API_KEY", "")
-            headers = {
+            nv_headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Accept": "application/json"
             }
             
+            # llama-3.2-11b-vision-instruct uses <img src> tag format in content string
+            img_tag = f'<img src="data:{mime_type};base64,{b64_img}" />'
+            full_prompt = f"{prompt}\n\n{img_tag}"
+            
             payload = {
-              "model": "meta/llama-3.2-90b-vision-instruct",
+              "model": "meta/llama-3.2-11b-vision-instruct",
               "messages": [
                 {
                   "role": "user",
-                  "content": [
-                    {"type": "text", "text": prompt},
-                    {
-                      "type": "image_url",
-                      "image_url": {
-                        "url": f"data:{mime_type};base64,{b64_img}"
-                      }
-                    }
-                  ]
+                  "content": full_prompt
                 }
               ],
               "max_tokens": 1024,
@@ -140,7 +136,7 @@ async def analyze_reported_issue(
               "top_p": 0.7
             }
             
-            response = requests.post(invoke_url, headers=headers, json=payload)
+            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=60)
             response.raise_for_status()
             
             response_json = response.json()
@@ -151,7 +147,7 @@ async def analyze_reported_issue(
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[-1].split("```")[0].strip()
             elif "```" in raw_text:
-                raw_text = raw_text.split("```")[-1].split("```")[0].strip()
+                raw_text = raw_text.split("```")[1].strip()
                 
             ai_data = json.loads(raw_text)
             break # Success!
