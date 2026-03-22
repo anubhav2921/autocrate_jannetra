@@ -17,6 +17,7 @@ Filters posts by governance-related keywords to extract genuine complaints.
 import logging
 import hashlib
 import time
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -32,7 +33,7 @@ MAX_RETRIES = 2
 RATE_LIMIT_DELAY = 2  # seconds between subreddit requests (Reddit rate limits)
 
 HEADERS = {
-    "User-Agent": "JanNetra/1.0 Governance-Intelligence-System (by JanNetra-Bot)"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 }
 
 # Subreddits to scrape
@@ -81,6 +82,51 @@ COMPLAINT_KEYWORDS = [
     "crime", "theft", "robbery", "harassment", "stalking", "women safety",
 ]
 
+# ─────────────────────────────────────────────
+# LAYER 2: Filter OUT — these look like news
+# ─────────────────────────────────────────────
+NEWS_FILTERS = [
+    r"\b(according to|sources say|officials said|reports say|as per)\b",
+    r"\b(times of india|hindustan times|ndtv|the hindu|india today|ani|pti|bbc|reuters)\b",
+    r"\b(breaking|exclusive|report|update)\s*:",
+    r"https?://\S+",                          # external links = news share
+    r"\b(government (has|have|will) (launched|announced|started|introduced))\b",
+    r"\b(scheme launched|new policy|budget allocated|crore sanctioned)\b",
+    r"\b(in a statement|press release|told media|told reporters)\b",
+]
+
+# ─────────────────────────────────────────────
+# LAYER 3: Keep — these are real personal complaints
+# ─────────────────────────────────────────────
+PERSONAL_COMPLAINT_SIGNALS = [
+    # First-person ownership of the problem
+    r"\b(my (area|colony|house|flat|street|locality|ward|building|road|lane))\b",
+    r"\bwe (are facing|don't have|haven't had|have been suffering)\b",
+    r"\bi (have complained|reported|tried|waited|am facing|can't)\b",
+
+    # Asking for help
+    r"\b(please help|help needed|need help|can anyone help)\b",
+    r"\b(who (should|can|do) i (contact|call|complain|report))\b",
+    r"\b(where (to|can i) (complain|report|file))\b",
+    r"\b(what (to|can i) do|suggest (me|something))\b",
+
+    # Frustration / no action
+    r"\b(no action|nobody (is |)(listening|responding|helping|caring))\b",
+    r"\b(still not (fixed|resolved|repaired|done))\b",
+    r"\b(filed (a |)complaint|raised (the |)issue|written to)\b",
+    r"\b(ignored|no response|no reply|nobody came)\b",
+
+    # Duration — real complaints mention how long the problem exists
+    r"\b(since (last |)\d+ (days|weeks|months|years))\b",
+    r"\b(for the past (few |)\d* *(days|weeks|months|years))\b",
+    r"\b(last \d+ (days|weeks|months))\b",
+    r"\b(months ago|weeks ago|years ago).{0,40}(still|not|no)\b",
+
+    # Specific local references
+    r"\b(sector \d+|ward no\.? *\d+|block [a-zA-Z]\b)",
+    r"\bnear\s+\w[\w\s]{2,25}(chowk|nagar|colony|marg|road|bazaar|gali)\b",
+]
+
 # Subreddit → likely city/location mapping
 SUBREDDIT_LOCATION_MAP = {
     "bangalore": "Bangalore, Karnataka",
@@ -99,9 +145,26 @@ def _content_hash(text: str) -> str:
 
 
 def _is_complaint_post(title: str, selftext: str) -> bool:
-    """Check if a Reddit post is governance/complaint-related."""
-    combined = (title + " " + selftext).lower()
-    return any(kw in combined for kw in COMPLAINT_KEYWORDS)
+    """Check if a Reddit post is a personal governance/complaint-related issue."""
+    text = (title + " " + selftext).lower()
+
+    # Step 1: Must contain at least one complaint keyword
+    has_keyword = any(kw in text for kw in COMPLAINT_KEYWORDS)
+    if not has_keyword:
+        return False
+
+    # Step 2: Reject if it looks like a news article or general discussion
+    for pattern in NEWS_FILTERS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return False
+
+    # Step 3: Accept if it has a personal complaint signal
+    for pattern in PERSONAL_COMPLAINT_SIGNALS:
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+
+    # Step 4: Reject if no personal signal found
+    return False
 
 
 def _extract_location(title: str, selftext: str, subreddit: str) -> Optional[str]:

@@ -369,7 +369,7 @@ export default function ProblemDetail() {
                     </div>
 
                     {/* Appended Tags & Primary Evidence for Citizen Reports */}
-                    {(problem.images?.length > 0 || problem.image_url || problem.audio_url || problem.department) && (
+                    {(problem.image_url || problem.audio_url || problem.department) && (
                         <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 <Image size={15} /> Primary Core Evidence & Tags
@@ -387,16 +387,8 @@ export default function ProblemDetail() {
                                 </div>
                             )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: ((problem.images?.length > 0) || problem.image_url) && problem.audio_url ? '1fr 1fr' : '1fr', gap: '16px' }}>
-                                {problem.images?.length > 0 ? (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
-                                        {problem.images.map((img, idx) => (
-                                            <div key={idx} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000', height: '180px' }}>
-                                                <img src={img} alt={`Problem Evidence ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : problem.image_url && (
+                            <div style={{ display: 'grid', gridTemplateColumns: problem.image_url && problem.audio_url ? '1fr 1fr' : '1fr', gap: '16px' }}>
+                                {problem.image_url && (
                                     <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', background: '#000' }}>
                                         <img src={problem.image_url} alt="Problem Evidence" style={{ width: '100%', maxHeight: '250px', objectFit: 'contain' }} />
                                     </div>

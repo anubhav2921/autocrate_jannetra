@@ -29,9 +29,11 @@ GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
 TIMEOUT = 20
 
+import time
+
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 JanNetra/1.0 Governance-Intelligence-System"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     )
 }
 
@@ -146,20 +148,27 @@ def scrape_gdelt(max_articles: int = 20) -> list[dict]:
     logger.info("[GDELT] Fetching events: %s", query)
 
     try:
-        resp = requests.get(
-            GDELT_URL,
-            params={
-                "query": query,
-                "mode": "ArtList",
-                "maxrecords": max_articles,
-                "format": "json",
-                "timespan": "7d",
-            },
-            headers=HEADERS,
-            timeout=TIMEOUT,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        max_retries = 3
+        for attempt in range(max_retries):
+            resp = requests.get(
+                GDELT_URL,
+                params={
+                    "query": query,
+                    "mode": "ArtList",
+                    "maxrecords": max_articles,
+                    "format": "json",
+                    "timespan": "7d",
+                },
+                headers=HEADERS,
+                timeout=TIMEOUT,
+            )
+            if resp.status_code == 429 and attempt < max_retries - 1:
+                logger.warning("[GDELT] Rate limited (429), retrying in %d seconds...", 5 * (attempt + 1))
+                time.sleep(5 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            break
 
         for item in data.get("articles", []):
             title = (item.get("title") or "").strip()

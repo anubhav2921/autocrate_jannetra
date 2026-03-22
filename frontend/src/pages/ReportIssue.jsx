@@ -18,7 +18,7 @@ const ReportIssue = () => {
     
     // States
     const [step, setStep] = useState('intro'); // intro, camera, analyzing, autofill
-    const [capturedImages, setCapturedImages] = useState([]);
+    const [capturedImage, setCapturedImage] = useState(null);
     const [location, setLocation] = useState(null);
     const [facingMode, setFacingMode] = useState('environment'); // 'user' or 'environment'
     const [isCameraReady, setIsCameraReady] = useState(false);
@@ -173,13 +173,9 @@ const ReportIssue = () => {
         }
         
         const imageData = canvas.toDataURL('image/jpeg', 0.82);
-        setCapturedImages(prev => [...prev, imageData]);
-    };
-
-    const handleProceedToAnalyze = () => {
-        if (capturedImages.length === 0) return;
+        setCapturedImage(imageData);
         setStep('analyzing');
-        handleAnalyze(capturedImages[0]);
+        handleAnalyze(imageData);
     };
 
     // AI Analysis
@@ -300,7 +296,7 @@ const ReportIssue = () => {
 
             await api.post('/report-issue/submit', {
                 report_id: newId,
-                image_url: aiResult.image_url || capturedImages[0],
+                image_url: aiResult.image_url || capturedImage,
                 detected_issue: issueType,
                 user_description: description,
                 latitude: location?.latitude || 0,
@@ -309,8 +305,7 @@ const ReportIssue = () => {
                 metadata: {
                     ...aiResult,
                     department_tag: department,
-                    audio_url: uploadedAudioUrl,
-                    images: capturedImages
+                    audio_url: uploadedAudioUrl
                 }
             });
             setStep('success');
@@ -430,50 +425,22 @@ const ReportIssue = () => {
                             </div>
 
                             {/* Camera Actions */}
-                            <div className="camera-actions-bar" style={{ bottom: capturedImages.length > 0 ? '20px' : '40px', padding: '0 20px', flexDirection: 'column', gap: '20px' }}>
-                                {capturedImages.length > 0 && (
-                                    <div style={{ display: 'flex', gap: '10px', maxWidth: '100%', overflowX: 'auto', padding: '4px 0', scrollbarWidth: 'none' }}>
-                                        {capturedImages.map((img, i) => (
-                                            <div key={i} style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '10px', overflow: 'hidden', border: '2px solid white', flexShrink: 0 }}>
-                                                <img src={img} alt="Capture" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                <button 
-                                                    onClick={() => setCapturedImages(prev => prev.filter((_, idx) => idx !== i))}
-                                                    style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', border: 'none', color: 'white', borderRadius: '50%', padding: '2px', cursor: 'pointer', zIndex: 10 }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                            <div className="camera-actions-bar">
+                                <button className="action-sub-btn" onClick={fetchLocation}>
+                                    <MapPin size={20} className={location ? 'text-blue' : 'animate-pulse'} />
+                                </button>
                                 
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-evenly', width: '100%' }}>
-                                    <button className="action-sub-btn" onClick={fetchLocation}>
-                                        <MapPin size={20} className={location ? 'text-blue' : 'animate-pulse'} />
-                                    </button>
-                                    
-                                    <button 
-                                        className={`main-capture-btn ${!isCameraReady ? 'disabled' : ''}`} 
-                                        onClick={capturePhoto}
-                                        disabled={!isCameraReady}
-                                        style={{ transform: capturedImages.length > 0 ? 'scale(0.85)' : 'scale(1)' }}
-                                    >
-                                        <div className="inner-circle" />
-                                    </button>
+                                <button 
+                                    className={`main-capture-btn ${!isCameraReady ? 'disabled' : ''}`} 
+                                    onClick={capturePhoto}
+                                    disabled={!isCameraReady}
+                                >
+                                    <div className="inner-circle" />
+                                </button>
 
-                                    <button className="action-sub-btn" onClick={toggleCamera}>
-                                        <SwitchCamera size={20} />
-                                    </button>
-                                </div>
-                                
-                                {capturedImages.length > 0 && (
-                                    <button 
-                                        className="btn btn-primary" 
-                                        style={{ width: '100%', padding: '14px', borderRadius: '16px', fontWeight: 600, fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}
-                                        onClick={handleProceedToAnalyze}
-                                    >
-                                        Analyze Evidence ({capturedImages.length}) <ArrowRight size={18} />
-                                    </button>
-                                )}
+                                <button className="action-sub-btn" onClick={toggleCamera}>
+                                    <SwitchCamera size={20} />
+                                </button>
                             </div>
                         </motion.div>
                     )}
@@ -484,7 +451,7 @@ const ReportIssue = () => {
                             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             className="analysis-fullscreen"
                         >
-                            <img src={capturedImages[0]} alt="Capture" className="blur-bg" />
+                            <img src={capturedImage} alt="Capture" className="blur-bg" />
                             <div className="analysis-content">
                                 <div className="ai-scanning-ring">
                                     <Sparkles size={60} className="sparkle-active" />
@@ -504,12 +471,8 @@ const ReportIssue = () => {
                         >
                             <div className="details-card glass-premium">
                                 <div className="results-header">
-                                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', flexShrink: 0, scrollbarWidth: 'none', maxWidth: '30%' }}>
-                                        {capturedImages.map((img, i) => (
-                                            <div key={i} className="result-img-box" style={{ width: '60px', height: '60px', flexShrink: 0 }}>
-                                                <img src={img} alt="Problem" />
-                                            </div>
-                                        ))}
+                                    <div className="result-img-box">
+                                        <img src={capturedImage} alt="Problem" />
                                     </div>
                                     <div className="result-meta">
                                         <span className="badge-ai">
