@@ -170,15 +170,21 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
     # In a real system we'd filter by assignee_id == user["uid"], but for this demo 
     # we allow seeing all "Working Problems" to show functionality.
     
-    results = []
-    
+    def safe_str(val):
+        if val is None: return "Unknown"
+        if isinstance(val, dict):
+            if "latitude" in val and "longitude" in val:
+                return f"{val['latitude']:.4f}, {val['longitude']:.4f}"
+            return str(val)
+        return str(val)
+
     async for p in signal_problems_collection.find(q_sig).sort("last_updated", -1).limit(50):
         results.append({
             "id": p["id"],
             "title": p.get("title", ""),
             "severity": p.get("severity", "Medium").capitalize(),
             "category": p.get("category", "General"),
-            "location": p.get("location_detail") or p.get("location") or "Unknown",
+            "location": safe_str(p.get("location_detail") or p.get("location")),
             "detectedAt": p.get("detected_at"),
             "priorityScore": p.get("priority_score", 50),
             "frequency": p.get("frequency", 1),
@@ -189,7 +195,7 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "ownerId": p.get("owner_id", p.get("assigned_to", None)),
             "collaborators": p.get("collaborators", []),
             "invitedBy": p.get("invited_by", "System Admin"),
-            "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source") or "Citizen Application",
+            "source": safe_str(", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source") or "Citizen Application"),
             "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
             "source_url": p.get("source_url")
         })
@@ -200,7 +206,7 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "title": a.get("title", ""),
             "severity": a.get("risk_level", "Medium").capitalize(),
             "category": a.get("category", "General"),
-            "location": a.get("city") or "Unknown",
+            "location": safe_str(a.get("city")),
             "detectedAt": a.get("ingested_at"),
             "priorityScore": a.get("risk_score", 50),
             "frequency": 1,
@@ -211,7 +217,7 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "ownerId": a.get("owner_id", a.get("assigned_to", None)),
             "collaborators": a.get("collaborators", []),
             "invitedBy": a.get("invited_by", "System Admin"),
-            "source": a.get("source_name", "Automated Scanner"),
+            "source": safe_str(a.get("source_name", "Automated Scanner")),
             "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
             "source_url": a.get("source_url") or a.get("url")
         })
