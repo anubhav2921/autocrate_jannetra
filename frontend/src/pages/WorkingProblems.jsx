@@ -162,7 +162,9 @@ export default function WorkingProblems() {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <MapPin size={13} style={{ color: 'var(--text-muted)' }} />
                                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {p.location}
+                                        {typeof p.location === 'object' && p.location !== null 
+                                            ? `${p.location.latitude?.toFixed(4)}, ${p.location.longitude?.toFixed(4)}` 
+                                            : p.location}
                                     </span>
                                 </div>
                                 {activeTab === 'my-problems' ? (

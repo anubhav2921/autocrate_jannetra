@@ -214,7 +214,9 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={12} /> {p.location}
+                                            <MapPin size={12} /> {typeof p.location === 'object' && p.location !== null 
+                                                ? `${p.location.latitude?.toFixed(4)}, ${p.location.longitude?.toFixed(4)}` 
+                                                : p.location}
                                         </span>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
