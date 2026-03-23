@@ -293,6 +293,8 @@ async def get_location_dashboard(
     city: Optional[str] = Query(None),
     ward: Optional[str] = Query(None),
 ):
+    match = _build_location_match(state, district, city, ward)
+    
     # Fetch counts
     total = await news_articles_collection.count_documents(match)
     
