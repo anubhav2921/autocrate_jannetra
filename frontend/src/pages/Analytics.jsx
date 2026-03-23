@@ -4,7 +4,7 @@ import {
     ResponsiveContainer, Cell, AreaChart, Area,
 } from 'recharts';
 import { TrendingUp, MapPin, Layers, Flame } from 'lucide-react';
-import { fetchSentimentTrend, fetchRiskHeatmap, fetchCategoryBreakdown } from '../services/api';
+import { fetchSentimentTrend, fetchRiskSummary, fetchCategoryBreakdown } from '../services/api';
 import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
@@ -20,7 +20,7 @@ export default function Analytics() {
         setLoading(true);
         Promise.all([
             fetchSentimentTrend(location),
-            fetchRiskHeatmap(location),
+            fetchRiskSummary(location),
             fetchCategoryBreakdown(location),
         ])
             .then(([sTrend, hMap, cBreak]) => {

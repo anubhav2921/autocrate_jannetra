@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { fetchLocationDashboard } from '../services/api';
 import { useLocation } from '../context/LocationContext';
+import RiskHeatmapMap from '../components/RiskHeatmapMap';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444'];
@@ -136,32 +137,7 @@ export default function Dashboard() {
                     <div className="section-title">
                         <MapPin size={18} /> Risk Heatmap by Location
                     </div>
-                    {data.location_risk?.length > 0 ? (
-                        <div className="heatmap-grid">
-                            {data.location_risk.map((loc) => (
-                                <div
-                                    key={loc.location}
-                                    className={`heatmap-cell risk-${loc.avg_gri > 60 ? 'high' : loc.avg_gri > 30 ? 'moderate' : 'low'}`}
-                                    onClick={() => handleDrillDown(loc.location)}
-                                >
-                                    <div className="cell-location">{loc.location}</div>
-                                    <div className="cell-score" style={{ color: RISK_COLORS[loc.avg_gri > 60 ? 'HIGH' : loc.avg_gri > 30 ? 'MODERATE' : 'LOW'] }}>
-                                        {loc.avg_gri}
-                                    </div>
-                                    <div className="cell-count">{loc.count} signal{loc.count > 1 ? 's' : ''}</div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', color: 'var(--text-muted)', gap: '10px' }}>
-                            <MapPin size={32} style={{ opacity: 0.3 }} />
-                            <span style={{ fontSize: '0.85rem' }}>
-                                {hasLocation
-                                    ? 'No location risk data available for the selected area'
-                                    : 'Select a location to see location-specific risk data'}
-                            </span>
-                        </div>
-                    )}
+                    <RiskHeatmapMap filters={location} />
                 </div>
 
                 <div className="glass-card chart-card animate-in">

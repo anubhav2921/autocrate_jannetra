@@ -7,7 +7,8 @@ export const fetchArticle = (id) => api.get(`/articles/${id}`);
 export const fetchAlerts = (params) => api.get('/alerts', { params });
 export const acknowledgeAlert = (id) => api.post(`/alerts/${id}/acknowledge`);
 export const fetchSentimentTrend = (locationParams = {}) => api.get('/analytics/sentiment-trend', { params: buildLocationParams(locationParams) });
-export const fetchRiskHeatmap = (locationParams = {}) => api.get('/analytics/risk-heatmap', { params: buildLocationParams(locationParams) });
+export const fetchRiskHeatmap = (filters = {}) => api.get('/analytics/risk-heatmap', { params: buildLocationParams(filters, filters) });
+export const fetchRiskSummary = (locationParams = {}) => api.get('/analytics/risk-summary', { params: buildLocationParams(locationParams) });
 export const fetchCategoryBreakdown = (locationParams = {}) => api.get('/analytics/category-breakdown', { params: buildLocationParams(locationParams) });
 export const fetchSources = () => api.get('/sources');
 

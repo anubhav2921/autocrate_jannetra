@@ -68,58 +68,149 @@ async def sentiment_trend(
     }
 
 
+
 @router.get("/analytics/risk-heatmap")
 async def risk_heatmap(
     state: Optional[str] = Query(None),
     district: Optional[str] = Query(None),
     city: Optional[str] = Query(None),
     ward: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
+    priority: Optional[str] = Query(None),
+    time_range: Optional[str] = Query("7d"), # 1d, 7d, 30d
+    section: Optional[str] = Query(None), # citizen_report | signal_monitor
 ):
-    """Governance Risk Index heatmap by category."""
+    """
+    Returns geographical risk data for heatmap/markers.
+    """
+    from .location import _build_location_match
+    from datetime import datetime, timedelta
+    
+    match = _build_location_match(state, district, city, ward)
+    
+    # 1. Section Filter
+    if section == "citizen_report":
+        match["category"] = "Citizen Report"
+    elif section == "signal_monitor":
+        match["category"] = {"$ne": "Citizen Report"}
+    
+    # 2. Status Filter
+    if status:
+        match["status"] = status
+    
+    # 3. Priority Filter (mapped from risk_score)
+    if priority:
+        if priority.upper() == "HIGH":
+            match["risk_score"] = {"$gte": 70}
+        elif priority.upper() == "MEDIUM":
+            match["risk_score"] = {"$gte": 40, "$lt": 70}
+        elif priority.upper() == "LOW":
+            match["risk_score"] = {"$lt": 40}
+            
+    # 4. Time Range Filter
+    if time_range:
+        days = 7
+        if time_range == "1d": days = 1
+        elif time_range == "30d": days = 30
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        # Check both scraped_at and created_at
+        match["$or"] = [
+            {"scraped_at": {"$gte": cutoff}},
+            {"created_at": {"$gte": cutoff}}
+        ]
+
+    # Geocoding Fallback for major Indian cities
+    GEO_LOOKUP = {
+        "PRAYAGRAJ": (25.4358, 81.8463),
+        "ALLAHABAD": (25.4358, 81.8463),
+        "LUCKNOW": (26.8467, 80.9462),
+        "VARANASI": (25.3176, 82.9739),
+        "KANPUR": (26.4499, 80.3319),
+        "AGRA": (27.1767, 78.0081),
+        "NOIDA": (28.5355, 77.3910),
+        "GHAZIABAD": (28.6692, 77.4538),
+        "MATHURA": (27.4924, 77.6737),
+        "MEERUT": (28.9845, 77.7064),
+        "DELHI": (28.6139, 77.2090),
+        "MUMBAI": (19.0760, 72.8777),
+        "BANGALORE": (12.9716, 77.5946),
+        "CHENNAI": (13.0827, 80.2707),
+        "KOLKATA": (22.5726, 88.3639),
+        "HYDERABAD": (17.3850, 78.4867),
+        "PUNE": (18.5204, 73.8567),
+        "AHMEDABAD": (23.0225, 72.5714),
+        "SURAT": (21.1702, 72.8311),
+        "JAIPUR": (26.9124, 75.7873),
+    }
+
+    results = []
+    
+    # We fetch from both news_articles (signal_monitor) and signal_problems (possible citizen reports or clusters)
+    async def fetch_results(coll, source_type_val):
+        cursor = coll.find(match).limit(500)
+        async for doc in cursor:
+            loc_name = doc.get("city") or doc.get("district") or doc.get("location") or "Unknown"
+            lookup_key = loc_name.upper() if loc_name else ""
+            
+            lat = doc.get("lat") or doc.get("latitude")
+            lng = doc.get("lng") or doc.get("longitude")
+            
+            if not lat or not lng:
+                if lookup_key in GEO_LOOKUP:
+                    lat, lng = GEO_LOOKUP[lookup_key]
+                else:
+                    # Random jitter around North India if no location found, just for visualization
+                    import random
+                    lat = 26.8 + random.uniform(-2, 2)
+                    lng = 80.9 + random.uniform(-3, 3)
+
+            results.append({
+                "lat": lat,
+                "lng": lng,
+                "risk_score": round((doc.get("risk_score") or doc.get("priority_score") or 0) / 100, 2),
+                "location": loc_name,
+                "type": "citizen_report" if doc.get("category") == "Citizen Report" else "signal_monitor"
+            })
+
+    # Fetch based on section
+    if not section or section == "signal_monitor":
+        await fetch_results(news_articles_collection, "signal_monitor")
+    
+    # Always check signal_problems too as it might contain citizen reports or critical clusters
+    await fetch_results(signal_problems_collection, "signal_monitor" if section != "citizen_report" else "citizen_report")
+
+
+@router.get("/analytics/risk-summary")
+async def risk_summary(
+    state: Optional[str] = Query(None),
+    district: Optional[str] = Query(None),
+    city: Optional[str] = Query(None),
+    ward: Optional[str] = Query(None),
+):
+    """Previous grouped risk heatmap summary for analytics tables."""
     from .location import _build_location_match
     loc_match = _build_location_match(state, district, city, ward)
-
-    na_count = await news_articles_collection.count_documents(loc_match)
-    if na_count > 0:
-        pipeline = [
-            {"$match": loc_match},
-            {"$group": {
-                "_id": "$category",
-                "avg_gri": {"$avg": "$risk_score"},
-                "max_gri": {"$max": "$risk_score"},
-                "signal_count": {"$sum": 1},
-                "avg_anger": {"$avg": "$anger_rating"},
-            }},
-            {"$sort": {"avg_gri": -1}},
-        ]
-        results = await news_articles_collection.aggregate(pipeline).to_list(None)
-        return {
-            "heatmap": [
-                {
-                    "location": r["_id"] or "General",
-                    "avg_gri": round(r["avg_gri"] or 0, 1),
-                    "max_gri": round(r["max_gri"] or 0, 1),
-                    "signal_count": r["signal_count"],
-                    "avg_anger": round(r["avg_anger"] or 0, 1),
-                    "risk_level": "HIGH" if (r["avg_gri"] or 0) > 60 else "MODERATE" if (r["avg_gri"] or 0) > 30 else "LOW",
-                }
-                for r in results
-            ]
-        }
-
-    # Fallback: legacy tables
+    
     pipeline = [
-        {"$group": {"_id": "$location", "avg_gri": {"$avg": "$gri_score"}, "max_gri": {"$max": "$gri_score"}, "signal_count": {"$sum": 1}}}
+        {"$match": loc_match},
+        {"$group": {
+            "_id": "$city",
+            "avg_gri": {"$avg": "$risk_score"},
+            "max_gri": {"$max": "$risk_score"},
+            "signal_count": {"$sum": 1},
+            "avg_anger": {"$avg": "$anger_rating"},
+        }},
+        {"$sort": {"avg_gri": -1}},
     ]
-    results = await gri_scores_collection.aggregate(pipeline).to_list(None)
+    results = await news_articles_collection.aggregate(pipeline).to_list(None)
     return {
         "heatmap": [
             {
-                "location": r["_id"],
+                "location": r["_id"] or "General",
                 "avg_gri": round(r["avg_gri"] or 0, 1),
                 "max_gri": round(r["max_gri"] or 0, 1),
                 "signal_count": r["signal_count"],
-                "avg_anger": 0,
+                "avg_anger": round(r["avg_anger"] or 0, 1),
                 "risk_level": "HIGH" if (r["avg_gri"] or 0) > 60 else "MODERATE" if (r["avg_gri"] or 0) > 30 else "LOW",
             }
             for r in results

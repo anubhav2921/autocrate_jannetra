@@ -54,7 +54,9 @@ export default function Login({ onLogin }) {
                 if (!result) return;
                 setGLoading(true);
                 try {
-                    const idToken = await result.user.getIdToken();
+                    const idToken = await result.user.getIdToken(true);
+                    console.log("[JanNetra-Auth] Google Redirect ID TOKEN Length:", idToken.length);
+                    // Use force-refresh token to avoid 'kid' claim issues
                     const response = await api.post(
                         '/auth/google',
                         {},
@@ -222,12 +224,7 @@ export default function Login({ onLogin }) {
                 err?.code === 'auth/internal-error'
             ) {
                 try {
-                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone_number: finalPhone }),
-                    });
-                    const data = await res.json();
+                    const data = await api.post('/auth/send-phone-otp', { phone_number: finalPhone });
                     if (data.success) {
                         setConfirmationResult(null); // Mark as backend OTP
                         setStep('otp');
@@ -379,7 +376,8 @@ export default function Login({ onLogin }) {
 
         try {
             const result = await signInWithPopup(auth, googleProvider);
-            const idToken = await result.user.getIdToken();
+            const idToken = await result.user.getIdToken(true); // 🚨 Force refresh for a fresh KID claim
+            console.log("[JanNetra-Auth] Google Popup ID TOKEN Length:", idToken.length);
 
             const response = await api.post(
                 '/auth/google',
