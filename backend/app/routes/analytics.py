@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from ..mongodb import news_articles_collection, articles_collection, gri_scores_collection, sentiment_records_collection, detection_results_collection
+from ..mongodb import (
+    news_articles_collection, articles_collection, gri_scores_collection, 
+    sentiment_records_collection, detection_results_collection, signal_problems_collection
+)
 
 router = APIRouter(prefix="/api", tags=["Analytics"])
 
@@ -86,38 +89,54 @@ async def risk_heatmap(
     from .location import _build_location_match
     from datetime import datetime, timedelta
     
+    # 1. Base location match
     match = _build_location_match(state, district, city, ward)
     
-    # 1. Section Filter
+    # 2. Add additional filters
+    extra_filters = []
+    
+    # Section Filter
     if section == "citizen_report":
-        match["category"] = "Citizen Report"
+        extra_filters.append({"category": "Citizen Report"})
     elif section == "signal_monitor":
-        match["category"] = {"$ne": "Citizen Report"}
+        extra_filters.append({"category": {"$ne": "Citizen Report"}})
     
-    # 2. Status Filter
+    # Status Filter
     if status:
-        match["status"] = status
+        extra_filters.append({"status": status})
     
-    # 3. Priority Filter (mapped from risk_score)
+    # Priority Filter
     if priority:
         if priority.upper() == "HIGH":
-            match["risk_score"] = {"$gte": 70}
+            extra_filters.append({"risk_score": {"$gte": 70}})
         elif priority.upper() == "MEDIUM":
-            match["risk_score"] = {"$gte": 40, "$lt": 70}
+            extra_filters.append({"risk_score": {"$gte": 40, "$lt": 70}})
         elif priority.upper() == "LOW":
-            match["risk_score"] = {"$lt": 40}
+            extra_filters.append({"risk_score": {"$lt": 40}})
             
-    # 4. Time Range Filter
+    # Time Range Filter
     if time_range:
         days = 7
         if time_range == "1d": days = 1
         elif time_range == "30d": days = 30
         cutoff = datetime.utcnow() - timedelta(days=days)
-        # Check both scraped_at and created_at
-        match["$or"] = [
+        extra_filters.append({"$or": [
             {"scraped_at": {"$gte": cutoff}},
-            {"created_at": {"$gte": cutoff}}
-        ]
+            {"created_at": {"$gte": cutoff}},
+            {"ingested_at": {"$gte": cutoff}}
+        ]})
+
+    # Combine everything into match
+    if extra_filters:
+        if match:
+            # If match already has filters, wrap everything in $and
+            match = {"$and": [match, *extra_filters]}
+        else:
+            # If match is empty, just use extra filters (wrapped in $and if multiple)
+            if len(extra_filters) > 1:
+                match = {"$and": extra_filters}
+            else:
+                match = extra_filters[0]
 
     # Geocoding Fallback for major Indian cities
     GEO_LOOKUP = {
@@ -178,6 +197,8 @@ async def risk_heatmap(
     
     # Always check signal_problems too as it might contain citizen reports or critical clusters
     await fetch_results(signal_problems_collection, "signal_monitor" if section != "citizen_report" else "citizen_report")
+
+    return results
 
 
 @router.get("/analytics/risk-summary")
