@@ -170,8 +170,8 @@ async def google_auth(request: Request):
     except Exception as e:
         error_msg = str(e)
         print(f"[AUTH] Firebase token verification failed: {error_msg}")
-        if "serviceAccountKey.json" in error_msg or "FileNotFoundError" in error_msg:
-            raise HTTPException(status_code=500, detail="Firebase Admin not configured.")
+        if "serviceAccountKey.json" in error_msg or "FileNotFoundError" in error_msg or "default Firebase app does not exist" in error_msg:
+            raise HTTPException(status_code=500, detail="Firebase Admin not configured. Please check serviceAccountKey.json in backend/app/")
         raise HTTPException(status_code=401, detail="Invalid or expired Firebase token")
 
     uid = decoded_token["uid"]
@@ -241,7 +241,10 @@ async def firebase_phone_login(request: Request):
     except ImportError:
         raise HTTPException(status_code=500, detail="firebase-admin package not installed.")
     except Exception as e:
-        print(f"[AUTH] Firebase token verification failed: {e}")
+        error_msg = str(e)
+        print(f"[AUTH] Firebase token verification failed: {error_msg}")
+        if "serviceAccountKey.json" in error_msg or "FileNotFoundError" in error_msg or "default Firebase app does not exist" in error_msg:
+            raise HTTPException(status_code=500, detail="Firebase Admin not configured. Please check serviceAccountKey.json in backend/app/")
         raise HTTPException(status_code=401, detail="Invalid or expired Firebase token")
 
     uid = decoded_token["uid"]

@@ -6,13 +6,31 @@ Collections are imported directly into route handlers.
 """
 
 import os
+import logging
+import sys
 from motor.motor_asyncio import AsyncIOMotorClient
 
-MONGO_URL = os.getenv("MONGO_URL")
-MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "governance_db")
+logger = logging.getLogger("jannetra.mongodb")
 
-client = AsyncIOMotorClient(MONGO_URL)
-db = client[MONGO_DB_NAME]
+# Environment Variables Audit
+MONGO_URL = os.getenv("MONGO_URL") or os.getenv("MONGO_URI")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
+
+if not MONGO_URL:
+    logger.error("❌ MONGO_URL or MONGO_URI environment variable is missing!")
+    if os.getenv("ENVIRONMENT") == "production":
+        logger.critical("Shutting down due to missing database configuration.")
+        sys.exit(1)
+    else:
+        logger.warning("Falling back to localhost for development.")
+        MONGO_URL = "mongodb://localhost:27017"
+
+try:
+    client = AsyncIOMotorClient(MONGO_URL)
+    db = client[MONGO_DB_NAME]
+    logger.info(f"✅ Connected to MongoDB: {MONGO_DB_NAME}")
+except Exception as e:
+    logger.error(f"❌ Failed to connect to MongoDB: {e}")
 
 # Collections
 users_collection          = db["users"]

@@ -1,13 +1,13 @@
 import axios from 'axios';
 
-const VITE_API_URL = import.meta.env.VITE_API_URL;
+const VITE_API_URL = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL;
 const BASE_URL = VITE_API_URL ? VITE_API_URL.replace(/\/$/, '') : 'https://jannetra-web-production.up.railway.app';
 
-console.log(`[Config] API Base URL: ${BASE_URL}`);
+console.log(`[JanNetra Config] API Base URL: ${BASE_URL}`);
 
 const apiClient = axios.create({
     baseURL: `${BASE_URL}/api`,
-    timeout: 20000,
+    timeout: 30000, // Increased timeout for pipeline triggers
     headers: { 'Content-Type': 'application/json' },
 });
 

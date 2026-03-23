@@ -169,6 +169,7 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
     
     # In a real system we'd filter by assignee_id == user["uid"], but for this demo 
     # we allow seeing all "Working Problems" to show functionality.
+    results = []
     
     def safe_str(val):
         if val is None: return "Unknown"

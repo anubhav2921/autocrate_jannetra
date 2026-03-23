@@ -113,8 +113,8 @@ def _get_existing_clusters() -> list[dict]:
     """Fetch active issues from signal_problems collection."""
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     # Fetch clusters to keep grouping consistent across runs
@@ -157,8 +157,8 @@ def _store_aggregated_clusters(clusters: list[dict]):
         return
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     
@@ -179,6 +179,7 @@ def _store_aggregated_clusters(clusters: list[dict]):
             {"$set": cluster},
             upsert=True
         )
+    logger.info(f"✅ Stored {len(clusters)} aggregated signal clusters.")
     client.close()
 
 
@@ -186,8 +187,8 @@ def _get_existing_hashes() -> set:
     """Fetch existing content hashes to avoid reprocessing EXACT signals."""
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     hashes = {doc["content_hash"] for doc in db["news_articles"].find({}, {"content_hash": 1}) if "content_hash" in doc}
@@ -201,12 +202,13 @@ def _store_articles_sync(records: list[dict]) -> int:
         return 0
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     try:
         result = db["news_articles"].insert_many(records, ordered=False)
+        logger.info(f"✅ Stored {len(result.inserted_ids)} raw signals.")
         return len(result.inserted_ids)
     except Exception as e:
         logger.warning(f"[Pipeline] Signal storage error: {e}")
