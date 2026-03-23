@@ -5,9 +5,9 @@ import {
 } from 'lucide-react';
 import { signInWithPhoneNumber, RecaptchaVerifier } from 'firebase/auth';
 import { auth } from '../config/firebase';
-import axios from 'axios';
+import api from '../services/apiClient';
 
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://jannetra-web-production.up.railway.app/api';
+// Using centralized API configuration from apiClient.js
 
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
@@ -178,12 +178,7 @@ export default function PhoneAuth({ onLogin }) {
                 err?.message?.includes('reCAPTCHA')
             ) {
                 try {
-                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone_number: cleaned }),
-                    });
-                    const data = await res.json();
+                    const data = await api.post('/auth/send-phone-otp', { phone_number: cleaned });
                     if (data.success) {
                         setConfirmationResult(null);
                         setAuthMode('backend');
@@ -275,13 +270,13 @@ export default function PhoneAuth({ onLogin }) {
                 const idToken = await user.getIdToken();
 
                 // Send to backend for user upsert
-                const response = await axios.post(
-                    `${API_BASE}/auth/firebase-login`,
+                const response = await api.post(
+                    '/auth/firebase-login',
                     {},
                     { headers: { Authorization: `Bearer ${idToken}` } }
                 );
 
-                const { user: userData } = response.data;
+                const { user: userData } = response;
                 localStorage.setItem('user', JSON.stringify(userData));
                 setStep('success');
                 setTimeout(() => {
@@ -290,12 +285,7 @@ export default function PhoneAuth({ onLogin }) {
                 }, 1500);
             } else {
                 // Backend OTP verification
-                const res = await fetch(`${API_BASE}/auth/login-phone`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: finalPhone, otp: code }),
-                });
-                const data = await res.json();
+                const data = await api.post('/auth/login-phone', { phone_number: finalPhone, otp: code });
 
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -307,12 +297,7 @@ export default function PhoneAuth({ onLogin }) {
                 } else {
                     // If user not found, try register instead
                     if (data.error?.includes('No account found')) {
-                        const regRes = await fetch(`${API_BASE}/auth/register-phone`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone_number: finalPhone, otp: code }),
-                        });
-                        const regData = await regRes.json();
+                        const regData = await api.post('/auth/register-phone', { phone_number: finalPhone, otp: code });
                         if (regData.success) {
                             localStorage.setItem('user', JSON.stringify(regData.user));
                             setStep('success');
@@ -365,12 +350,7 @@ export default function PhoneAuth({ onLogin }) {
                 setTimeout(() => otpRefs.current[0]?.focus(), 100);
             } else {
                 // Resend via backend
-                const res = await fetch('/api/auth/send-phone-otp', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: finalPhone }),
-                });
-                const data = await res.json();
+                const data = await api.post('/auth/send-phone-otp', { phone_number: finalPhone });
                 if (data.success) {
                     startResendTimer();
                     setInfo(data.demo_otp

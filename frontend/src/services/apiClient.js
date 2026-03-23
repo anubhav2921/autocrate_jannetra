@@ -1,11 +1,13 @@
 import axios from 'axios';
 
-// Ensure the Base URL handles missing configs gracefully, defaulting to production.
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://jannetra-web-production.up.railway.app';
+const VITE_API_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = VITE_API_URL ? VITE_API_URL.replace(/\/$/, '') : 'https://jannetra-web-production.up.railway.app';
+
+console.log(`[Config] API Base URL: ${BASE_URL}`);
 
 const apiClient = axios.create({
     baseURL: `${BASE_URL}/api`,
-    timeout: 15000,
+    timeout: 20000,
     headers: { 'Content-Type': 'application/json' },
 });
 

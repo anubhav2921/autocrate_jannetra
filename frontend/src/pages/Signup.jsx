@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import {
     Shield, Mail, Lock, User, Phone, Building2, ArrowLeft, RefreshCw,
 } from 'lucide-react';
+import api from '../services/apiClient';
 
 const DEPARTMENTS = [
     'health', 'police', 'municipal', 'electricity', 'water', 'education', 'transport'
@@ -80,7 +81,7 @@ export default function Signup({ onLogin }) {
             return;
         }
 
-        const endpoint = activeTab === 'email' ? '/api/auth/signup' : '/api/auth/send-phone-otp';
+        const endpoint = activeTab === 'email' ? '/auth/signup' : '/auth/send-phone-otp';
         const cleanedPhone = form.phone.replace(/\D/g, ''); // just numbers
         const finalPhone = activeTab === 'phone' ? `${form.countryCode}${cleanedPhone}` : '';
 
@@ -108,12 +109,7 @@ export default function Signup({ onLogin }) {
 
         setLoading(true);
         try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json();
+            const data = await api.post(endpoint, payload);
             if (data.success) {
                 setStep('otp');
                 startResendTimer();
@@ -140,7 +136,7 @@ export default function Signup({ onLogin }) {
         }
 
         setLoading(true);
-        const endpoint = activeTab === 'email' ? '/api/auth/verify-otp' : '/api/auth/register-phone';
+        const endpoint = activeTab === 'email' ? '/auth/verify-otp' : '/auth/register-phone';
         const cleanedPhone = form.phone.replace(/\D/g, ''); // just numbers
         const finalPhone = activeTab === 'phone' ? `${form.countryCode}${cleanedPhone}` : '';
 
@@ -155,12 +151,7 @@ export default function Signup({ onLogin }) {
             };
 
         try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            const data = await res.json();
+            const data = await api.post(endpoint, payload);
             if (data.success) {
                 localStorage.setItem('user', JSON.stringify(data.user));
                 localStorage.setItem('token', data.token);

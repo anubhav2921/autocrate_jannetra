@@ -3,6 +3,7 @@ import {
     Search, Instagram, Twitter, Facebook, MessageCircle, Globe, AlertTriangle,
     Shield, Flame, CheckCircle2, XCircle, HelpCircle, Zap, FileText,
 } from 'lucide-react';
+import api from '../services/apiClient';
 
 const PLATFORMS = [
     { id: 'instagram', label: 'Instagram', icon: Instagram, color: '#E1306C' },
@@ -32,12 +33,7 @@ export default function Scanner() {
         setLoading(true);
         setResult(null);
         try {
-            const res = await fetch('/api/scan', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, platform, source_url: url }),
-            });
-            const data = await res.json();
+            const data = await api.post('/scan', { text, platform, source_url: url });
             if (data.success) setResult(data.analysis);
         } catch (err) {
             console.error(err);
