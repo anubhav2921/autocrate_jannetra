@@ -9,12 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/maplibre-gl": "^1.13.2",
     "axios": "^1.6.2",
     "firebase": "^12.10.0",
     "framer-motion": "^12.34.3",
     "gsap": "^3.14.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.294.0",
+    "maplibre-gl": "^5.21.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
