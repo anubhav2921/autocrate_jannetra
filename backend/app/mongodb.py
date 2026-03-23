@@ -29,6 +29,7 @@ if not MONGO_URL:
         MONGO_URL = "mongodb://localhost:27017"
 
 try:
+    logger.info(f"Connecting to MongoDB — URL: {MONGO_URL[:20]}... | DB: {MONGO_DB_NAME}")
     client = AsyncIOMotorClient(MONGO_URL)
     db = client[MONGO_DB_NAME]
     logger.info(f"✅ Connected to MongoDB: {MONGO_DB_NAME}")

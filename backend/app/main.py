@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Current Environment: {ENVIRONMENT}")
 
     # Environment Variables Audit
-    required_vars = ["MONGO_URL", "GEMINI_API_KEY"]
+    required_vars = ["MONGO_URL", "NVIDIA_API_KEY"]
     if ENVIRONMENT == "production":
         missing = [v for v in required_vars if not os.getenv(v) and not os.getenv("MONGO_URI")]
         if missing:
@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
     scheduler.add_job(
         run_pipeline_job, 
         "date", 
-        run_date=datetime.now() + timedelta(seconds=15), 
+        run_date=datetime.now() + timedelta(seconds=3), 
         id="startup_pipeline_job"
     )
     
