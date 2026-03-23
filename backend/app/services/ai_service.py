@@ -5,6 +5,9 @@ import requests
 import uuid
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("jannetra.ai_service")
 
@@ -57,12 +60,23 @@ def _nv_chat_v1(prompt: str) -> Optional[dict]:
     
     try:
         response = requests.post(NV_URL, headers=headers, json=payload, timeout=60)
-        response.raise_for_status()
+        
+        if response.status_code != 200:
+            logger.error(f"NVIDIA API HTTP Error: {response.status_code} - {response.text}")
+            return None
+            
         res_data = response.json()
-        raw_text = res_data["choices"][0]["message"]["content"]
+        raw_text = res_data["choices"][0]["message"]["content"].strip()
+        
+        # Robust JSON detection (especially if model wraps in ```json ... ```)
+        if "```json" in raw_text:
+            raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_text:
+            raw_text = raw_text.split("```")[1].strip()
+            
         return json.loads(raw_text)
     except Exception as e:
-        logger.error(f"NVIDIA API Error: {e}")
+        logger.error(f"NVIDIA API Processing Error: {e}")
         return None
 
 def generate_signal_problems(count: int = 5) -> list[dict]:
