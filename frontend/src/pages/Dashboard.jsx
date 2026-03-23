@@ -95,11 +95,6 @@ export default function Dashboard() {
 
             {/* Stat Cards */}
             <div className="stats-grid">
-                <div className="glass-card stat-card red animate-in" onClick={() => navigate('/analytics')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Shield size={22} /></div>
-                    <div className="stat-value" style={{ color: griColor }}>{data.overall_gri}</div>
-                    <div className="stat-label">Governance Risk Index</div>
-                </div>
                 <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Newspaper size={22} /></div>
                     <div className="stat-value">{data.total_articles}</div>

@@ -193,11 +193,6 @@ const RiskHeatmapMap = ({ filters: initialFilters = {} }) => {
                         <option value="30d">Last 30 Days</option>
                     </select>
                 </div>
-                
-                <div className="toggle-group">
-                    <button className={viewMode === 'heatmap' ? 'active' : ''} onClick={() => setViewMode('heatmap')}>Heatmap</button>
-                    <button className={viewMode === 'markers' ? 'active' : ''} onClick={() => setViewMode('markers')}>Markers</button>
-                </div>
             </div>
 
             <MapContainer 

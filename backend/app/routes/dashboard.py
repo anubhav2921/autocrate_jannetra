@@ -24,8 +24,8 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     cutoff = datetime.utcnow() - timedelta(days=5)
     fresh_match = {**match_filter, "created_at": {"$gte": cutoff}}
 
-    # Base counts from news_articles (signals)
-    na_total = await news_articles_collection.count_documents(match_filter)
+    # Base counts from news_articles (signals) — ALWAYS show global total as requested
+    na_total = await news_articles_collection.count_documents({"deleted": {"$ne": True}})
     
     # Base counts from signal_problems (clusters/active issues)
     # Signal Monitor shows 68, let's correspond to that.
