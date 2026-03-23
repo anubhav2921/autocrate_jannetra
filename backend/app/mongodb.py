@@ -9,6 +9,9 @@ import os
 import logging
 import sys
 from motor.motor_asyncio import AsyncIOMotorClient
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger("jannetra.mongodb")
 

@@ -104,6 +104,11 @@ export default function Dashboard() {
                     <div className="stat-value">{data.total_articles}</div>
                     <div className="stat-label">Total Signals Processed</div>
                 </div>
+                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
+                    <div className="stat-icon"><Flame size={22} /></div>
+                    <div className="stat-value">{data.active_problems_count || 0}</div>
+                    <div className="stat-label">Problem Clusters</div>
+                </div>
                 <div className="glass-card stat-card amber animate-in" onClick={() => navigate('/scanner')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><AlertTriangle size={22} /></div>
                     <div className="stat-value" style={{ color: data.fake_news_percentage > 30 ? '#ef4444' : '#f59e0b' }}>

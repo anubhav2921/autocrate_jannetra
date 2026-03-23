@@ -293,10 +293,18 @@ async def get_location_dashboard(
     city: Optional[str] = Query(None),
     ward: Optional[str] = Query(None),
 ):
-    match = _build_location_match(state, district, city, ward)
-
+    # Fetch counts
     total = await news_articles_collection.count_documents(match)
+    
+    # Freshness for clusters
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=5)
+    fresh_match = {**match, "created_at": {"$gte": cutoff}}
+    
+    # Active Signals/Issues in the last 5 days
+    active_alerts = await news_articles_collection.count_documents({**fresh_match, "risk_level": {"$in": ["HIGH", "MODERATE"]}})
 
+    # Aggregates
     agg = await news_articles_collection.aggregate([
         {"$match": match},
         {"$group": {
@@ -310,10 +318,6 @@ async def get_location_dashboard(
 
     fake_match = {**match, "fake_news_label": "FAKE"}
     fake_count = await news_articles_collection.count_documents(fake_match)
-
-    high_match = {**match, "risk_level": {"$in": ["HIGH", "MODERATE"]}}
-    active_alerts = await news_articles_collection.count_documents(high_match)
-
     fake_pct = round((fake_count / max(total, 1)) * 100, 1)
 
     sent_pipeline = [
@@ -329,7 +333,7 @@ async def get_location_dashboard(
     ]
     cat_res = await news_articles_collection.aggregate(cat_pipeline).to_list(None)
 
-    # Location Heatmap Logic: Group by the next hierarchical level
+    # Location Heatmap Logic
     group_field = "state"
     if state: group_field = "district"
     if district: group_field = "city"
@@ -347,9 +351,12 @@ async def get_location_dashboard(
     ]
     loc_res = await news_articles_collection.aggregate(loc_pipeline).to_list(12)
 
-    # Fetch Trending Problems from aggregated SignalProblems collection
-    # These are consolidated clusters rather than raw articles
-    top_issues = await signal_problems_collection.find(match).sort("priority_score", -1).limit(10).to_list(10)
+    # Fetch Trending Problems from SignalProblems (Clusters)
+    # Using fresh_match for top risks to stay consistent with Signal Monitor
+    top_issues = await signal_problems_collection.find(fresh_match).sort("priority_score", -1).limit(10).to_list(10)
+
+    # Citizen Reports
+    citizen_reports_count = await signal_problems_collection.count_documents({**match, "category": "Citizen Report"})
 
     return {
         "location_context": {
@@ -358,9 +365,11 @@ async def get_location_dashboard(
         },
         "overall_gri": round(avg_risk_val, 1),
         "total_articles": total,
+        "active_problems_count": await signal_problems_collection.count_documents(fresh_match),
         "fake_news_percentage": fake_pct,
         "average_anger": round(avg_anger_val, 2),
         "active_alerts": active_alerts,
+        "citizen_reports_count": citizen_reports_count,
         "sentiment_distribution": {r["_id"]: r["count"] for r in sent_res if r["_id"]},
         "category_risk": [
             {"category": r["_id"] or "General", "avg_gri": round(r["avg_gri"] or 0, 1), "count": r["count"]}
@@ -378,7 +387,6 @@ async def get_location_dashboard(
                 "location": a.get("location") or ", ".join(a.get("locations", [])) or a.get("city") or "India",
                 "gri_score": round(a.get("priority_score") or a.get("risk_score") or 0, 1),
                 "frequency": a.get("frequency", 1),
-                "priority_score": a.get("priority_score", 0.0),
                 "risk_level": a.get("severity", "LOW"),
                 "label": "VERIFIED" if a.get("frequency", 1) > 2 else "SINGLE_SIGNAL",
                 "anger_rating": round(a.get("anger_avg") or 0, 1),
