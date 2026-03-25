@@ -30,18 +30,13 @@ export default function Resolutions({ user }) {
 
     useEffect(() => {
         setLoading(true);
-        Promise.all([
-            api.get('/resolutions', { params: { user_id: user?.id } }),
-            api.get('/signal-problems', { params: { user_id: user?.id } }),
-        ])
-            .then(([resData, sigData]) => {
+        api.get('/resolutions', { params: { user_id: user?.id } })
+            .then((resData) => {
                 setResolutions(resData?.resolutions || []);
-                setSignalProblems(Array.isArray(sigData) ? sigData : []);
             })
             .catch((err) => {
                 console.error('Failed to fetch resolutions data:', err);
                 setResolutions([]);
-                setSignalProblems([]);
             })
             .finally(() => setLoading(false));
     }, []);
@@ -205,60 +200,7 @@ export default function Resolutions({ user }) {
                 </div>
             )}
 
-            {/* Signal Problem Status Showcase */}
-            {signalProblems.filter(sp => sp.status === 'Problem Resolved' && sp.resolutionReport).length > 0 && (
-                <div className="glass-card animate-in" style={{ marginBottom: '24px' }}>
-                    <div className="section-title" style={{ marginBottom: '16px' }}>
-                        <CheckCircle2 size={18} style={{ color: '#10b981' }} /> Confirmed Signal Resolutions
-                    </div>
-                    <div style={{ display: 'grid', gap: '15px' }}>
-                        {signalProblems
-                            .filter(sp => sp.status === 'Problem Resolved' && sp.resolutionReport)
-                            .map((sp) => {
-                                return (
-                                    <div key={sp.id} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '12px 16px', borderRadius: '10px',
-                                        background: 'rgba(16, 185, 129, 0.05)',
-                                        border: '1px solid rgba(16, 185, 129, 0.2)',
-                                        transition: 'all 0.2s ease',
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                                            <span style={{
-                                                fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue)',
-                                                background: 'rgba(59,130,246,0.1)', padding: '3px 8px', borderRadius: '4px',
-                                                minWidth: '60px', textAlign: 'center',
-                                            }}>{sp.id}</span>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: 500 }}>
-                                                {sp.title}
-                                            </span>
-                                        </div>
-                                        <div style={{ padding: '8px 40px', fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                            {sp.resolutionReport}
-                                            {sp.proof_url && (
-                                                <a href={sp.proof_url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px', color: 'var(--accent-blue)', textDecoration: 'underline' }}>
-                                                    (View Proof)
-                                                </a>
-                                            )}
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                            <span style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                padding: '5px 14px', borderRadius: '20px', fontSize: '0.75rem',
-                                                fontWeight: 700, whiteSpace: 'nowrap',
-                                                background: 'rgba(16,185,129,0.15)',
-                                                color: '#10b981',
-                                                border: '1px solid rgba(16, 185, 129, 0.35)',
-                                            }}>
-                                                <CheckCircle2 size={12} /> Resolved
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                    </div>
-                </div>
-            )}
+
 
             {/* Resolutions List */}
             {resolutions.length === 0 ? (
@@ -277,11 +219,23 @@ export default function Resolutions({ user }) {
                         <div style={{ paddingLeft: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                                 <div>
-                                    <span className={`badge badge-${r.status === 'RESOLVED' ? 'low' : r.status === 'IN_PROGRESS' ? 'moderate' : 'unknown'}`}>
-                                        <CheckCircle2 size={11} style={{ marginRight: '4px' }} />
-                                        {r.status?.replace('_', ' ')}
-                                    </span>
-                                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginTop: '8px', color: 'var(--text-primary)' }}>
+                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                        <span className={`badge badge-${r.status === 'RESOLVED' ? 'low' : r.status === 'IN_PROGRESS' ? 'moderate' : 'unknown'}`}>
+                                            <CheckCircle2 size={11} style={{ marginRight: '4px' }} />
+                                            {r.status?.replace('_', ' ')}
+                                        </span>
+                                        {r.type && (
+                                            <span style={{ 
+                                                fontSize: '0.65rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px',
+                                                background: r.type === 'Signal' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)',
+                                                color: r.type === 'Signal' ? 'var(--accent-blue)' : 'var(--text-muted)',
+                                                border: '1px solid rgba(255,255,255,0.1)'
+                                            }}>
+                                                {r.type.toUpperCase()}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                                         {r.title}
                                     </h3>
                                 </div>

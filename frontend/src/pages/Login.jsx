@@ -175,6 +175,7 @@ export default function Login({ onLogin }) {
                 const data = await api.post('/auth/login', { email, password });
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
                     onLogin(data.user);
                     navigate('/');
                     return;

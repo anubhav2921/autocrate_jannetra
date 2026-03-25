@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { fetchLocationDashboard } from '../services/api';
 import { useLocation } from '../context/LocationContext';
-import RiskHeatmapMap from '../components/RiskHeatmapMap';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444'];
@@ -126,15 +125,8 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Heatmap + Sentiment */}
-            <div className="grid-2-1">
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <MapPin size={18} /> Risk Heatmap by Location
-                    </div>
-                    <RiskHeatmapMap filters={location} />
-                </div>
-
+            {/* Sentiment & Category Breakdown */}
+            <div className="grid-2">
                 <div className="glass-card chart-card animate-in">
                     <div className="section-title">
                         <Activity size={18} /> Sentiment Split
@@ -168,31 +160,32 @@ export default function Dashboard() {
                         ))}
                     </div>
                 </div>
+
+                <div className="glass-card chart-card animate-in">
+                    <div className="section-title">
+                        <TrendingUp size={18} /> Risk by Category
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={data.category_risk || []} layout="vertical" margin={{ left: 60, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                            <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                            <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 10 }} width={60} />
+                            <Tooltip
+                                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                                itemStyle={{ color: '#f1f5f9' }}
+                                formatter={(value) => [`${value}`, 'Avg GRI']}
+                            />
+                            <Bar dataKey="avg_gri" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                                {(data.category_risk || []).map((entry) => (
+                                    <Cell key={entry.category} fill={RISK_COLORS[entry.avg_gri > 60 ? 'HIGH' : entry.avg_gri > 30 ? 'MODERATE' : 'LOW']} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
 
-            {/* Category Risk Bar Chart */}
-            <div className="glass-card chart-card animate-in" style={{ marginBottom: '24px' }}>
-                <div className="section-title">
-                    <TrendingUp size={18} /> Risk by Category
-                </div>
-                <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={data.category_risk || []} layout="vertical" margin={{ left: 80 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 11 }} />
-                        <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 12 }} width={80} />
-                        <Tooltip
-                            contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                            itemStyle={{ color: '#f1f5f9' }}
-                            formatter={(value) => [`${value}`, 'Avg GRI']}
-                        />
-                        <Bar dataKey="avg_gri" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                            {(data.category_risk || []).map((entry) => (
-                                <Cell key={entry.category} fill={RISK_COLORS[entry.avg_gri > 60 ? 'HIGH' : entry.avg_gri > 30 ? 'MODERATE' : 'LOW']} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
+
 
             {/* Priority Rankings Table */}
             <div className="glass-card animate-in">
@@ -221,7 +214,14 @@ export default function Dashboard() {
                             {data.top_risks?.map((r, i) => (
                                 <tr key={r.id}>
                                     <td style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>#{i + 1}</td>
-                                    <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '280px' }}>
+                                    <td style={{ 
+                                        color: 'var(--text-primary)', 
+                                        fontWeight: 500, 
+                                        maxWidth: '400px',
+                                        whiteSpace: 'normal',
+                                        wordBreak: 'break-word',
+                                        lineHeight: '1.4'
+                                    }}>
                                         {r.title}
                                     </td>
                                     <td>{r.category}</td>

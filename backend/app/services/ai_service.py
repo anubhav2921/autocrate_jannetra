@@ -14,7 +14,7 @@ logger = logging.getLogger("jannetra.ai_service")
 # ───────────────────────────────────────────────────────────────────────────
 # NVIDIA Config
 # ───────────────────────────────────────────────────────────────────────────
-NV_API_KEY_3 = os.getenv("NVIDIA_API_KEY_3")
+NV_API_KEY = os.getenv("NVIDIA_API_KEY")
 NV_MODEL = "meta/llama-3.1-70b-instruct"
 NV_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -26,14 +26,14 @@ VALID_CATEGORIES = {
     "Digital/Cyber", "Suspicious Activities", "Public Grievance", "Infrastructure"
 }
 
-def _nv_chat_v1(prompt: str) -> Optional[dict]:
+def _nv_chat_v1(prompt: str, system_msg: Optional[str] = None) -> Optional[dict]:
     """Helper for NVIDIA Chat API."""
-    if not NV_API_KEY_3:
-        logger.warning("NVIDIA_API_KEY_3 missing in .env")
+    if not NV_API_KEY:
+        logger.warning("NVIDIA_API_KEY missing in .env")
         return None
     
     headers = {
-        "Authorization": f"Bearer {NV_API_KEY_3}",
+        "Authorization": f"Bearer {NV_API_KEY}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
@@ -43,7 +43,7 @@ def _nv_chat_v1(prompt: str) -> Optional[dict]:
         "messages": [
             {
                 "role": "system",
-                "content": (
+                "content": system_msg or (
                     "You are 'JanNetra AI', a high-level governance intelligence assistant. "
                     "Your job is to analyze civic problems and provide clear, humanized, and professional descriptions "
                     "accompanied by actionable recommended solutions for government leaders. "
@@ -212,3 +212,45 @@ def structure_single_problem(
         "evidence_summary": "Single verified citizen or automated signal.",
         "expected_solution": "Standard operative procedure for infrastructure anomalies."
     }
+
+async def query_chatbot_with_context(question: str, context: str) -> str:
+    """Generative chatbot query using NVIDIA NIM with system context."""
+    if not NV_API_KEY:
+        return "❌ NVIDIA_API_KEY is not configured in the backend."
+
+    system_msg = (
+        "You are 'JanNetra AI', an advanced Governance Intelligence Assistant for India. "
+        "Your goal is to help government leaders and citizens understand regional risks and issues. "
+        "Use the provided [SYSTEM CONTEXT] to answer questions accurately and professionally. "
+        "If the data isn't in the context, use your general knowledge but mention it's general info. "
+        "Keep responses concise, helpful, and use markdown for formatting."
+    )
+
+    prompt = f"[SYSTEM CONTEXT]\n{context}\n\n[USER QUESTION]\n{question}"
+
+    headers = {
+        "Authorization": f"Bearer {NV_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": NV_MODEL,
+        "messages": [
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.5,
+        "top_p": 0.8,
+        "max_tokens": 1024
+    }
+
+    try:
+        response = requests.post(NV_URL, headers=headers, json=payload, timeout=40)
+        if response.status_code != 200:
+            return f"Error from AI Service: {response.status_code}"
+        
+        res_data = response.json()
+        return res_data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        logger.error(f"Chatbot query error: {e}")
+        return "Sorry, I'm having trouble processing your request right now."

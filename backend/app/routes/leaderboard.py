@@ -19,7 +19,7 @@ async def get_leaderboard():
         
         # Count signal resolutions
         from ..mongodb import signal_problems_collection
-        sig_total = await signal_problems_collection.count_documents({"resolved_by": uid})
+        sig_total = await signal_problems_collection.count_documents({"$or": [{"assigned_to": uid}, {"resolved_by": uid}]})
         sig_resolved = await signal_problems_collection.count_documents({"resolved_by": uid, "status": "Problem Resolved"})
         
         total = man_total + sig_total

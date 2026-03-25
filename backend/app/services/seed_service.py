@@ -81,5 +81,23 @@ async def seed_if_empty():
         await signal_problems_collection.insert_many(sample_clusters)
         logger.info(f"✅ Inserted {len(sample_clusters)} seed clusters.")
         
+        # Admin User
+        from ..routes.auth import _hash_password
+        from ..utils import gen_uuid
+        admin_doc = {
+            "id": gen_uuid(),
+            "name": "System Admin",
+            "email": "admin@email.com",
+            "password_hash": _hash_password("admin"),
+            "role": "ADMIN",
+            "department": "",
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "auth_provider": "email"
+        }
+        from ..mongodb import users_collection
+        await users_collection.insert_one(admin_doc)
+        logger.info("✅ Inserted seed admin user.")
+        
     except Exception as e:
         logger.error(f"❌ Seed failed: {e}")

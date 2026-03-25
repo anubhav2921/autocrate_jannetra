@@ -107,7 +107,7 @@ async def update_progress(problem_id: str, req: ProgressRequest, user: dict = De
     
     status = "In Progress"
     if req.progress >= 100:
-        status = "Resolved"
+        status = "Problem Resolved"
         req.progress = 100
         
     update_data = {
@@ -115,9 +115,9 @@ async def update_progress(problem_id: str, req: ProgressRequest, user: dict = De
         "status": status,
         "last_updated": datetime.datetime.utcnow()
     }
-    if status == "Resolved":
+    if status == "Problem Resolved":
         update_data["resolved_at"] = datetime.datetime.utcnow()
-        update_data["resolved_by"] = performer
+        update_data["resolved_by"] = user.get("id") if user else "system"
         
     p = await signal_problems_collection.find_one({"id": problem_id})
     if p:
@@ -127,7 +127,7 @@ async def update_progress(problem_id: str, req: ProgressRequest, user: dict = De
         if a:
             await news_articles_collection.update_one({"id": problem_id}, {"$set": update_data})
 
-    action = "Resolved" if status == "Resolved" else "Progress Updated"
+    action = "Resolved" if status == "Problem Resolved" else "Progress Updated"
     await log_activity(problem_id, action, performer, f"Progress set to {req.progress}%")
     return {"success": True, "progress": req.progress, "status": status}
 
