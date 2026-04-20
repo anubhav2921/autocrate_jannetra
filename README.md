@@ -1,114 +1,95 @@
-# JanNetra — Predictive Governance Intelligence & Decision Support System
+<div align="center">
+  <h1>JanNetra</h1>
+  <p><b>State-of-the-Art Neural Governance & Intelligence Interface</b></p>
 
-Real-time risk monitoring, fake news detection, and governance analytics platform.
+  [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+  [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+  [![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+  [![Transformers](https://img.shields.io/badge/Transformers-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/transformers/)
+</div>
 
-## Tech Stack
+> [!IMPORTANT]
+> **JanNetra** is a state-of-the-art **Predictive Governance Intelligence Platform**. It leverages a high-fidelity neural pipeline to transform multi-source noise into actionable governance insights, providing a real-time "Command Surface" for societal stability.
 
-| Layer     | Technology                                         |
-| --------- | -------------------------------------------------- |
-| Frontend  | React 18, Vite, Axios, Firebase Client SDK         |
-| Backend   | FastAPI, SQLAlchemy, Firebase Admin SDK, Uvicorn    |
-| Database  | SQLite (governance.db)                              |
-| AI        | AI Service Fallback (monitoring)  |
+---
 
-## Project Structure
+## 🌐 The JanNetra Protocol
+The platform operates on a four-phase **Intelligence Lifecycle**, ensuring that data isn't just collected, but distilled and synthesized into a "State Pulse."
 
-```
-project/
-├── backend/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI entry-point
-│   │   ├── database.py          # SQLAlchemy engine & session
-│   │   ├── models.py            # All ORM models
-│   │   ├── firebase_admin_config.py
-│   │   ├── routes/              # API route modules (15 routers)
-│   │   └── services/            # Business logic & AI integrations
-│   ├── migrations/              # One-time DB migration scripts
-│   ├── requirements.txt
-│   ├── .env                     # Secrets (not committed)
-│   └── .env.example             # Template for .env
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx              # Root component & routing
-│   │   ├── main.jsx             # React entry-point
-│   │   ├── index.css            # Global styles
-│   │   ├── components/          # Reusable UI components
-│   │   ├── pages/               # Page-level components (19 pages)
-│   │   ├── services/            # Axios API client
-│   │   └── config/              # Firebase config
-│   ├── .env                     # VITE_ prefixed env vars
-│   ├── vite.config.js
-│   └── package.json
-│
-└── .vscode/settings.json        # Workspace settings
-```
+1.  **Ingestion (Sentinel):** Wide-spectrum scraping across Social Media (Reddit, X), News RSS (Tier-1 Indian Outlets), and Government portals.
+2.  **Distillation (Neural):** GPU-accelerated NLP processing to extract sentiment vectors and anger intensity.
+3.  **Synthesis (Logic):** Multi-factor risk computation and semantic clustering of hyper-local issues.
+4.  **Action (Command):** Visualizing the **State Pulse** for prioritized decision metrics.
 
-## Quick Start
+---
 
-### 1. Backend
+## 🧠 Neural Architecture & Metrics
 
-```powershell
-cd backend
+JanNetra utilizes an advanced ensemble of models and algorithms to quantify the "unquantifiable."
 
-# Create virtual environment (first time only)
-py -3.11 -m venv venv
+### 🛡️ **Linguistic Manipulation Index (LMI)**
+To combat modern disinformation, JanNetra calculates the **LMI** across every ingested signal:
+- **Vector 1 (Clickbait/Hedge):** Heuristic analysis of obfuscation patterns.
+- **Vector 2 (Linguistic Weight):** passive voice density and emotional amplification detection.
+- **Vector 3 (Source Tier):** Weighted reliability based on historical credibility.
 
-# Activate & install
-venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+### 📊 **Governance Risk Index (GRI)**
+The **GRI** is our proprietary metric for issue prioritization:
+$$GRI = (\text{Frequency} \times W_f) + (\text{Anger Intensity} \times W_a) + (\text{Source Credibility} \times W_s)$$
+*Where $W$ represents dynamic weights tuned for regional volatility.*
 
-# Configure secrets
-copy .env.example .env
-# Edit .env to add your custom configuration
+---
 
-# Start server
-venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+## 🛠️ System Blueprint
+
+```mermaid
+graph TD
+    A[Sentinel Ingestion] --> B{Neural Pipeline}
+    B -->|GPU DistilBERT| C[Sentiment Vector]
+    B -->|Heuristic Engine| D[Anger Dynamics]
+    B -->|3-Stage Ensemble| E[Fake News Armor]
+    C & D & E --> F[Semantic Issue Clustering]
+    F --> G[Pulse Dashboard]
+    G --> H[Actionable Insights]
 ```
 
-### 2. Frontend
+---
 
-```powershell
-cd frontend
+## 🖥️ Live Pulse Console
+*Simulated real-time signal processing logs:*
 
-# Install dependencies (first time only)
-npm install
-
-# Start dev server
-npm run dev
+```console
+[SENTINEL] :: INGESTING :: REDDIT/MUMBAI-COMMUNITY -> 15 SIGNALS
+[NEURAL]   :: ANALYSIS  :: CLUSTER-8A2F -> { ANGER: 8.4, SENTIMENT: NEGATIVE }
+[SYTHESIS] :: PRIORITY  :: ISSUE-44C -> RATING: 92.5 [CRITICAL]
+[COMMAND]  :: ALERT     :: INFRASTRUCTURE BREACH DETECTED IN DISTRICT-INDORE
 ```
 
-### 3. Verify
+---
 
-| Service        | URL                           |
-| -------------- | ----------------------------- |
-| Backend API    | http://localhost:8000         |
-| Swagger Docs   | http://localhost:8000/docs    |
-| Frontend       | http://localhost:5173         |
+## ⚡ Technical Specification
 
-## API Endpoints
+### **Core Systems**
+- **Neural Hub:** `FastAPI` (Python 3.11+) optimized for asynchronous IO.
+- **Intelligence Model:** `Hugging Face Transformers` (DistilBERT SST-2).
+- **Data Persistence:** `SQLite` (Relational Entities) & `MongoDB` (Unstructured Signals).
+- **Front-End Interface:** `React 18` + `Vite` for ultra-fast UX response.
 
-| Prefix           | Module             | Description                    |
-| ---------------- | ------------------ | ------------------------------ |
-| `/api/auth`      | Authentication     | Email, Google, Phone OTP auth  |
-| `/api/dashboard` | Dashboard          | Aggregated stats & top risks   |
-| `/api/articles`  | Articles           | CRUD for governance articles   |
-| `/api/alerts`    | Alerts             | Risk alert management          |
-| `/api/analytics` | Analytics          | Sentiment, heatmap, breakdown  |
-| `/api/sources`   | Sources            | Data source management         |
-| `/api/scanner`   | Scanner            | NLP pipeline & fake detection  |
-| `/api/chatbot`   | Chatbot            | Rule-based governance Q&A      |
-| `/api/account`   | Account            | Profile & password management  |
+### **Zero-Dependency Quick Start**
+1. **Initialize Engine:** `cd backend && pip install -r requirements.txt`
+2. **Launch Neural Layer:** `python -m uvicorn app.main:app --reload --port 8000`
+3. **Connect Command Layer:** `cd frontend && npm install && npm run dev`
 
-## Environment Variables
+---
 
-# No specific keys needed for AI anymore
+## 🔗 Connection Matrix
 
-### Frontend (`frontend/.env`)
-```
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-```
-# jannetra
+| Interface | Access Point | Signature |
+| :--- | :--- | :--- |
+| **System API** | `http://localhost:8000` | `200 OK` |
+| **Neural Docs** | `http://localhost:8000/docs` | `SWAGGER-V3` |
+| **Command Portal** | `http://localhost:5173` | `TRANSMITTING` |
+
+---
+*JanNetra: Precision Governance through Neural Intelligence.*
+
