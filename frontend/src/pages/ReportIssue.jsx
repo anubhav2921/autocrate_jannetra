@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
     Camera, MapPin, Mic, Send, RefreshCw, X, Check, 
     AlertTriangle, Loader2, Sparkles, User, Clock, CheckCircle2,
-    RotateCcw, SwitchCamera, Info
+    RotateCcw, SwitchCamera, Info, Image as ImageIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
@@ -15,6 +15,7 @@ const ReportIssue = () => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
+    const fileInputRef = useRef(null);
     
     // States
     const [step, setStep] = useState('intro'); // intro, camera, analyzing, autofill
@@ -178,6 +179,20 @@ const ReportIssue = () => {
         handleAnalyze(imageData);
     };
 
+    const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const imageData = event.target.result;
+            setCapturedImage(imageData);
+            setStep('analyzing');
+            handleAnalyze(imageData);
+        };
+        reader.readAsDataURL(file);
+    };
+
     // AI Analysis
     const handleAnalyze = async (imageData) => {
         setIsAnalyzing(true);
@@ -190,21 +205,11 @@ const ReportIssue = () => {
             formData.append('longitude', location?.longitude || 0);
             formData.append('timestamp', new Date().toISOString());
 
-            console.log("Starting native fetch AI analysis...");
-            const token = localStorage.getItem('token');
-            const BASE_URL = import.meta.env.VITE_API_URL || 'https://jannetra-web-production.up.railway.app';
+            console.log("Starting AI analysis via centralized apiClient...");
             
-            const rawRes = await fetch(`${BASE_URL}/api/report-issue`, {
-                method: 'POST',
-                body: formData,
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            const res = await api.post('/report-issue', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
             });
-            
-            if (!rawRes.ok) {
-                const text = await rawRes.text();
-                throw new Error(`HTTP ${rawRes.status}: ${text}`);
-            }
-            const res = await rawRes.json();
 
             console.log("AI Analysis Success:", res);
             setAiResult(res);
@@ -435,12 +440,21 @@ const ReportIssue = () => {
 
                             {/* Camera Actions */}
                             <div className="camera-actions-bar">
-                                <button className="action-sub-btn" onClick={fetchLocation}>
-                                    <MapPin size={20} className={location ? 'text-blue' : 'animate-pulse'} />
+                                <button className="action-sub-btn" onClick={() => fileInputRef.current?.click()}>
+                                    <ImageIcon size={20} />
                                 </button>
+
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    style={{ display: 'none' }} 
+                                    accept="image/*" 
+                                    onChange={handleFileUpload}
+                                />
                                 
                                 <button 
                                     className={`main-capture-btn ${!isCameraReady ? 'disabled' : ''}`} 
+                                    id="capture-btn"
                                     onClick={capturePhoto}
                                     disabled={!isCameraReady}
                                 >

@@ -12,7 +12,7 @@ import {
     setupRecaptcha,
     verifyFirebaseToken,
 } from '../services/authService';
-import axios from 'axios';
+import api from '../services/apiClient';
 
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
@@ -26,7 +26,7 @@ const COUNTRY_CODES = [
     { code: '+81', label: '🇯🇵 +81' },
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : 'https://jannetra-web-production.up.railway.app/api';
+// Using centralized API configuration from apiClient.js
 
 export default function Login({ onLogin }) {
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
@@ -54,13 +54,15 @@ export default function Login({ onLogin }) {
                 if (!result) return;
                 setGLoading(true);
                 try {
-                    const idToken = await result.user.getIdToken();
-                    const response = await axios.post(
-                        `${API_BASE}/auth/google`,
+                    const idToken = await result.user.getIdToken(true);
+                    console.log("[JanNetra-Auth] Google Redirect ID TOKEN Length:", idToken.length);
+                    // Use force-refresh token to avoid 'kid' claim issues
+                    const response = await api.post(
+                        '/auth/google',
                         {},
                         { headers: { Authorization: `Bearer ${idToken}` } }
                     );
-                    const { user, token } = response.data;
+                    const { user, token } = response;
                     localStorage.setItem('user', JSON.stringify(user));
                     localStorage.setItem('token', token);
                     onLogin(user);
@@ -109,7 +111,7 @@ export default function Login({ onLogin }) {
             const { idToken } = await loginWithEmail(email, password);
 
             // Verify with backend
-            const response = await verifyFirebaseToken(idToken, '/api/auth/firebase-login');
+            const response = await verifyFirebaseToken(idToken, '/auth/firebase-login');
             const { user, token } = response;
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('token', token);
@@ -121,12 +123,7 @@ export default function Login({ onLogin }) {
             if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
                 // Fallback to backend-only auth
                 try {
-                    const res = await fetch(`${API_BASE}/auth/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password }),
-                    });
-                    const data = await res.json();
+                    const data = await api.post('/auth/login', { email, password });
                     if (data.success) {
                         localStorage.setItem('user', JSON.stringify(data.user));
                         localStorage.setItem('token', data.token);
@@ -146,12 +143,7 @@ export default function Login({ onLogin }) {
             if (err?.code === 'auth/user-not-found') {
                 // Try backend-only auth
                 try {
-                    const res = await fetch(`${API_BASE}/auth/login`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email, password }),
-                    });
-                    const data = await res.json();
+                    const data = await api.post('/auth/login', { email, password });
                     if (data.success) {
                         localStorage.setItem('user', JSON.stringify(data.user));
                         localStorage.setItem('token', data.token);
@@ -180,14 +172,10 @@ export default function Login({ onLogin }) {
 
             // Final fallback: try backend-only
             try {
-                const res = await fetch(`${API_BASE}/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password }),
-                });
-                const data = await res.json();
+                const data = await api.post('/auth/login', { email, password });
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
                     onLogin(data.user);
                     navigate('/');
                     return;
@@ -237,12 +225,7 @@ export default function Login({ onLogin }) {
                 err?.code === 'auth/internal-error'
             ) {
                 try {
-                    const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ phone_number: finalPhone }),
-                    });
-                    const data = await res.json();
+                    const data = await api.post('/auth/send-phone-otp', { phone_number: finalPhone });
                     if (data.success) {
                         setConfirmationResult(null); // Mark as backend OTP
                         setStep('otp');
@@ -326,12 +309,7 @@ export default function Login({ onLogin }) {
                 // Backend OTP verification (login)
                 const cleaned = phone.replace(/\D/g, '');
                 const finalPhone = `${countryCode}${cleaned}`;
-                const res = await fetch(`${API_BASE}/auth/login-phone`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: finalPhone, otp: code }),
-                });
-                const data = await res.json();
+                const data = await api.post('/auth/login-phone', { phone_number: finalPhone, otp: code });
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
                     onLogin(data.user);
@@ -376,12 +354,7 @@ export default function Login({ onLogin }) {
         } catch {
             // Fallback to backend
             try {
-                const res = await fetch(`${API_BASE}/auth/send-phone-otp`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phone_number: finalPhone }),
-                });
-                const data = await res.json();
+                const data = await api.post('/auth/send-phone-otp', { phone_number: finalPhone });
                 if (data.success) {
                     setConfirmationResult(null);
                     startResendTimer();
@@ -404,14 +377,15 @@ export default function Login({ onLogin }) {
 
         try {
             const result = await signInWithPopup(auth, googleProvider);
-            const idToken = await result.user.getIdToken();
+            const idToken = await result.user.getIdToken(true); // 🚨 Force refresh for a fresh KID claim
+            console.log("[JanNetra-Auth] Google Popup ID TOKEN Length:", idToken.length);
 
-            const response = await axios.post(
-                `${API_BASE}/auth/google`,
+            const response = await api.post(
+                '/auth/google',
                 {},
                 { headers: { Authorization: `Bearer ${idToken}` } }
             );
-            const { user, token } = response.data;
+            const { user, token } = response;
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('token', token);
             onLogin(user);

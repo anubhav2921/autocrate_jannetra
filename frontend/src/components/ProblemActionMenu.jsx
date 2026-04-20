@@ -81,7 +81,7 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                     boxShadow: '0 10px 25px rgba(0,0,0,0.8)', minWidth: '180px'
                 }}>
                     <button 
-                        onClick={() => navigate(`/signal-monitor/${problem.id}`)}
+                        onClick={() => navigate(`/signal-monitor/${problem.id}`, { state: { readonly: true } })}
                         style={{
                             width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent',
                             border: 'none', color: 'var(--text-primary)', cursor: 'pointer',

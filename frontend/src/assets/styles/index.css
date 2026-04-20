@@ -348,9 +348,7 @@ a:hover {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
+  table-layout: auto;
 }
 
 .data-table thead th {
@@ -380,6 +378,7 @@ a:hover {
   font-size: 0.875rem;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 /* ── Badges ───────────────────────────────────────────────── */

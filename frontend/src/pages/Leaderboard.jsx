@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Award, CheckCircle2, Clock, TrendingUp } from 'lucide-react';
 import Ballpit from '../components/Ballpit/Ballpit';
+import api from '../services/apiClient';
 
 export default function Leaderboard() {
     const [leaders, setLeaders] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/leaderboard')
-            .then((r) => r.json())
+        api.get('/leaderboard')
             .then((data) => setLeaders(data.leaderboard || []))
             .catch(console.error)
             .finally(() => setLoading(false));

@@ -6,6 +6,7 @@
 
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -33,6 +34,9 @@ if (import.meta.env.DEV) {
 
 // Firebase app instance
 const app = initializeApp(firebaseConfig);
+
+// Initialize Analytics
+export const analytics = getAnalytics(app);
 
 // Auth exports
 export const auth = getAuth(app);

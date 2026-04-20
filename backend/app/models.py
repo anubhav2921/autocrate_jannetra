@@ -147,6 +147,9 @@ class SignalProblemSchema(BaseModel):
     description: Optional[str] = None
     risk_score: float = 0.0
     source: Optional[str] = None
+    source_url: Optional[str] = None
+    source_type: Optional[str] = None
+    created_at: Optional[datetime] = None
     status: str = "Pending"  # Pending | Problem Resolved
 
 

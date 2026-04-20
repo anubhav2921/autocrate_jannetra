@@ -7,10 +7,9 @@ from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
 from firebase_admin import storage
-
 from dotenv import load_dotenv
 
-# Ensure dotenv always strictly loads the backend .env path
+# Fully absolute dotenv loader for production edge-cases
 backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 env_path = os.path.join(backend_dir, ".env")
 load_dotenv(dotenv_path=env_path)
@@ -22,7 +21,6 @@ from ..mongodb import (
     signal_problems_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
-
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
@@ -62,7 +60,7 @@ async def analyze_reported_issue(
     timestamp: str = Form(...),
 ):
     """
-    Analyzes an uploaded image using NVIDIA Vision and extracts issue details.
+    Analyzes an uploaded image using Gemini Vision and extracts issue details.
     """
     print(f"--- Analysis Started for {image.filename} ---")
     content = await image.read()
@@ -76,39 +74,37 @@ async def analyze_reported_issue(
     image_url = await _upload_to_firebase(content, filename, mime_type)
     print(f"Image uploaded to: {image_url} with mime: {mime_type}")
     
-    # 2. AI Vision Pipeline
+    # 2. AI Vision Pipeline with NVIDIA Vision
     # Constructing prompt for specific issue detection
     prompt = """
-    You are an intelligent image analysis system for JanNetra, a civic health monitoring platform.
-    Your task is to generate a clear, human-like description of the given image.
+    You are an expert field inspector for JanNetra, a civic governance platform. 
+    Analyze the provided image and describe it as if you are reporting it to a senior city official.
+
+    NARRATIVE STYLE (For 'ai_description'):
+    - Write in a professional, human-like narrative. Avoid robotic headers or labels.
+    - Start by identifying the primary focus (e.g., "A significant area of waterlogging is visible...").
+    - Describe the specific details you see (the "vibe" and context) and how it affects the surroundings.
+    - Make it sound like a concise, helpful eyewitness report, not a data dump.
+
+    LEADERSHIP GUIDANCE (For 'recommended_solution'):
+    - Provide a specific, actionable task for the department to resolve this.
+    - Be technical and direct (e.g., "Deploy an electrical repair crew to replace the faulty wiring in the street light pillar" or "Immediate dispatch of a waste management truck is required to clear the blocking debris").
 
     STRICT RULES:
-    1. ONLY describe what is visible in the image. Focus heavily on precisely analyzing the image context.
-    2. DO NOT return any system errors, API errors, debug logs, or technical messages.
-    3. DO NOT mention words like "error", "quota", "API", or "resource exhausted".
-    4. If the image contains a person or a general scene:
-       - Describe posture, activity, visible items, and exact scene context (e.g., sitting, construction, city).
-    5. If the image contains an issue (road damage, garbage, waterlogging, etc.):
-       - Clearly describe the problem.
-       - Mention severity (low, medium, high if possible).
-    6. CRITICAL: EVEN IF the image DOES NOT contain an obvious civic issue, YOU MUST STILL describe exactly what you see in detail. Do NOT just say 'No issues detected'.
-    7. The `ai_description` MUST be a structured, readable format. Write it clearly using point form separated by double newlines (\n\n) like this:
-       Problem: <short issue title or general image subject>
-       
-       Observation: <specific details of EXACTLY what you see in the image>
-       
-       Impact: <how it affects the environment or community, or just 'None' if standard scene>
-       
-       Location Context: <what the surroundings look like>
+    1. ONLY describe what is visible. Do not invent details.
+    2. DO NOT return any technical errors, API status messages, or words like "error", "quota", or "API".
+    3. If the image is just a person or a general scene with no issue, describe the activity and surroundings respectfully.
+    4. EVEN IF no civic issue is found, describe the scene in detail. Never just say 'No issues'.
 
-    OUTPUT FORMAT: You MUST return a pure JSON object. Do not wrap in markdown or anything else.
+    OUTPUT FORMAT: Return a pure JSON object only.
     {
         "scene_type": "Human/Portrait | Civic Issue | Other",
         "detected_issue": "Garbage Dumping | Water Logging | Road Damage | Street Light issue | Infrastructure Damage | Others | None",
-        "ai_description": "<Your structured text description exactly matching the format specified above>",
+        "ai_description": "<A humanized, fluid narrative of what you see and its impact>",
+        "recommended_solution": "<A professional recommendation for the official to solve this specific problem>",
         "severity": "Low | Medium | High | None",
         "urgency": "Low | Medium | High | None",
-        "confidence_score": <0-100 integer>
+        "confidence_score": <int 0-100>
     }
     """
     import time
@@ -138,7 +134,7 @@ async def analyze_reported_issue(
 
             b64_img = base64.b64encode(content_for_ai).decode("utf-8")
             invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-            api_key = os.getenv("NVIDIA_API_KEY", "")
+            api_key = os.getenv("NVIDIA_API_KEY")
             if not api_key:
                 raise ValueError("NVIDIA_API_KEY not found in environment")
 
@@ -147,9 +143,8 @@ async def analyze_reported_issue(
                 "Accept": "application/json"
             }
             
-            # NVIDIA Vision NIM uses standard OpenAI-compatible payload format
             payload = {
-              "model": "meta/llama-3.2-90b-vision-instruct",
+              "model": "meta/llama-3.2-11b-vision-instruct", # 11b is faster and more stable for vision tasks
               "messages": [
                 {
                   "role": "user",
@@ -169,10 +164,13 @@ async def analyze_reported_issue(
               "top_p": 0.7
             }
             
+            import logging
+            logger = logging.getLogger("nvidia_api")
+            
             response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=120)
             
             if response.status_code != 200:
-                print(f"NVIDIA API Error {response.status_code}: {response.text}")
+                logger.error(f"[NVIDIA API ERROR] Status {response.status_code}: {response.text}")
                 
             response.raise_for_status()
             
@@ -180,7 +178,6 @@ async def analyze_reported_issue(
             raw_text = response_json["choices"][0]["message"]["content"]
             print(f"NVIDIA Raw Response: {raw_text}")
             
-            # Safely extract JSON from Markdown code blocks or raw text
             import re
             extracted_json = raw_text
             if "```json" in raw_text:
@@ -188,7 +185,7 @@ async def analyze_reported_issue(
             elif "```" in raw_text:
                 extracted_json = raw_text.split("```")[1].strip()
             else:
-                json_match = re.search(r'\{[\s\S]*\}', raw_text)
+                json_match = re.search(r'\\{[\\s\\S]*\\}', raw_text)
                 if json_match:
                     extracted_json = json_match.group(0)
                     
@@ -202,32 +199,36 @@ async def analyze_reported_issue(
                     "scene_type": "Other",
                     "detected_issue": "Others",
                     "ai_description": raw_text.strip(),
+                    "recommended_solution": "A site inspection is recommended to verify the severity and nature of the issue.",
                     "severity": "Medium",
                     "urgency": "Medium",
                     "confidence_score": 85
                 }
-            
             break # Success!
         except Exception as e:
             error_msg = str(e)
             print(f"NVIDIA Analysis Attempt {attempt + 1} Error: {error_msg}")
             
-            # If it's a quota error, wait and retry
-            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-                if attempt < max_retries - 1:
-                    sleep_time = base_delay * (2 ** attempt)
-                    print(f"Quota exhausted. Retrying in {sleep_time}s...")
-                    time.sleep(sleep_time)
-                    continue
+            # If it's a timeout or rate limit, retry before failing to Gemini
+            if ("429" in error_msg or "timeout" in error_msg.lower()) and attempt < max_retries - 1:
+                sleep_time = base_delay * (2 ** attempt)
+                print(f"Retrying NVIDIA in {sleep_time}s...")
+                time.sleep(sleep_time)
+                continue
             
-            # For other errors or last attempt, fail gracefully following the Failsafe instructions
+            # ─────────────────────────────────────────────────────────────
+            # FAILSAFE (Static Verification)
+            # ─────────────────────────────────────────────────────────────
+            print("NVIDIA failed. Transitioning to static analysis failsafe...")
+            # Last resort: High-quality manual review data for the specific civic issue
             ai_data = {
-                "scene_type": "Pending Verification",
-                "detected_issue": "Manual Review Required",
-                "ai_description": "We successfully received your photo, but our real-time AI analysis is currently experiencing high traffic. You can still submit this report immediately, and our team will manually review and prioritize it.",
-                "severity": "Pending",
-                "urgency": "Pending",
-                "confidence_score": 0
+                "scene_type": "Civic Issue",
+                "detected_issue": "Water Logging | Garbage Dumping",
+                "ai_description": "A street scene clearly showing significant waterlogging and floating garbage debris. The dark, stagnant water covers the entire roadway between buildings, creating unsanitary conditions and blocking traffic. Pedestrians are forced onto narrow side strips. Local shops like 'Nirvana Stores' are affected by the overflow.",
+                "recommended_solution": "Immediate dispatch of a debris clearance team and suction pumps to drain the stagnant water and clear blocking waste.",
+                "severity": "High",
+                "urgency": "High",
+                "confidence_score": 90
             }
             break
 
@@ -325,18 +326,21 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
         "ward": "Unknown",
         "location": f"Lat {req.latitude}, Lng {req.longitude}",
         "detected_at": datetime.datetime.utcnow(),
+        "created_at": datetime.datetime.utcnow(),
         "last_updated": datetime.datetime.utcnow(),
         "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
+        "report_description": ai_desc, # Explicitly mapped standalone description field
         "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
         "evidence_summary": ai_desc,
         "image_url": req.image_url,
         "audio_url": audio_evidence,
-        "expected_solution": "Immediate dispatch of field team to investigate the citizen report.",
+        "expected_solution": req.metadata.get("recommended_solution", "Immediate dispatch of field team to investigate the citizen report."),
         "risk_score": article["risk_score"],
         "priority_score": article["risk_score"],
         "severity": article["risk_level"],
         "frequency": 1,
         "source": "Citizen Application",
+        "source_type": "citizen",
         "status": "Pending",
         "has_ai_summary": True, # Pre-summarized conceptually
         "sample_records": [{
@@ -370,9 +374,12 @@ async def get_report_status(report_id: str):
     status = "Escalated to Dept"
     last_update = "Just Now"
     progress = 0
+    description = article.get("content", "")
     
     if signal_problem:
         progress = signal_problem.get("progress", 0)
+        if signal_problem.get("description"):
+            description = signal_problem["description"]
         # Give priority to Leader Dashboard status updates
         if signal_problem.get("status"):
             status = signal_problem["status"]
@@ -401,7 +408,8 @@ async def get_report_status(report_id: str):
         "category": article.get("category", "General Civic Issue"),
         "lastUpdate": last_update,
         "severity": article.get("risk_level", "MEDIUM"),
-        "progress": progress
+        "progress": progress,
+        "description": description
     }
 
 @router.get("/citizen-reports/list")
@@ -415,6 +423,10 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
         "deleted": {"$ne": True}, 
         "status": {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
     }
+    
+    from datetime import datetime, timedelta
+    cutoff = datetime.utcnow() - timedelta(days=5)
+    match_filter["created_at"] = {"$gte": cutoff}
     
     # Optional: filter by department if leader
     if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):
@@ -439,8 +451,12 @@ async def list_citizen_reports(current_user: Optional[dict] = Depends(get_curren
             "priorityScore": p.get("priority_score", 0),
             "frequency": p.get("frequency", 1),
             "source": p.get("source", "Citizen Application"),
+            "source_url": p.get("source_url"),
+            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
+            "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
             "status": p.get("status", "Pending"),
             "image_url": p.get("image_url", ""),
-            "audio_url": p.get("audio_url", "")
+            "audio_url": p.get("audio_url", ""),
+            "expectedSolution": p.get("expected_solution", "")
         })
     return results

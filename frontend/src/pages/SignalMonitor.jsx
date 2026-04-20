@@ -177,7 +177,18 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {p.title}
+                                            {p.source_url ? (
+                                                <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline" onClick={(e) => e.stopPropagation()}>
+                                                    {p.title}
+                                                </a>
+                                            ) : (
+                                                <span>{p.title}</span>
+                                            )}
+                                            {p.source_type && p.source_type !== 'unknown' && (
+                                                <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
+                                                    [{p.source_type}]
+                                                </span>
+                                            )}
                                             {p.frequency > 5 && <Zap size={14} style={{ color: '#ef4444' }} />}
                                         </div>
                                     </td>
@@ -203,7 +214,9 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={12} /> {p.location}
+                                            <MapPin size={12} /> {typeof p.location === 'object' && p.location !== null 
+                                                ? `${p.location.latitude?.toFixed(4)}, ${p.location.longitude?.toFixed(4)}` 
+                                                : p.location}
                                         </span>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
@@ -239,14 +252,14 @@ export default function SignalMonitor() {
                                     </td>
                                     <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <button
-                                            onClick={() => navigate(`/signal-monitor/${p.id}`)}
+                                            onClick={() => navigate(`/signal-monitor/${p.id}`, { state: { readonly: true } })}
                                             className="btn btn-primary"
                                             style={{
                                                 padding: '6px 14px', fontSize: '0.75rem',
                                                 display: 'flex', alignItems: 'center', gap: '5px',
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                            Take Action
+                                            View Details
                                         </button>
                                         <ProblemActionMenu problem={p} onUpdate={() => window.location.reload()} />
                                     </td>

@@ -5,6 +5,7 @@ import {
     Cpu, HardDrive, Wifi, Zap, MapPin, TrendingUp, TrendingDown,
     Minus, Brain, Wrench, ShieldCheck, RefreshCw, Circle,
 } from 'lucide-react';
+import api from '../services/apiClient';
 
 const STATUS_CONFIG = {
     Healthy: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
@@ -33,8 +34,7 @@ export default function SystemMetricDetail() {
     const [acknowledging, setAcknowledging] = useState(false);
 
     useEffect(() => {
-        fetch(`/api/system-metrics/${id}`)
-            .then((r) => r.json())
+        api.get(`/system-metrics/${id}`)
             .then((data) => setMetric(data))
             .catch(console.error)
             .finally(() => setLoading(false));
@@ -43,8 +43,7 @@ export default function SystemMetricDetail() {
     const handleAnalyze = async () => {
         setAnalyzing(true);
         try {
-            const res = await fetch(`/api/system-metrics/${id}/analyze`, { method: 'POST' });
-            const data = await res.json();
+            const data = await api.post(`/system-metrics/${id}/analyze`);
             if (data.success) {
                 setMetric((prev) => ({
                     ...prev,
@@ -59,8 +58,7 @@ export default function SystemMetricDetail() {
     const handleAcknowledge = async () => {
         setAcknowledging(true);
         try {
-            const res = await fetch(`/api/system-metrics/${id}/acknowledge`, { method: 'PATCH' });
-            const data = await res.json();
+            const data = await api.patch(`/system-metrics/${id}/acknowledge`);
             if (data.success) {
                 setMetric((prev) => ({ ...prev, status: 'Healthy', trend: 'Improving' }));
             }

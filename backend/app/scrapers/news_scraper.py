@@ -72,7 +72,8 @@ def scrape_newsapi(max_articles: int = 30) -> list[dict]:
     articles: list[dict] = []
     from_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    for query in GOVERNANCE_QUERIES[:3]:  # Limit queries to conserve quota
+    logger.info(f"[NewsAPI] Starting scrape for {len(GOVERNANCE_QUERIES)} categories over the last 7 days.")
+    for query in GOVERNANCE_QUERIES:
         logger.info("[NewsAPI] Searching: %s", query)
 
         try:

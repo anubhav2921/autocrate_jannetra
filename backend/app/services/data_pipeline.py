@@ -113,8 +113,8 @@ def _get_existing_clusters() -> list[dict]:
     """Fetch active issues from signal_problems collection."""
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     # Fetch clusters to keep grouping consistent across runs
@@ -157,8 +157,8 @@ def _store_aggregated_clusters(clusters: list[dict]):
         return
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     
@@ -179,6 +179,7 @@ def _store_aggregated_clusters(clusters: list[dict]):
             {"$set": cluster},
             upsert=True
         )
+    logger.info(f"✅ Stored {len(clusters)} aggregated signal clusters.")
     client.close()
 
 
@@ -186,8 +187,8 @@ def _get_existing_hashes() -> set:
     """Fetch existing content hashes to avoid reprocessing EXACT signals."""
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     hashes = {doc["content_hash"] for doc in db["news_articles"].find({}, {"content_hash": 1}) if "content_hash" in doc}
@@ -201,12 +202,13 @@ def _store_articles_sync(records: list[dict]) -> int:
         return 0
     from pymongo import MongoClient
     import os
-    mongo_url = os.getenv("MONGO_URL", "mongodb://localhost:27017")
-    mongo_db_name = os.getenv("MONGO_DB_NAME", "governance_db")
+    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
+    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
     client = MongoClient(mongo_url)
     db = client[mongo_db_name]
     try:
         result = db["news_articles"].insert_many(records, ordered=False)
+        logger.info(f"✅ Stored {len(result.inserted_ids)} raw signals.")
         return len(result.inserted_ids)
     except Exception as e:
         logger.warning(f"[Pipeline] Signal storage error: {e}")
@@ -286,12 +288,30 @@ def run_pipeline() -> dict:
     if not all_articles:
         return {"status": "empty", "total_scraped": 0, "elapsed_seconds": round(time.time() - start_time, 2)}
  
-    # Stage 2: Filter exact already-processed hashes to save NLP costs
+    # Stage 2: Filter exact already-processed hashes and outdated signals to save NLP costs
     existing_hashes = _get_existing_hashes()
-    new_articles = [a for a in all_articles if a.get("content_hash") not in existing_hashes]
+    from datetime import timedelta
+    cutoff = datetime.utcnow() - timedelta(days=5)
+    
+    new_articles = []
+    for a in all_articles:
+        if a.get("content_hash") in existing_hashes:
+            continue
+            
+        pub = a.get("published_at")
+        if not pub:
+            continue
+            
+        if pub.tzinfo:
+            pub = pub.replace(tzinfo=None)
+            
+        if pub < cutoff:
+            continue
+            
+        new_articles.append(a)
     
     if not new_articles:
-        logger.info("[Pipeline] No brand-new signals found. Skipping NLP.")
+        logger.info("[Pipeline] No brand-new fresh signals found. Skipping NLP.")
         return {"status": "no_new", "total_scraped": len(all_articles), "elapsed_seconds": round(time.time() - start_time, 2)}
  
     # Stage 3: NLP Processing of new signals
@@ -314,8 +334,10 @@ def run_pipeline() -> dict:
                 "title": clean_text_simple(processed["title"]),
                 "content": processed["content"],
                 "source_name": processed["source_name"],
-                "source_type": processed.get("source_type", "NEWS"),
+                "source_url": processed.get("source_url") or processed.get("url", ""),
+                "source_type": processed.get("source_type", "NEWS").lower(),
                 "published_at": processed.get("published_at"),
+                "created_at": processed.get("published_at") or now,
                 "content_hash": processed["content_hash"],
                 "anger_rating": processed.get("anger_rating", 0.0),
                 "sentiment_polarity": processed.get("sentiment_polarity", 0.0),
@@ -388,6 +410,9 @@ def run_pipeline() -> dict:
                 "priority_score": 0.0, # Calculated in storage phase
                 "anger_avg": signal["anger_rating"],
                 "sources": [signal["source_name"]],
+                "source_url": signal.get("source_url", ""),
+                "source_type": signal.get("source_type", "news"),
+                "created_at": signal.get("created_at") or now,
                 "sample_records": [{
                     "title": signal["title"],
                     "source": signal["source_name"],

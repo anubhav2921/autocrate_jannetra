@@ -12,11 +12,9 @@ import {
     RecaptchaVerifier,
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
-import axios from 'axios';
+import api from './apiClient';
 
-const API_BASE = import.meta.env.VITE_API_URL
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : 'https://jannetra-web-production.up.railway.app/api';
+// Using consolidated 'api' from apiClient.js automatically handles environment-specific URLs.
 
 // ==============================
 // 🔹 Email Signup
@@ -118,12 +116,10 @@ export async function loginWithGoogle() {
 }
 
 // ==============================
-// 🔹 Backend: Create User Profile
-// ==============================
 export async function createUserProfile(payload) {
     try {
-        const response = await axios.post(`${API_BASE}/auth/users/create`, payload);
-        return response.data;
+        const response = await api.post('/auth/users/create', payload);
+        return response;
     } catch (error) {
         console.error('[Create User Profile Error]', error);
 
@@ -143,11 +139,11 @@ export async function createUserProfile(payload) {
 // ==============================
 export async function verifyFirebaseToken(
     idToken,
-    endpoint = '/auth/firebase-login'   // ✅ FIXED (no double /api)
+    endpoint = '/auth/firebase-login'
 ) {
     try {
-        const response = await axios.post(
-            `${API_BASE}${endpoint}`,
+        const response = await api.post(
+            endpoint,
             {},
             {
                 headers: {
@@ -156,7 +152,7 @@ export async function verifyFirebaseToken(
             }
         );
 
-        return response.data;
+        return response;
     } catch (error) {
         console.error('[Firebase Verify Error]', error);
 

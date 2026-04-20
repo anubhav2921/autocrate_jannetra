@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, User, Sparkles } from 'lucide-react';
+import api from '../services/apiClient';
 
 export default function Chatbot() {
     const [messages, setMessages] = useState([
@@ -24,12 +25,7 @@ export default function Chatbot() {
         setLoading(true);
 
         try {
-            const res = await fetch('/api/chatbot', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: userMsg }),
-            });
-            const data = await res.json();
+            const data = await api.post('/chatbot', { message: userMsg });
             setMessages((prev) => [...prev, { role: 'bot', text: data.response }]);
         } catch {
             setMessages((prev) => [...prev, { role: 'bot', text: '❌ Server unavailable. Please try again.' }]);

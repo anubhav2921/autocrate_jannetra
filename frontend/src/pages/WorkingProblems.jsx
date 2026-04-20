@@ -5,6 +5,7 @@ import {
     Flame, ArrowRight, UserCheck, Shield
 } from 'lucide-react';
 import api from '../services/api';
+import safe from '../utils/safeRender';
 
 export default function WorkingProblems() {
     const [problems, setProblems] = useState([]);
@@ -126,11 +127,23 @@ export default function WorkingProblems() {
                             
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '4px', letterSpacing: '0.5px' }}>
-                                        {p.id} • {p.source}
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '4px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>{safe(p.id)}</span>
+                                        {p.source_type && p.source_type !== 'unknown' && (
+                                            <span style={{ background: 'rgba(59,130,246,0.15)', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
+                                                [{safe(p.source_type)}]
+                                            </span>
+                                        )}
+                                        <span>• {safe(p.source)}</span>
                                     </div>
                                     <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                                        {p.title.length > 50 ? p.title.substring(0, 50) + '...' : p.title}
+                                        {p.source_url ? (
+                                            <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline" onClick={(e) => e.stopPropagation()}>
+                                                {safe(p.title).length > 50 ? safe(p.title).substring(0, 50) + '...' : safe(p.title)}
+                                            </a>
+                                        ) : (
+                                            <span>{safe(p.title).length > 50 ? safe(p.title).substring(0, 50) + '...' : safe(p.title)}</span>
+                                        )}
                                     </h3>
                                 </div>
                                 <div style={{ 
@@ -150,7 +163,7 @@ export default function WorkingProblems() {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <MapPin size={13} style={{ color: 'var(--text-muted)' }} />
                                     <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {p.location}
+                                        {safe(p.location)}
                                     </span>
                                 </div>
                                 {activeTab === 'my-problems' ? (
@@ -160,8 +173,8 @@ export default function WorkingProblems() {
                                     </div>
                                 ) : (
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}><UserCheck size={12}/> {p.assignedName}</div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Invited by {p.invitedBy}</div>
+                                        <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}><UserCheck size={12}/> {safe(p.assignedName)}</div>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Invited by {safe(p.invitedBy)}</div>
                                     </div>
                                 )}
                             </div>

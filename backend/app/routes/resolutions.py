@@ -58,10 +58,21 @@ async def list_resolutions(user_id: Optional[str] = None):
     query = {}
     if user_id:
         query["resolved_by"] = user_id
+    
+    # manual resolutions
     cursor = resolutions_collection.find(query).sort("submitted_at", -1)
     res_docs = await cursor.to_list(None)
 
+    # signal problem resolutions
+    from ..mongodb import signal_problems_collection
+    sig_query = {"status": "Problem Resolved"}
+    if user_id:
+        sig_query["resolved_by"] = user_id
+    sig_cursor = await signal_problems_collection.find(sig_query).sort("resolved_at", -1).to_list(None)
+
     results = []
+    
+    # Process manual resolutions
     for r in res_docs:
         user = await users_collection.find_one({"id": r.get("resolved_by")}) or {}
         resolved_at = r.get("resolved_at")
@@ -80,6 +91,32 @@ async def list_resolutions(user_id: Optional[str] = None):
                 "name": user.get("name"),
                 "department": user.get("department"),
             },
+            "type": "Manual"
         })
+
+    # Process signal resolutions
+    for s in sig_cursor:
+        user = await users_collection.find_one({"id": s.get("resolved_by")}) or {}
+        resolved_at = s.get("resolved_at")
+        results.append({
+            "id": s["id"],
+            "title": s.get("title"),
+            "category": s.get("category"),
+            "location": s.get("location"),
+            "problem_description": s.get("description"),
+            "action_taken": s.get("resolution_report"),
+            "resources_used": "N/A",
+            "people_benefited": "N/A",
+            "status": "RESOLVED",
+            "resolved_at": resolved_at.isoformat() if isinstance(resolved_at, datetime) else resolved_at,
+            "leader": {
+                "name": user.get("name"),
+                "department": user.get("department"),
+            },
+            "type": "Signal"
+        })
+
+    # Sort combined list by date
+    results.sort(key=lambda x: x["resolved_at"] or "", reverse=True)
 
     return {"resolutions": results}

@@ -94,15 +94,15 @@ export default function Dashboard() {
 
             {/* Stat Cards */}
             <div className="stats-grid">
-                <div className="glass-card stat-card red animate-in" onClick={() => navigate('/analytics')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Shield size={22} /></div>
-                    <div className="stat-value" style={{ color: griColor }}>{data.overall_gri}</div>
-                    <div className="stat-label">Governance Risk Index</div>
-                </div>
                 <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><Newspaper size={22} /></div>
                     <div className="stat-value">{data.total_articles}</div>
                     <div className="stat-label">Total Signals Processed</div>
+                </div>
+                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
+                    <div className="stat-icon"><Flame size={22} /></div>
+                    <div className="stat-value">{data.active_problems_count || 0}</div>
+                    <div className="stat-label">Problem Clusters</div>
                 </div>
                 <div className="glass-card stat-card amber animate-in" onClick={() => navigate('/scanner')} style={{ cursor: 'pointer' }}>
                     <div className="stat-icon"><AlertTriangle size={22} /></div>
@@ -125,40 +125,8 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* Heatmap + Sentiment */}
-            <div className="grid-2-1">
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <MapPin size={18} /> Risk Heatmap by Location
-                    </div>
-                    {data.location_risk?.length > 0 ? (
-                        <div className="heatmap-grid">
-                            {data.location_risk.map((loc) => (
-                                <div
-                                    key={loc.location}
-                                    className={`heatmap-cell risk-${loc.avg_gri > 60 ? 'high' : loc.avg_gri > 30 ? 'moderate' : 'low'}`}
-                                    onClick={() => handleDrillDown(loc.location)}
-                                >
-                                    <div className="cell-location">{loc.location}</div>
-                                    <div className="cell-score" style={{ color: RISK_COLORS[loc.avg_gri > 60 ? 'HIGH' : loc.avg_gri > 30 ? 'MODERATE' : 'LOW'] }}>
-                                        {loc.avg_gri}
-                                    </div>
-                                    <div className="cell-count">{loc.count} signal{loc.count > 1 ? 's' : ''}</div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', color: 'var(--text-muted)', gap: '10px' }}>
-                            <MapPin size={32} style={{ opacity: 0.3 }} />
-                            <span style={{ fontSize: '0.85rem' }}>
-                                {hasLocation
-                                    ? 'No location risk data available for the selected area'
-                                    : 'Select a location to see location-specific risk data'}
-                            </span>
-                        </div>
-                    )}
-                </div>
-
+            {/* Sentiment & Category Breakdown */}
+            <div className="grid-2">
                 <div className="glass-card chart-card animate-in">
                     <div className="section-title">
                         <Activity size={18} /> Sentiment Split
@@ -192,31 +160,32 @@ export default function Dashboard() {
                         ))}
                     </div>
                 </div>
+
+                <div className="glass-card chart-card animate-in">
+                    <div className="section-title">
+                        <TrendingUp size={18} /> Risk by Category
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                        <BarChart data={data.category_risk || []} layout="vertical" margin={{ left: 60, right: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                            <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
+                            <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 10 }} width={60} />
+                            <Tooltip
+                                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                                itemStyle={{ color: '#f1f5f9' }}
+                                formatter={(value) => [`${value}`, 'Avg GRI']}
+                            />
+                            <Bar dataKey="avg_gri" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                                {(data.category_risk || []).map((entry) => (
+                                    <Cell key={entry.category} fill={RISK_COLORS[entry.avg_gri > 60 ? 'HIGH' : entry.avg_gri > 30 ? 'MODERATE' : 'LOW']} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
             </div>
 
-            {/* Category Risk Bar Chart */}
-            <div className="glass-card chart-card animate-in" style={{ marginBottom: '24px' }}>
-                <div className="section-title">
-                    <TrendingUp size={18} /> Risk by Category
-                </div>
-                <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={data.category_risk || []} layout="vertical" margin={{ left: 80 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 11 }} />
-                        <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 12 }} width={80} />
-                        <Tooltip
-                            contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                            itemStyle={{ color: '#f1f5f9' }}
-                            formatter={(value) => [`${value}`, 'Avg GRI']}
-                        />
-                        <Bar dataKey="avg_gri" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                            {(data.category_risk || []).map((entry) => (
-                                <Cell key={entry.category} fill={RISK_COLORS[entry.avg_gri > 60 ? 'HIGH' : entry.avg_gri > 30 ? 'MODERATE' : 'LOW']} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
+
 
             {/* Priority Rankings Table */}
             <div className="glass-card animate-in">
@@ -245,7 +214,14 @@ export default function Dashboard() {
                             {data.top_risks?.map((r, i) => (
                                 <tr key={r.id}>
                                     <td style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>#{i + 1}</td>
-                                    <td style={{ color: 'var(--text-primary)', fontWeight: 500, maxWidth: '280px' }}>
+                                    <td style={{ 
+                                        color: 'var(--text-primary)', 
+                                        fontWeight: 500, 
+                                        maxWidth: '400px',
+                                        whiteSpace: 'normal',
+                                        wordBreak: 'break-word',
+                                        lineHeight: '1.4'
+                                    }}>
                                         {r.title}
                                     </td>
                                     <td>{r.category}</td>
