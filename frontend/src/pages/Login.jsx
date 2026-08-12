@@ -4,7 +4,7 @@ import {
     Shield, Mail, Lock, Phone, KeyRound, RefreshCw,
 } from 'lucide-react';
 import { signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
-import { auth, googleProvider } from '../config/firebase';
+import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase';
 import {
     loginWithEmail,
     loginWithPhoneOTP,
@@ -13,6 +13,7 @@ import {
     verifyFirebaseToken,
 } from '../services/authService';
 import api from '../services/apiClient';
+
 
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
@@ -107,91 +108,43 @@ export default function Login({ onLogin }) {
         setLoading(true);
 
         try {
-            // Try Firebase Auth first
-            const { idToken } = await loginWithEmail(email, password);
-
-            // Verify with backend
-            const response = await verifyFirebaseToken(idToken, '/auth/firebase-login');
-            const { user, token } = response;
-            localStorage.setItem('user', JSON.stringify(user));
-            localStorage.setItem('token', token);
-            onLogin(user);
-            navigate('/');
-        } catch (err) {
-            console.error('[Email Login] Error:', err?.code, err?.message);
-
-            if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
-                // Fallback to backend-only auth
-                try {
-                    const data = await api.post('/auth/login', { email, password });
-                    if (data.success) {
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                        localStorage.setItem('token', data.token);
-                        onLogin(data.user);
-                        navigate('/');
-                        return;
-                    } else {
-                        setError(data.error || 'Invalid email or password');
-                        return;
-                    }
-                } catch {
-                    setError('Invalid email or password');
-                    return;
-                }
-            }
-
-            if (err?.code === 'auth/user-not-found') {
-                // Try backend-only auth
-                try {
-                    const data = await api.post('/auth/login', { email, password });
-                    if (data.success) {
-                        localStorage.setItem('user', JSON.stringify(data.user));
-                        localStorage.setItem('token', data.token);
-                        onLogin(data.user);
-                        navigate('/');
-                        return;
-                    } else {
-                        setError(data.error || 'No account found with this email');
-                        return;
-                    }
-                } catch {
-                    setError('No account found with this email');
-                    return;
-                }
-            }
-
-            if (err?.code === 'auth/too-many-requests') {
-                setError('Too many attempts. Please wait a few minutes.');
+            // 1. Direct Backend JWT Login
+            const data = await api.post('/auth/login', { email, password });
+            if (data.success && data.token) {
+                localStorage.setItem('user', JSON.stringify(data.user));
+                localStorage.setItem('token', data.token);
+                onLogin(data.user);
+                navigate('/');
                 return;
             }
 
-            if (err?.code === 'auth/network-request-failed') {
-                setError('Network error. Check your internet connection.');
-                return;
-            }
-
-            // Final fallback: try backend-only
-            try {
-                const data = await api.post('/auth/login', { email, password });
-                if (data.success) {
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('token', data.token);
-                    onLogin(data.user);
+            // 2. Optional Firebase Auth fallback if configured
+            if (isFirebaseConfigured) {
+                try {
+                    const { idToken } = await loginWithEmail(email, password);
+                    const response = await verifyFirebaseToken(idToken, '/auth/firebase-login');
+                    const { user, token } = response;
+                    localStorage.setItem('user', JSON.stringify(user));
+                    localStorage.setItem('token', token);
+                    onLogin(user);
                     navigate('/');
                     return;
-                } else {
-                    setError(data.error || 'Login failed');
-                    return;
+                } catch (fbErr) {
+                    console.debug('[Firebase Email Login Fallback]', fbErr);
                 }
-            } catch {
-                setError('Server unavailable. Please start the backend server.');
             }
+
+            setError(data.error || 'Invalid email or password');
+        } catch (err) {
+            console.error('[Email Login] Error:', err);
+            setError(err?.response?.data?.detail || err?.response?.data?.error || 'Invalid email or password');
         } finally {
             setLoading(false);
         }
     };
 
     // Phone OTP Send
+
     const handleSendOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -312,11 +265,15 @@ export default function Login({ onLogin }) {
                 const data = await api.post('/auth/login-phone', { phone_number: finalPhone, otp: code });
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                    }
                     onLogin(data.user);
                     navigate('/');
                 } else {
                     setError(data.error || 'Login failed');
                 }
+
             }
         } catch (err) {
             console.error('Verify OTP Error:', err);
@@ -373,6 +330,13 @@ export default function Login({ onLogin }) {
     // Google Sign-In
     const handleGoogleLogin = async () => {
         setError('');
+
+        const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+        if (!apiKey || apiKey === 'your_key' || apiKey.includes('your_')) {
+            setError('Google Sign-In requires Firebase to be configured with valid credentials in frontend/.env. Please use Email Login (admin@email.com / admin) for local testing.');
+            return;
+        }
+
         setGLoading(true);
 
         try {
@@ -401,7 +365,7 @@ export default function Login({ onLogin }) {
             if (err?.code === 'auth/popup-blocked') {
                 setError('Popup was blocked. Redirecting to Google sign-in...');
                 try { await signInWithRedirect(auth, googleProvider); } catch {
-                    setError('Sign-in failed. Please allow popups for this site.');
+                    setError('Sign-in failed. Please allow popups for this site or use Email Login.');
                 }
                 return;
             }
@@ -417,7 +381,7 @@ export default function Login({ onLogin }) {
                 setError('Backend server is not running.');
                 return;
             }
-            setError(`Google sign-in failed: ${err?.message || 'Unknown error'}`);
+            setError(`Google sign-in failed: ${err?.message || 'Unknown error'}. Please use Email Login.`);
         } finally {
             setGLoading(false);
         }
@@ -487,6 +451,37 @@ export default function Login({ onLogin }) {
                 {/* Email Tab */}
                 {activeTab === 'email' && (
                     <form onSubmit={handleEmailLogin} className="auth-form">
+                        <div style={{
+                            background: 'rgba(59, 130, 246, 0.08)',
+                            border: '1px solid rgba(59, 130, 246, 0.25)',
+                            borderRadius: '8px',
+                            padding: '10px 14px',
+                            marginBottom: '14px',
+                            fontSize: '13px',
+                            color: '#93c5fd'
+                        }}>
+                            <div style={{ fontWeight: 600, color: '#bfdbfe', marginBottom: '4px' }}>Demo Admin Login:</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontFamily: 'monospace', color: '#e0e7ff' }}>admin@email.com / admin</span>
+                                <button
+                                    type="button"
+                                    onClick={() => { setEmail('admin@email.com'); setPassword('admin'); setError(''); }}
+                                    style={{
+                                        background: '#3b82f6',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '4px 10px',
+                                        fontSize: '12px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Auto-Fill
+                                </button>
+                            </div>
+                        </div>
+
                         <div className="auth-field">
                             <Mail size={16} className="auth-field-icon" />
                             <input

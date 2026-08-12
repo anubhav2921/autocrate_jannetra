@@ -27,7 +27,8 @@ NEWSAPI_KEY: str = os.getenv("NEWSAPI_KEY", "")
 NEWSAPI_URL = "https://newsapi.org/v2/everything"
 GDELT_URL = "https://api.gdeltproject.org/api/v2/doc/doc"
 
-TIMEOUT = 20
+TIMEOUT = 8
+
 
 import time
 

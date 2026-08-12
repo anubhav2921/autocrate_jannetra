@@ -16,6 +16,13 @@ import '../assets/styles/landing.css';
 import VerificationModal from '../components/Landing/VerificationModal';
 import SampleIssueCard from '../components/Landing/SampleIssueCard';
 import VerifiedAlertCard from '../components/Landing/VerifiedAlertCard';
+import Strands from '../components/Strands/Strands';
+import Footer from '../components/ui/footer-section';
+
+
+
+
+
 
 const LandingPage = () => {
     const { theme, toggleTheme } = useTheme();
@@ -136,6 +143,37 @@ const LandingPage = () => {
 
     return (
         <div className="landing-root">
+            {/* Full-Page Static/Fixed Animated Strands Background from React Bits */}
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                pointerEvents: 'none',
+                zIndex: 0,
+                opacity: 0.8,
+                overflow: 'hidden'
+            }}>
+                <Strands
+                    colors={["#A881FE", "#6419FF", "#1E90FF", "#00D2FF"]}
+                    count={4}
+                    speed={0.4}
+                    amplitude={0.85}
+                    waviness={1.1}
+                    thickness={0.6}
+                    glow={2.6}
+                    taper={2.8}
+                    spread={1.2}
+                    intensity={0.7}
+                    saturation={1.4}
+                    opacity={0.9}
+                    scale={1.35}
+                    glass={false}
+                />
+
+            </div>
+
             <div className="landing-grid-bg" />
             <div className="landing-glow-1" />
             <div className="landing-glow-2" />
@@ -182,10 +220,13 @@ const LandingPage = () => {
             <section id="hero" className="hero-section">
                 <motion.div
                     className="hero-left"
+                    style={{ position: 'relative', zIndex: 2 }}
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
                 >
+
+
                     <motion.div variants={itemVariants} className="hero-badge animate-in">
                         AI-Powered Governance Platform
                     </motion.div>
@@ -212,8 +253,9 @@ const LandingPage = () => {
                     </motion.div>
                 </motion.div>
 
-                <div className="hero-right">
+                <div className="hero-right" style={{ position: 'relative', zIndex: 2 }}>
                     <motion.div
+
                         className="dashboard-card"
                         initial={{ scale: 0.9, opacity: 0, rotateY: -10 }}
                         animate={{ scale: 1, opacity: 1, rotateY: 0 }}
@@ -560,49 +602,14 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            <footer className="landing-footer" aria-labelledby="footer-heading">
-                <h2 id="footer-heading" className="sr-only">Footer</h2>
-                <div className="footer-grid">
-                    <div className="footer-brand">
-                        <div className="logo" style={{ marginBottom: '16px' }}>
-                            <span className="logo-text">JanNetra</span>
-                        </div>
-                        <p className="footer-tagline">Empowering citizens through transparency and AI-driven civic intelligence.</p>
-                        <div className="social-links">
-                            <a href="https://twitter.com/jannetra" aria-label="Twitter" target="_blank" rel="noopener noreferrer"><Zap size={20} /></a>
-                            <a href="https://linkedin.com/company/jannetra" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><Users size={20} /></a>
-                            <a href="https://github.com/jannetra" aria-label="GitHub" target="_blank" rel="noopener noreferrer"><Database size={20} /></a>
-                        </div>
-                    </div>
-                    <div className="footer-links">
-                        <h4>Platform</h4>
-                        <ul>
-                            <li><button onClick={() => scrollTo('how')} aria-label="How it works">How it works</button></li>
-                            <li><button onClick={() => scrollTo('alerts')} aria-label="Live Feed">Live Feed</button></li>
-                            <li><button onClick={() => navigate('/pulse')} aria-label="System Pulse">System Pulse</button></li>
-                        </ul>
-                    </div>
-                    <div className="footer-links">
-                        <h4>Resources</h4>
-                        <ul>
-                            <li><button onClick={() => navigate('/legal/transparency')} aria-label="Transparency">Transparency</button></li>
-                            <li><button onClick={() => navigate('/legal/privacy')} aria-label="Privacy Policy">Privacy Policy</button></li>
-                            <li><button onClick={() => navigate('/legal/terms')} aria-label="Terms of Service">Terms of Service</button></li>
-                        </ul>
-                    </div>
-                    <div className="footer-links">
-                        <h4>Contact</h4>
-                        <ul>
-                            <li><a href="mailto:support@jannetra.ai" aria-label="Support">Support</a></li>
-                            <li><a href="mailto:press@jannetra.ai" aria-label="Press">Press</a></li>
-                            <li><a href="mailto:contact@jannetra.ai" aria-label="Email Us">Email Us</a></li>
-                        </ul>
-                    </div>
-                </div>
-                <div className="footer-bottom">
-                    <p>© 2026 JanNetra. AI-Powered Civic Intelligence for Smarter Cities. All rights reserved.</p>
-                </div>
-            </footer>
+            {/* Modern Animated Footer Section */}
+            <Footer
+                brandName="JanNetra"
+                brandDescription="AI-powered civic intelligence & problem detection platform. Empowering citizens and municipal leaders through real-time detection, automated verification, and proactive governance."
+            />
+
+
+
 
             <VerificationModal
                 isOpen={verificationModalOpen}

@@ -33,8 +33,9 @@ MAX_RETRIES = 2
 RATE_LIMIT_DELAY = 2  # seconds between subreddit requests (Reddit rate limits)
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+    "User-Agent": "python:jannetra.governance.intelligence:v1.0.0 (by /u/jannetra_app)"
 }
+
 
 # Subreddits to scrape
 SUBREDDIT_CONFIG = [

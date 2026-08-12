@@ -19,7 +19,8 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger("jannetra.scrapers.gov")
 
-TIMEOUT = 20
+TIMEOUT = 6
+
 
 HEADERS = {
     "User-Agent": (

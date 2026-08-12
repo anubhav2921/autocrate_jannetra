@@ -276,8 +276,11 @@ export default function PhoneAuth({ onLogin }) {
                     { headers: { Authorization: `Bearer ${idToken}` } }
                 );
 
-                const { user: userData } = response;
+                const { user: userData, token } = response;
                 localStorage.setItem('user', JSON.stringify(userData));
+                if (token) {
+                    localStorage.setItem('token', token);
+                }
                 setStep('success');
                 setTimeout(() => {
                     onLogin(userData);
@@ -289,6 +292,9 @@ export default function PhoneAuth({ onLogin }) {
 
                 if (data.success) {
                     localStorage.setItem('user', JSON.stringify(data.user));
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                    }
                     setStep('success');
                     setTimeout(() => {
                         onLogin(data.user);
@@ -300,6 +306,9 @@ export default function PhoneAuth({ onLogin }) {
                         const regData = await api.post('/auth/register-phone', { phone_number: finalPhone, otp: code });
                         if (regData.success) {
                             localStorage.setItem('user', JSON.stringify(regData.user));
+                            if (regData.token) {
+                                localStorage.setItem('token', regData.token);
+                            }
                             setStep('success');
                             setTimeout(() => {
                                 onLogin(regData.user);
@@ -313,6 +322,7 @@ export default function PhoneAuth({ onLogin }) {
                     }
                 }
             }
+
         } catch (err) {
             console.error('Verify OTP Error:', err);
             if (err?.code) {

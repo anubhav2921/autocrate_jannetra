@@ -1,0 +1,195 @@
+.animated-footer-section {
+  position: relative;
+  width: 100%;
+  margin-top: 60px;
+  overflow: hidden;
+  background: transparent;
+  z-index: 10;
+}
+
+.animated-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  position: relative;
+}
+
+.animated-footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 28rem;
+  position: relative;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.footer-brand-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.footer-brand-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.footer-brand-desc {
+  color: #a1a1aa;
+  font-weight: 500;
+  font-size: 0.95rem;
+  max-width: 480px;
+  margin: 0 auto 24px;
+  line-height: 1.6;
+}
+
+.footer-social-links {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.footer-social-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a1a1aa;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+}
+
+.footer-social-btn:hover {
+  color: #ffffff;
+  background: rgba(168, 129, 254, 0.15);
+  border-color: rgba(168, 129, 254, 0.4);
+  transform: translateY(-3px) scale(1.08);
+  box-shadow: 0 4px 16px rgba(168, 129, 254, 0.3);
+}
+
+.footer-nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.footer-nav-item {
+  color: #a1a1aa;
+  text-decoration: none;
+  transition: color 0.2s, font-weight 0.2s;
+  cursor: pointer;
+}
+
+.footer-nav-item:hover {
+  color: #A881FE;
+}
+
+.footer-bottom-row {
+  margin-top: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #71717a;
+  font-size: 0.88rem;
+  position: relative;
+  z-index: 20;
+}
+
+@media (min-width: 768px) {
+  .footer-bottom-row {
+    flex-direction: row;
+  }
+}
+
+.footer-credit-link {
+  color: #71717a;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-credit-link:hover {
+  color: #ffffff;
+}
+
+.footer-giant-watermark {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(168, 129, 254, 0.04) 50%, transparent 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 80px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  pointer-events: none;
+  user-select: none;
+  text-align: center;
+  white-space: nowrap;
+  font-size: clamp(3.5rem, 14vw, 11rem);
+  line-height: 1;
+  z-index: 1;
+}
+
+.footer-floating-badge {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 60px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(18, 18, 24, 0.8);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(168, 129, 254, 0.2);
+  z-index: 10;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.footer-floating-badge:hover {
+  border-color: #A881FE;
+  transform: translateX(-50%) translateY(-4px);
+  box-shadow: 0 15px 50px rgba(168, 129, 254, 0.4);
+}
+
+.footer-icon-glow {
+  width: 56px;
+  height: 56px;
+  background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(168, 129, 254, 0.5);
+}
+
+.footer-bottom-glowline {
+  position: absolute;
+  bottom: 88px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(168, 129, 254, 0.4) 50%, transparent 100%);
+  width: 100%;
+  left: 0;
+  pointer-events: none;
+}

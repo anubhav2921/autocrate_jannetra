@@ -1,0 +1,132 @@
+.modern-footer-wrapper {
+  width: 100%;
+  position: relative;
+  margin-top: 60px;
+  background: transparent;
+  z-index: 10;
+}
+
+.modern-footer-container {
+  position: relative;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  background: radial-gradient(45% 140px at 50% 0%, rgba(168, 129, 254, 0.12), transparent);
+  padding: 48px 24px 36px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.footer-top-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 1px;
+  width: 35%;
+  background: linear-gradient(90deg, transparent, rgba(168, 129, 254, 0.8), transparent);
+  border-radius: 9999px;
+  filter: blur(1px);
+}
+
+.footer-grid-layout {
+  display: grid;
+  width: 100%;
+  gap: 32px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .footer-grid-layout {
+    grid-template-columns: 1fr 2fr;
+    gap: 48px;
+  }
+}
+
+.footer-brand-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.footer-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.footer-brand-logo .brand-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(168, 129, 254, 0.4);
+}
+
+.footer-copyright {
+  color: #71717a;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.footer-columns-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+}
+
+@media (min-width: 768px) {
+  .footer-columns-group {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.footer-col-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #A881FE;
+  margin-bottom: 16px;
+}
+
+.footer-col-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-link-item {
+  color: #a1a1aa;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+}
+
+.footer-link-item:hover {
+  color: #ffffff;
+  transform: translateX(3px);
+}

@@ -10,11 +10,12 @@ import re
 import requests
 
 # ─── CONFIG ───────────────────────────────────────────────────
-API_KEY   = "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"
+API_KEY   = os.getenv("NVIDIA_API_KEY", "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")
 MODEL     = "meta/llama-3.2-11b-vision-instruct"
 API_URL   = "https://integrate.api.nvidia.com/v1/chat/completions"
 IMAGE_PATH = "test_image.jpg"   # <-- place your test image here
 # ──────────────────────────────────────────────────────────────
+
 
 PROMPT = """
 You are an intelligent image analysis system for JanNetra, a civic health monitoring platform.
@@ -79,7 +80,7 @@ def test_nvidia_vision(image_path: str):
 
     img_bytes, mime_type = compress_image(image_path, max_size=1024, quality=75)
     b64_img   = base64.b64encode(img_bytes).decode("utf-8")
-    print(f"[✓] Image ready: {image_path}  ({len(img_bytes) / 1024:.1f} KB compressed)  mime={mime_type}")
+    print(f"[OK] Image ready: {image_path}  ({len(img_bytes) / 1024:.1f} KB compressed)  mime={mime_type}")
 
     # 2. Build payload
     headers = {
@@ -109,7 +110,7 @@ def test_nvidia_vision(image_path: str):
     }
 
     # 3. Call API
-    print(f"[→] Calling NVIDIA API  (model: {MODEL}) ...")
+    print(f"[->] Calling NVIDIA API  (model: {MODEL}) ...")
     try:
         resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
         resp.raise_for_status()
@@ -141,7 +142,7 @@ def test_nvidia_vision(image_path: str):
         print("\nAI description written to desc.txt")
         
         print(f"{'='*60}")
-        print("  ✅  PARSED RESULT")
+        print("  [SUCCESS]  PARSED RESULT")
         print(f"{'='*60}")
         for k, v in ai_data.items():
             label = k.replace("_", " ").title()
@@ -150,6 +151,7 @@ def test_nvidia_vision(image_path: str):
     except json.JSONDecodeError as e:
         print(f"[ERROR] JSON parse failed: {e}")
         print(f"  Raw text was: {raw_text}")
+
 
 
 if __name__ == "__main__":

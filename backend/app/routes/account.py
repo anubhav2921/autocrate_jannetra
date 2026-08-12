@@ -5,13 +5,9 @@ from typing import Optional
 from datetime import datetime
 
 from ..mongodb import users_collection, resolutions_collection
-from ..utils import create_access_token
+from ..utils import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/api/account", tags=["Account"])
-
-
-def _hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
 
 
 class UpdatePasswordRequest(BaseModel):
@@ -77,7 +73,7 @@ async def update_password(req: UpdatePasswordRequest):
     if not user:
         return {"success": False, "error": "User not found"}
 
-    if user.get("password_hash") != _hash_password(req.current_password):
+    if not verify_password(req.current_password, user.get("password_hash", "")):
         return {"success": False, "error": "Current password is incorrect"}
 
     if len(req.new_password) < 6:
@@ -85,7 +81,7 @@ async def update_password(req: UpdatePasswordRequest):
 
     await users_collection.update_one(
         {"id": req.user_id},
-        {"$set": {"password_hash": _hash_password(req.new_password)}}
+        {"$set": {"password_hash": hash_password(req.new_password)}}
     )
     return {"success": True, "message": "Password updated successfully"}
 
@@ -130,8 +126,9 @@ async def delete_account(req: DeleteAccountRequest):
     if not user:
         return {"success": False, "error": "User not found"}
 
-    if user.get("password_hash") != _hash_password(req.password):
+    if not verify_password(req.password, user.get("password_hash", "")):
         return {"success": False, "error": "Incorrect password"}
 
     await users_collection.delete_one({"id": req.user_id})
     return {"success": True, "message": "Account deleted successfully"}
+

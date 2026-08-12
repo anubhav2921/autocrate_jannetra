@@ -4,79 +4,85 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* Core palette - Dark by default */
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #0f172a;
-  --bg-card: rgba(30, 41, 59, 0.7);
-  --bg-glass: rgba(255, 255, 255, 0.03);
-  --bg-glass-hover: rgba(255, 255, 255, 0.08);
+  /* Uizard-Inspired Ultra-Dark Palette */
+  --bg-primary: #09090b;
+  --bg-secondary: #111115;
+  --bg-card: rgba(18, 18, 24, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.035);
+  --bg-glass-hover: rgba(255, 255, 255, 0.07);
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  --border-color: rgba(255, 255, 255, 0.09);
+  --border-hover: rgba(168, 129, 254, 0.35);
 
   /* Risk colors */
   --risk-low: #10b981;
-  --risk-low-bg: rgba(16, 185, 129, 0.1);
+  --risk-low-bg: rgba(16, 185, 129, 0.12);
   --risk-moderate: #f59e0b;
-  --risk-moderate-bg: rgba(245, 158, 11, 0.1);
+  --risk-moderate-bg: rgba(245, 158, 11, 0.12);
   --risk-high: #ef4444;
-  --risk-high-bg: rgba(239, 68, 68, 0.1);
+  --risk-high-bg: rgba(239, 68, 68, 0.12);
   --risk-critical: #dc2626;
 
-  /* Accents */
-  --accent-blue: #3b82f6;
-  --accent-blue-bg: rgba(59, 130, 246, 0.1);
-  --accent-purple: #8b5cf6;
-  --accent-purple-bg: rgba(139, 92, 246, 0.1);
-  --accent-cyan: #06b6d4;
+  /* Uizard Signature Accents */
+  --accent-purple: #A881FE;
+  --accent-purple-deep: #6419FF;
+  --accent-blue: #1E90FF;
+  --accent-blue-light: #61B1FF;
+  --accent-blue-bg: rgba(30, 144, 255, 0.12);
+  --accent-purple-bg: rgba(168, 129, 254, 0.12);
+  --accent-cyan: #00D2FF;
   --accent-teal: #14b8a6;
 
-  /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  /* Uizard Signature Gradients */
+  --gradient-primary: linear-gradient(135deg, #A881FE 0%, #6419FF 100%);
+  --gradient-uizard: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%);
+  --gradient-blue: radial-gradient(42.88% 158.65% at 50% 100%, #61B1FF 0%, #1E90FF 100%);
   --gradient-danger: linear-gradient(135deg, #ef4444, #dc2626);
   --gradient-success: linear-gradient(135deg, #10b981, #14b8a6);
   --gradient-warning: linear-gradient(135deg, #f59e0b, #f97316);
-  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
 
-  /* Shadows */
+  /* Shadows & Glow */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.7);
-  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
-  --shadow-glow-red: 0 0 20px rgba(239, 68, 68, 0.15);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.75);
+  --shadow-glow-purple: 0 0 24px rgba(168, 129, 254, 0.25);
+  --shadow-glow-blue: 0 0 24px rgba(30, 144, 255, 0.25);
+  --shadow-glow-red: 0 0 24px rgba(239, 68, 68, 0.2);
 
   /* Spacing */
   --sidebar-width: 260px;
   --navbar-height: 64px;
   --radius-sm: 8px;
   --radius-md: 12px;
-  --radius-lg: 16px;
+  --radius-lg: 18px;
 
   /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, sans-serif;
 
   /* Transition */
-  --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   
   /* Landing variables */
-  --landing-bg-start: #0a0e1a;
-  --landing-bg-end: #0f172a;
-  --landing-text-main: #f8fafc;
-  --landing-text-sub: #94a3b8;
-  --landing-accent: #6366f1;
-  --landing-accent-glow: rgba(99, 102, 241, 0.2);
-  --landing-purple: #8b5cf6;
-  --landing-glass: rgba(30, 41, 59, 0.7);
-  --landing-border: rgba(255, 255, 255, 0.08);
-  --landing-card-bg: rgba(30, 41, 59, 0.5);
+  --landing-bg-start: #08080a;
+  --landing-bg-end: #0f0f14;
+  --landing-text-main: #ffffff;
+  --landing-text-sub: #a1a1aa;
+  --landing-accent: #A881FE;
+  --landing-accent-glow: rgba(168, 129, 254, 0.25);
+  --landing-purple: #6419FF;
+  --landing-glass: rgba(18, 18, 24, 0.75);
+  --landing-border: rgba(255, 255, 255, 0.09);
+  --landing-card-bg: rgba(18, 18, 24, 0.6);
   
-  --navbar-bg: rgba(10, 14, 26, 0.85);
+  --navbar-bg: rgba(9, 9, 11, 0.85);
   --card-shadow: var(--shadow-md);
 }
+
 
 [data-theme="light"] {
   --bg-primary: #f8fafc;
