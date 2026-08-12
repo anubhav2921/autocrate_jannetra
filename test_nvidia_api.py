@@ -10,7 +10,7 @@ import re
 import requests
 
 # ─── CONFIG ───────────────────────────────────────────────────
-API_KEY   = os.getenv("NVIDIA_API_KEY", "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")
+API_KEY   = os.getenv("NVIDIA_API_KEY", "deepgreen")
 MODEL     = "meta/llama-3.2-11b-vision-instruct"
 API_URL   = "https://integrate.api.nvidia.com/v1/chat/completions"
 IMAGE_PATH = "test_image.jpg"   # <-- place your test image here
