@@ -78,38 +78,46 @@
   filter: blur(110px);
 }
 
-/* Premium Full-Width Sticky Glass Navbar */
+/* Floating Island / Pill Navbar */
 .landing-nav {
   position: fixed;
-  top: 0;
+  top: 32px;
   left: 0;
-  width: 100%;
+  right: 0;
+  margin: 0 auto;
+  width: min(1140px, calc(100vw - 48px));
+  max-width: 1140px;
   z-index: 1000;
-  height: 74px;
+  height: 64px;
   display: flex;
   align-items: center;
+  border-radius: 9999px;
+  background: rgba(14, 14, 18, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.14);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  background: rgba(9, 9, 11, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 14px 0 24px;
+  box-sizing: border-box;
 }
 
 .nav-scrolled {
-  background: rgba(9, 9, 11, 0.92);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  height: 66px;
+  top: 18px;
+  background: rgba(10, 10, 14, 0.92);
+  border-color: rgba(168, 129, 254, 0.3);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.7), 0 0 24px rgba(168, 129, 254, 0.18);
+  height: 60px;
 }
 
+
+
 .nav-container {
-  max-width: 1700px;
-  margin: 0 auto;
   width: 100%;
-  padding: 0 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
 }
 
 /* Logo Design */
@@ -127,7 +135,7 @@
 }
 
 .logo-brand {
-  font-size: 1.4rem;
+  font-size: 1.32rem;
   font-weight: 600;
   color: #ffffff;
   letter-spacing: -0.02em;
@@ -142,7 +150,7 @@
 }
 
 .logo-tagline {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: #a1a1aa;
   text-transform: uppercase;
@@ -152,17 +160,9 @@
 
 /* Navigation Center */
 .nav-center {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 28px;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 8px 24px;
-  border-radius: 100px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
+  gap: 6px;
 }
 
 .nav-center .nav-link {
@@ -172,25 +172,28 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 7px 16px;
+  border-radius: 9999px;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
 }
 
 .nav-center .nav-link:hover {
   color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Navigation Right */
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   flex-shrink: 0;
 }
 
 .nav-auth-link {
   color: #a1a1aa;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: color 0.2s;
@@ -202,20 +205,20 @@
 
 .nav-cta-btn {
   background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%);
-  box-shadow: 0px 2px 14px rgba(168, 129, 254, 0.4), inset 0px 1px 1px #A881FE;
+  box-shadow: 0px 2px 14px rgba(168, 129, 254, 0.45), inset 0px 1px 1px #A881FE;
   color: #ffffff;
   border: none;
   padding: 9px 24px;
-  border-radius: 100px;
+  border-radius: 9999px;
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-cta-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0px 4px 20px rgba(168, 129, 254, 0.6), inset 0px 1px 1px #A881FE;
+  box-shadow: 0px 4px 20px rgba(168, 129, 254, 0.65), inset 0px 1px 1px #A881FE;
 }
 
 /* Mobile Toggle */
@@ -225,6 +228,12 @@
 }
 
 @media (max-width: 1024px) {
+  .landing-nav {
+    top: 20px;
+    width: calc(100% - 32px);
+    height: 58px;
+    padding: 0 16px;
+  }
   .nav-center {
     display: none;
   }
@@ -235,7 +244,7 @@
 
 /* Hero Section */
 .hero-section {
-  padding: calc(var(--nav-height) + 60px) var(--container-padding) 60px;
+  padding: 160px var(--container-padding) 60px;
   max-width: var(--container-max);
   margin: 0 auto;
   display: grid;
@@ -249,11 +258,13 @@
 @media (max-width: 1024px) {
   .hero-section {
     grid-template-columns: 1fr;
-    padding-top: calc(var(--nav-height) + 40px);
+    padding-top: 136px;
     padding-bottom: 40px;
-    gap: 60px;
+    gap: 50px;
   }
 }
+
+
 
 
 
