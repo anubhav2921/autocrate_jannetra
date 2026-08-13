@@ -44,6 +44,7 @@ const LandingPage = () => {
 
     // FAQ State
     const [expandedFaq, setExpandedFaq] = useState(null);
+    const toggleFaq = (idx) => setExpandedFaq(prev => prev === idx ? null : idx);
 
     const handleTrack = async () => {
         setTrackingResult(null);
