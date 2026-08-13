@@ -6,23 +6,22 @@ import {
     Sparkles, Lock, Users, MapPin, AlertTriangle,
     CheckCircle2, X, Send, Database, Cpu, GitBranch, Bell,
     ThumbsUp, ThumbsDown, Activity, Globe, TrendingUp,
-    Settings, BarChart3, Menu, Moon, Sun
+    Settings, BarChart3, Menu, Moon, Sun, ShieldAlert, Terminal
 } from 'lucide-react';
 import api from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 import '../assets/styles/landing.css';
 
-// Extracted Components
+// Extracted & New DeepGreen-Inspired Components
 import VerificationModal from '../components/Landing/VerificationModal';
 import SampleIssueCard from '../components/Landing/SampleIssueCard';
 import VerifiedAlertCard from '../components/Landing/VerifiedAlertCard';
+import SignalAuditorSimulator from '../components/Landing/SignalAuditorSimulator';
+import IntelligencePipeline from '../components/Landing/IntelligencePipeline';
+import StackingFeatures from '../components/Landing/StackingFeatures';
+import ProjectHighlights from '../components/Landing/ProjectHighlights';
 import Strands from '../components/Strands/Strands';
 import Footer from '../components/ui/footer-section';
-
-
-
-
-
 
 const LandingPage = () => {
     const { theme, toggleTheme } = useTheme();
@@ -51,7 +50,6 @@ const LandingPage = () => {
 
         setTrackingLoading(true);
         try {
-            // Real API Call
             const data = await api.get(`/report/${trackingId.trim()}`);
             setTrackingResult(data);
         } catch (err) {
@@ -68,7 +66,6 @@ const LandingPage = () => {
     };
 
     const submitVerification = (id, comment) => {
-        // Persist to database
         api.post('/reviews', {
             complaint_id: id,
             review_text: comment || 'Verified by Citizen Leader',
@@ -91,12 +88,10 @@ const LandingPage = () => {
 
     useEffect(() => {
         const fetchAllData = () => {
-            // Stats
             api.get('/analytics/landing-stats')
                 .then(data => setLandingStats(data))
                 .catch(err => console.error("Error fetching landing stats:", err));
 
-            // Complaints (for Live Monitor/Grid)
             api.get('/complaints')
                 .then(data => {
                     setComplaints(data);
@@ -109,7 +104,7 @@ const LandingPage = () => {
         };
 
         fetchAllData();
-        const interval = setInterval(fetchAllData, 30000); // System-wide refresh every 30s
+        const interval = setInterval(fetchAllData, 30000);
         return () => clearInterval(interval);
     }, []);
 
@@ -133,149 +128,159 @@ const LandingPage = () => {
 
     const containerVariants = {
         hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+        visible: { opacity: 1, transition: { staggerChildren: 0.12 } }
     };
 
     const itemVariants = {
-        hidden: { y: 20, opacity: 0 },
-        visible: { y: 0, opacity: 1, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+        hidden: { y: 24, opacity: 0 },
+        visible: { y: 0, opacity: 1, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } }
     };
 
     return (
         <div className="landing-root">
-            {/* Full-Page Static/Fixed Animated Strands Background from React Bits */}
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                pointerEvents: 'none',
-                zIndex: 0,
-                opacity: 0.8,
-                overflow: 'hidden'
-            }}>
+            {/* Full-Page Fixed Animated Strands Background */}
+            <div className="fixed-strands-bg">
                 <Strands
                     colors={["#A881FE", "#6419FF", "#1E90FF", "#00D2FF"]}
                     count={4}
-                    speed={0.4}
-                    amplitude={0.85}
+                    speed={0.35}
+                    amplitude={0.8}
                     waviness={1.1}
-                    thickness={0.6}
-                    glow={2.6}
-                    taper={2.8}
+                    thickness={0.55}
+                    glow={2.4}
+                    taper={2.6}
                     spread={1.2}
-                    intensity={0.7}
-                    saturation={1.4}
-                    opacity={0.9}
-                    scale={1.35}
+                    intensity={0.65}
+                    saturation={1.3}
+                    opacity={0.85}
+                    scale={1.3}
                     glass={false}
                 />
-
             </div>
 
             <div className="landing-grid-bg" />
             <div className="landing-glow-1" />
             <div className="landing-glow-2" />
 
+            {/* Navigation Bar with DeepGreen-style Pill Layout */}
             <nav className={`landing-nav ${scrolled ? 'nav-scrolled' : ''}`}>
                 <div className="nav-container">
                     <div className="nav-logo" onClick={() => navigate('/')}>
+                        <div className="logo-symbol-box">
+                            <span className="logo-symbol-text">J ✦ N</span>
+                        </div>
                         <div className="logo-text-wrapper">
-                            <b> <span className="logo-brand">JAN<span className="highlight">NETRA</span></span></b>
+                            <b><span className="logo-brand">JAN<span className="highlight">NETRA</span></span></b>
                             <span className="logo-tagline">AI Civic Intelligence</span>
                         </div>
                     </div>
 
                     <div className="nav-center">
-                        <span className="nav-link" onClick={() => scrollTo('how')}>
-                            <Settings size={18} /> How It Works
+                        <span className="nav-link" onClick={() => scrollTo('pipeline')}>
+                            <Cpu size={16} /> Pipeline
+                        </span>
+                        <span className="nav-link" onClick={() => scrollTo('differentiators')}>
+                            <Sparkles size={16} /> Capabilities
+                        </span>
+                        <span className="nav-link" onClick={() => scrollTo('simulator')}>
+                            <Terminal size={16} /> Live Simulator
                         </span>
                         <span className="nav-link" onClick={() => scrollTo('alerts')}>
-                            <MapPin size={18} /> Live Issues
+                            <MapPin size={16} /> Live Signals
                         </span>
                         <span className="nav-link" onClick={() => navigate('/pulse')}>
-                            <BarChart3 size={18} /> Dashboard
+                            <BarChart3 size={16} /> Dashboard
                         </span>
                     </div>
 
                     <div className="nav-right">
-                        {/* Theme Toggle */}
                         <button
-                            className="nav-link"
-                            style={{ background: 'none', border: 'none', outline: 'none', cursor: 'pointer' }}
+                            className="theme-btn"
                             onClick={toggleTheme}
+                            title="Toggle Theme"
                         >
-                            {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                         </button>
 
                         <span className="nav-auth-link" onClick={() => navigate('/login')}>Sign In</span>
                         <button className="nav-cta-btn" onClick={() => navigate('/signup')}>
-                            Register
+                            Get Started
                         </button>
                     </div>
                 </div>
             </nav>
 
+            {/* Editorial Hero Section */}
             <section id="hero" className="hero-section">
                 <motion.div
                     className="hero-left"
-                    style={{ position: 'relative', zIndex: 2 }}
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
                 >
-
-
-                    <motion.div variants={itemVariants} className="hero-badge animate-in">
-                        AI-Powered Governance Platform
+                    {/* Top Editorial Monospace Micro-Badge */}
+                    <motion.div variants={itemVariants} className="mn-tag-row">
+                        <span className="mn-badge">JANNETRA // PLATFORM CORE</span>
+                        <span className="mn-badge-secondary">[ 30-MIN AUTONOMOUS CYCLE ]</span>
+                        <span className="mn-live-status"><span className="blink-dot" /> 24/7 ACTIVE</span>
                     </motion.div>
 
-                    <motion.h1 variants={itemVariants} className="hero-title">
-                        AI That Detects Civic Problems <span style={{ color: 'var(--landing-accent)' }}>Before You Report Them</span>
-                    </motion.h1>
+                    {/* Massive Split Display Typography */}
+                    <motion.div variants={itemVariants} className="hero-split-brand">
+                        <h1 className="hero-split-text hero-brand-1">Civic</h1>
+                        <h1 className="hero-split-text hero-brand-2">Intelligence</h1>
+                    </motion.div>
 
                     <motion.p variants={itemVariants} className="hero-sub">
-                        JanNetra uses real-time AI detection and community validation to identify, verify, and escalate urban issues instantly.
+                        Autonomous AI that scrapes 150+ sources, measures public anger dynamics (0-10), filters misinformation, and dispatches verified civic alerts in real time.
                     </motion.p>
 
                     <motion.div variants={itemVariants} className="hero-btns">
                         <div className="btn-row">
-                            <button className="cta-btn cta-primary" style={{ width: '100%', maxWidth: '400px', padding: '18px 40px', fontSize: '1.1rem' }} onClick={() => navigate('/report-issue')}>
-                                REPORT AN ISSUE <ArrowRight size={22} />
+                            <button className="cta-btn cta-primary" onClick={() => navigate('/report-issue')}>
+                                REPORT CIVIC ISSUE <ArrowRight size={20} />
+                            </button>
+                            <button className="cta-btn cta-secondary" onClick={() => scrollTo('simulator')}>
+                                <Terminal size={18} /> LAUNCH LIVE AUDITOR
                             </button>
                         </div>
-                        <div className="trust-signals">
-                            <div className="trust-item"><div className="blink-dot" /> Scanning 120+ urban zones</div>
-                            <div className="trust-item"><Activity size={14} /> 2,400+ issues detected</div>
-                            <div className="trust-item"><Zap size={14} /> AI accuracy: 92%</div>
+                        <div className="hero-quick-links">
+                            <span className="hero-nav-item" onClick={() => scrollTo('pipeline')}>
+                                Pipeline // 4 Steps <ArrowRight size={12} />
+                            </span>
+                            <span className="hero-nav-item" onClick={() => scrollTo('differentiators')}>
+                                Key Differentiators <ArrowRight size={12} />
+                            </span>
+                            <span className="hero-nav-item" onClick={() => scrollTo('highlights')}>
+                                Highlights & Stats <ArrowRight size={12} />
+                            </span>
                         </div>
                     </motion.div>
                 </motion.div>
 
-                <div className="hero-right" style={{ position: 'relative', zIndex: 2 }}>
+                {/* Right Hero: Live Ingestion Stream Panel */}
+                <div className="hero-right">
                     <motion.div
-
                         className="dashboard-card"
-                        initial={{ scale: 0.9, opacity: 0, rotateY: -10 }}
-                        animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-                        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    ><div className="dash-header">
+                        initial={{ scale: 0.92, opacity: 0, y: 30 }}
+                        animate={{ scale: 1, opacity: 1, y: 0 }}
+                        transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <div className="dash-header">
                             <div className="dash-title">
                                 <span className="live-pill">
                                     <span className="blink-dot" />
                                 </span>
                                 <span className="dash-subtitle">
-                                    IDENTIFY ISSUES CONFIRM REALITY
+                                    REAL-TIME CIVIC SIGNALS // VERIFICATION FEED
                                 </span>
                             </div>
-
                             <Database className="dash-icon" size={18} />
                         </div>
 
                         {loading ? (
-                            <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                                <Activity size={24} className="blink" style={{ marginBottom: '12px' }} />
+                            <div className="dash-loading-box">
+                                <Activity size={24} className="blink" />
                                 <p>Syncing with AI Detection Engine...</p>
                             </div>
                         ) : lowConfidenceIssues.length > 0 ? (
@@ -287,23 +292,22 @@ const LandingPage = () => {
                                                 location={issue.location || "Prayagraj, Urban Sector"}
                                                 type={issue.title || issue.type}
                                                 confidence={Math.round((issue.confidence_score || 0.65) * 100)}
-                                                delay={0.5 + idx * 0.2}
+                                                delay={0.4 + idx * 0.15}
                                                 source={issue.source_name}
                                                 onVerify={() => handleVerifyClick(issue)}
                                             />
-                                            <div className="voter-mini-tag" style={{ marginTop: '-12px', marginBottom: '16px', marginLeft: '20px' }}>
-                                                {voterCounts[issue.id] > 0 && <span style={{ fontSize: '0.7rem', color: 'var(--landing-accent)' }}><Users size={12} /> {voterCounts[issue.id]} citizens verified</span>}
+                                            <div className="voter-mini-tag">
+                                                {voterCounts[issue.id] > 0 && <span><Users size={12} /> {voterCounts[issue.id]} citizens verified</span>}
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="escalated-tag" style={{ marginBottom: '20px' }}>
+                                        <div className="escalated-tag">
                                             <CheckCircle2 size={14} /> Escalated to City Dept
                                         </div>
                                     )}
                                 </div>
                             ))
                         ) : (
-                            /* Fallback to high-fidelity samples if DB is empty */
                             <>
                                 {!isEscalated('hp1') ? (
                                     <>
@@ -311,15 +315,15 @@ const LandingPage = () => {
                                             location="Prayagraj, Civil Lines"
                                             type="Deep Pothole at Intersection"
                                             confidence="94"
-                                            delay={0.5}
+                                            delay={0.4}
                                             onVerify={() => handleVerifyClick({ id: 'hp1', location: 'Prayagraj, Civil Lines', type: 'Deep Pothole at Intersection' })}
                                         />
-                                        <div className="voter-mini-tag" style={{ marginTop: '-12px', marginBottom: '16px', marginLeft: '20px' }}>
-                                            {voterCounts['hp1'] > 0 && <span style={{ fontSize: '0.7rem', color: 'var(--landing-accent)' }}><Users size={12} /> {voterCounts['hp1']} citizens verified</span>}
+                                        <div className="voter-mini-tag">
+                                            {voterCounts['hp1'] > 0 && <span><Users size={12} /> {voterCounts['hp1']} citizens verified</span>}
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="escalated-tag" style={{ marginBottom: '20px' }}><CheckCircle2 size={14} /> Escalated to PWD Department</div>
+                                    <div className="escalated-tag"><CheckCircle2 size={14} /> Escalated to PWD Department</div>
                                 )}
 
                                 {!isEscalated('hp2') ? (
@@ -328,39 +332,39 @@ const LandingPage = () => {
                                             location="Prayagraj, Katra"
                                             type="Illegal Garbage Dumping"
                                             confidence="88"
-                                            delay={0.7}
+                                            delay={0.6}
                                             onVerify={() => handleVerifyClick({ id: 'hp2', location: 'Prayagraj, Katra', type: 'Illegal Garbage Dumping' })}
                                         />
-                                        <div className="voter-mini-tag" style={{ marginTop: '-12px', marginBottom: '16px', marginLeft: '20px' }}>
-                                            {voterCounts['hp2'] > 0 && <span style={{ fontSize: '0.7rem', color: 'var(--landing-accent)' }}><Users size={12} /> {voterCounts['hp2']} citizens verified</span>}
+                                        <div className="voter-mini-tag">
+                                            {voterCounts['hp2'] > 0 && <span><Users size={12} /> {voterCounts['hp2']} citizens verified</span>}
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="escalated-tag" style={{ marginBottom: '20px' }}><CheckCircle2 size={14} /> Escalated to Municipal Corp</div>
+                                    <div className="escalated-tag"><CheckCircle2 size={14} /> Escalated to Municipal Corp</div>
                                 )}
                             </>
                         )}
 
-                        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-                            <p className="micro-text" style={{ fontSize: '0.65rem' }}>AI continuously scanning 124 urban sectors</p>
+                        <div className="dash-footer-note">
+                            <p className="micro-text">Continuous GPU NLP inference across 124 urban sectors</p>
                         </div>
                     </motion.div>
-
-                    {/* Decorative element */}
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '-20px',
-                        right: '-20px',
-                        width: '100px',
-                        height: '100px',
-                        background: 'radial-gradient(var(--landing-accent), transparent 70%)',
-                        opacity: 0.2,
-                        filter: 'blur(20px)',
-                        zIndex: -1
-                    }} />
                 </div>
             </section>
 
+            {/* 1. DeepGreen-Inspired Intelligence Pipeline [4 Steps] */}
+            <IntelligencePipeline />
+
+            {/* 2. DeepGreen-Inspired Live Signal Auditor Simulator */}
+            <SignalAuditorSimulator />
+
+            {/* 3. DeepGreen-Inspired Key Differentiators & Capabilities */}
+            <StackingFeatures />
+
+            {/* 4. DeepGreen-Inspired Project Highlights & Benchmarks */}
+            <ProjectHighlights />
+
+            {/* 5. Report Tracking Section */}
             <section className="track-section">
                 <motion.div
                     className="track-container glass-card"
@@ -369,6 +373,9 @@ const LandingPage = () => {
                     viewport={{ once: true }}
                 >
                     <div className="track-info">
+                        <div className="mn-tag-row">
+                            <span className="mn-badge">TRACKING // LOOKUP</span>
+                        </div>
                         <h2 className="track-title">Track Your Report</h2>
                         <p className="track-sub">Enter your unique Report ID to see the real-time resolution status and AI analysis of your complaint.</p>
                     </div>
@@ -383,7 +390,7 @@ const LandingPage = () => {
                                 onKeyPress={(e) => e.key === 'Enter' && handleTrack()}
                             />
                             <button className="track-btn" onClick={handleTrack} disabled={trackingLoading}>
-                                {trackingLoading ? "..." : <><ArrowRight size={18} /></>}
+                                {trackingLoading ? "..." : <ArrowRight size={18} />}
                             </button>
                         </div>
 
@@ -400,7 +407,6 @@ const LandingPage = () => {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.3 }}
-                                    style={{ flexWrap: 'wrap', gap: '20px' }}
                                 >
                                     <div className="res-item">
                                         <span className="res-label">Status</span>
@@ -410,7 +416,7 @@ const LandingPage = () => {
                                     </div>
                                     <div className="res-sep" />
                                     <div className="res-item">
-                                        <span className="res-label">Type</span>
+                                        <span className="res-label">Category</span>
                                         <div className="res-val">{trackingResult.category}</div>
                                     </div>
                                     <div className="res-sep" />
@@ -419,30 +425,27 @@ const LandingPage = () => {
                                         <div className="res-val">{trackingResult.lastUpdate}</div>
                                     </div>
 
-                                    {/* Workflow Progress Bar */}
-                                    <div style={{ width: '100%', marginTop: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Workflow Progress</span>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--landing-accent)', fontWeight: 800 }}>{trackingResult.progress || 0}%</span>
+                                    <div className="track-workflow-progress">
+                                        <div className="workflow-lbl-row">
+                                            <span>Workflow Progress</span>
+                                            <span className="highlight-text">{trackingResult.progress || 0}%</span>
                                         </div>
-                                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                        <div className="progress-track">
                                             <motion.div 
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${trackingResult.progress || 0}%` }}
-                                                transition={{ duration: 1, delay: 0.3, ease: 'easeOut' }}
-                                                style={{ height: '100%', background: 'linear-gradient(90deg, var(--landing-accent), var(--landing-purple))', borderRadius: '4px' }} 
+                                                transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
+                                                className="progress-fill"
                                             />
                                         </div>
                                     </div>
                                     
-                                    {/* AI Analysis Description Box */}
                                     {trackingResult.description && (
-                                        <div style={{ width: '100%', marginTop: '4px', background: 'var(--bg-glass)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--landing-accent)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                <Sparkles size={12} style={{ display: 'inline', marginRight: '4px', marginBottom: '-2px' }} />
-                                                AI Vision Analysis
+                                        <div className="track-ai-analysis-box">
+                                            <span className="analysis-tag">
+                                                <Sparkles size={12} /> AI Vision & NLP Analysis
                                             </span>
-                                            <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                            <p className="analysis-text">
                                                 {trackingResult.description}
                                             </p>
                                         </div>
@@ -454,137 +457,72 @@ const LandingPage = () => {
                 </motion.div>
             </section>
 
-            <section id="how" className="how-section">
-                <div className="section-head">
-                    <span className="section-label">System Workflow</span>
-                    <h2 className="section-title">How JanNetra Works</h2>
-                    <p className="hero-sub" style={{ margin: '16px auto 0', maxWidth: '600px', fontSize: '1.1rem' }}>
-                        Turning real-time public data into verified civic action using AI and community intelligence.
-                    </p>
-                </div>
-
-                <div className="how-steps-container">
-                    <div className="steps-progress-line" />
-                    <div className="how-steps">
-                        {/* Step 1: Data Collection */}
-                        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={itemVariants} className="step-card">
-                            <div className="step-badge">Live Data</div>
-                            <div className="step-icon-box"><Database size={28} /></div>
-                            <h3 className="step-title">1. Real-Time Data Collection</h3>
-                            <p className="step-desc">JanNetra gathers data from social platforms and open APIs to detect potential civic issues.</p>
-                            <div className="step-micro-ui">
-                                <div className="micro-item"><Globe size={12} /> Social Signals</div>
-                                <div className="micro-item"><GitBranch size={12} /> API Hooks</div>
-                            </div>
-                        </motion.div>
-
-                        {/* Step 2: AI Detection (Highlighted Core) */}
-                        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={itemVariants} className="step-card core-step">
-                            <div className="step-badge badge-ai">AI Powered</div>
-                            <div className="step-icon-box box-ai"><Brain size={28} /></div>
-                            <h3 className="step-title">2. AI Detection Engine</h3>
-                            <p className="step-desc">AI analyzes text and images using NLP and machine learning to identify and classify problems.</p>
-                            <div className="step-micro-ui">
-                                <div className="micro-item"><Cpu size={12} /> NLP Engine</div>
-                                <div className="micro-item"><Zap size={12} /> Vision AI</div>
-                            </div>
-                        </motion.div>
-
-                        {/* Step 3: Issue Intelligence */}
-                        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={itemVariants} className="step-card">
-                            <div className="step-badge">Priority Scored</div>
-                            <div className="step-icon-box"><Activity size={28} /></div>
-                            <h3 className="step-title">3. Smart Issue Analysis</h3>
-                            <p className="step-desc">Each issue is scored based on severity and location to prioritize the most urgent problems.</p>
-                            <div className="step-micro-ui">
-                                <div className="micro-item"><AlertTriangle size={12} /> Severity 8/10</div>
-                                <div className="micro-item"><TrendingUp size={12} /> Priority High</div>
-                            </div>
-                        </motion.div>
-
-                        {/* Step 4: Verification & Action (High Impact) */}
-                        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={itemVariants} className="step-card impact-step">
-                            <div className="step-badge badge-impact">Verified Output</div>
-                            <div className="step-icon-box box-impact"><CheckCircle2 size={28} /></div>
-                            <h3 className="step-title">4. Verification & Action</h3>
-                            <p className="step-desc">Citizens validate issues, and verified cases are escalated to authorities for faster resolution.</p>
-                            <div className="step-micro-ui">
-                                <div className="micro-item"><Users size={12} /> Community Audit</div>
-                                <div className="micro-item">Official Route</div>
-                            </div>
-                        </motion.div>
-                    </div>
-                </div>
-
-                <div className="trust-layer">
-                    <p><Lock size={14} /> Only verified issues are escalated to ensure accuracy and prevent false reporting.</p>
-                </div>
-            </section>
-
+            {/* 6. Live Alerts Feed Section */}
             <section id="alerts" className="alerts-section">
                 <div className="section-head">
-                    <span className="section-label">Live Feed</span>
-                    <h2 className="section-title" style={{ color: 'var(--text-primary)' }}>Live Civic Signals</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginTop: '16px' }}>AI-detected and community-verified issues in real time</p>
+                    <div className="mn-tag-row" style={{ justifyContent: 'center' }}>
+                        <span className="mn-badge">SIGNALS // LIVE FEED</span>
+                    </div>
+                    <h2 className="section-title">Live Civic Signals</h2>
+                    <p className="section-subtitle">Real-time alerts detected by neural pipelines and verified by citizen leaders</p>
                 </div>
 
                 <div className="alerts-grid">
                     {loading ? (
                         [...Array(3)].map((_, i) => (
-                            <div key={i} className="alert-card-dark" style={{ height: '200px', animate: 'pulse' }} />
+                            <div key={i} className="alert-card-dark pulse-loading" />
                         ))
                     ) : verifiedIssues.length > 0 ? (
                         verifiedIssues.map((c) => (
                             <div key={c.id} className="alert-card-dark">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                    <div style={{ color: '#818cf8', fontSize: '0.8rem' }}><MapPin size={12} /> {c.location}</div>
+                                <div className="alert-top">
+                                    <div className="alert-loc"><MapPin size={12} /> {c.location}</div>
                                     <span className="status-pill status-verified">Verified</span>
                                 </div>
-                                <h4 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '8px' }}>{c.title || c.type}</h4>
+                                <h4 className="alert-card-title">{c.title || c.type}</h4>
                                 {c.description && (
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '12px', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                    <p className="alert-card-desc">
                                         {c.description}
                                     </p>
                                 )}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                                    <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Updated 12s ago</span>
-                                    <button className="cta-btn cta-primary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => navigate('/signal-monitor')}>Verify Now</button>
+                                <div className="alert-footer">
+                                    <span className="alert-time">Updated 12s ago</span>
+                                    <button className="cta-btn cta-primary alert-btn" onClick={() => navigate('/signal-monitor')}>Verify Now</button>
                                 </div>
                             </div>
                         ))
                     ) : (
-                        /* Realistic Dummy Alerts for Empty State */
                         <>
                             {!isEscalated('dummy1') && (
-                                <div className="alert-card-dark" style={{ opacity: 0.8 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                        <div style={{ color: '#818cf8', fontSize: '0.8rem' }}><MapPin size={12} /> Civil Lines, Prayagraj</div>
+                                <div className="alert-card-dark">
+                                    <div className="alert-top">
+                                        <div className="alert-loc"><MapPin size={12} /> Civil Lines, Prayagraj</div>
                                         <span className="status-pill status-verified">Verified</span>
                                     </div>
-                                    <h4 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '12px' }}>Broken Water Main</h4>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                            <span style={{ color: '#64748b', fontSize: '0.8rem' }}>Updated 2m ago</span>
-                                            {voterCounts['dummy1'] > 0 && <span style={{ color: '#10b981', fontSize: '0.7rem' }}><Users size={12} /> {voterCounts['dummy1']} verifications</span>}
+                                    <h4 className="alert-card-title">Broken Water Main</h4>
+                                    <div className="alert-footer">
+                                        <div className="alert-meta-col">
+                                            <span className="alert-time">Updated 2m ago</span>
+                                            {voterCounts['dummy1'] > 0 && <span className="alert-verif-count"><Users size={12} /> {voterCounts['dummy1']} verifications</span>}
                                         </div>
-                                        <button className="cta-btn cta-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem', color: '#fff' }} onClick={() => handleVerifyClick({ id: 'dummy1', location: 'Civil Lines', title: 'Broken Water Main' })}>Verify Now</button>
+                                        <button className="cta-btn cta-secondary alert-btn" onClick={() => handleVerifyClick({ id: 'dummy1', location: 'Civil Lines', title: 'Broken Water Main' })}>Verify Now</button>
                                     </div>
                                 </div>
                             )}
 
                             {!isEscalated('dummy2') && (
-                                <div className="alert-card-dark" style={{ opacity: 0.6 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                        <div style={{ color: 'var(--landing-accent)', fontSize: '0.8rem' }}><MapPin size={12} /> Katra Market</div>
+                                <div className="alert-card-dark" style={{ opacity: 0.85 }}>
+                                    <div className="alert-top">
+                                        <div className="alert-loc text-accent"><MapPin size={12} /> Katra Market</div>
                                         <span className="status-pill status-pending">Pending</span>
                                     </div>
-                                    <h4 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '12px', color: 'var(--text-primary)' }}>Street Light Failure</h4>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>AI Detected 5m ago</span>
-                                            {voterCounts['dummy2'] > 0 && <span style={{ color: 'var(--risk-low)', fontSize: '0.7rem' }}><Users size={12} /> {voterCounts['dummy2']} verifications</span>}
+                                    <h4 className="alert-card-title">Street Light Failure</h4>
+                                    <div className="alert-footer">
+                                        <div className="alert-meta-col">
+                                            <span className="alert-time">AI Detected 5m ago</span>
+                                            {voterCounts['dummy2'] > 0 && <span className="alert-verif-count"><Users size={12} /> {voterCounts['dummy2']} verifications</span>}
                                         </div>
-                                        <button className="cta-btn cta-secondary" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleVerifyClick({ id: 'dummy2', location: 'Katra Market', title: 'Street Light Failure' })}>Verify Now</button>
+                                        <button className="cta-btn cta-secondary alert-btn" onClick={() => handleVerifyClick({ id: 'dummy2', location: 'Katra Market', title: 'Street Light Failure' })}>Verify Now</button>
                                     </div>
                                 </div>
                             )}
@@ -592,24 +530,18 @@ const LandingPage = () => {
                     )}
                 </div>
 
-                <div style={{ textAlign: 'center', marginTop: '60px' }}>
-                    <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '0.9rem' }}>
-                        {verifiedIssues.length === 0 && "No active verified alerts right now. AI is still monitoring your area."}
-                    </p>
-                    <button className="cta-btn cta-primary" style={{ margin: '0 auto', padding: '16px 40px' }} onClick={() => navigate('/signal-monitor')}>
-                        View All Live Alerts <ChevronRight size={20} />
+                <div className="alerts-action-center">
+                    <button className="cta-btn cta-primary" onClick={() => navigate('/signal-monitor')}>
+                        View All Live Signals <ChevronRight size={20} />
                     </button>
                 </div>
             </section>
 
-            {/* Modern Animated Footer Section */}
+            {/* Modern Animated Footer */}
             <Footer
                 brandName="JanNetra"
                 brandDescription="AI-powered civic intelligence & problem detection platform. Empowering citizens and municipal leaders through real-time detection, automated verification, and proactive governance."
             />
-
-
-
 
             <VerificationModal
                 isOpen={verificationModalOpen}
