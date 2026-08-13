@@ -1,6 +1,5 @@
 import re
 import uuid
-from bson import ObjectId
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from jose import JWTError, jwt
@@ -21,7 +20,7 @@ def gen_uuid() -> str:
 
 
 def serialize_doc(doc: dict) -> dict:
-    """Convert MongoDB ObjectId _id to string and serialize datetime fields."""
+    """Serialize datetime fields."""
     if doc is None:
         return doc
     doc = dict(doc)
@@ -31,8 +30,6 @@ def serialize_doc(doc: dict) -> dict:
     for k, v in doc.items():
         if isinstance(v, datetime):
             doc[k] = v.isoformat()
-        elif isinstance(v, ObjectId):
-            doc[k] = str(v)
     return doc
 
 
