@@ -734,10 +734,12 @@
 
 .section-title {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: clamp(2.6rem, 5vw, 3.8rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-size: clamp(3rem, 6vw, 4.5rem);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
   color: #ffffff;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
 }
 
 .how-steps {
@@ -908,11 +910,13 @@
 }
 
 .section-subtitle {
-  color: #a1a1aa;
-  font-size: 1.1rem;
-  margin-top: 12px;
-  max-width: 600px;
-  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin-top: 16px;
+  max-width: 620px;
+  line-height: 1.6;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
 }
 
 .status-pill {
@@ -1834,15 +1838,18 @@
 [data-theme="light"] .step-title,
 [data-theme="light"] .alert-card-title {
   color: #0f172a;
-  font-weight: 800;
+  font-weight: 900;
+  text-shadow: none;
 }
 
 [data-theme="light"] .dash-subtitle,
 [data-theme="light"] .track-sub,
 [data-theme="light"] .step-desc,
-[data-theme="light"] .trust-item {
-  color: #64748b;
+[data-theme="light"] .trust-item,
+[data-theme="light"] .section-subtitle {
+  color: #334155;
   font-weight: 500;
+  text-shadow: none;
 }
 
 [data-theme="light"] .sample-issue-card {
