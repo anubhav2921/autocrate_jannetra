@@ -1,63 +1,77 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Database, Cpu, Brain, GitBranch, CheckCircle2, ShieldCheck, Activity, ArrowRight, Zap, Eye, Share2 } from 'lucide-react';
+import { Database, Cpu, Brain, GitBranch, CheckCircle2, ShieldCheck, Activity, ArrowRight, Zap, Eye, Share2, ClipboardCheck, Network } from 'lucide-react';
 
 const PIPELINE_STEPS = [
     {
         id: "step-1",
         stepNumber: "01",
-        name: "Intake",
-        tag: "Sentinel Ingestion",
-        title: "Step 1 // Continuous Multi-Source Intake",
-        summary: "Autonomous scrapers ingest unstructured intelligence from 150+ news portals, GDELT event stream, citizen threads, and official bulletins every 30 minutes.",
+        name: "Collect",
+        tag: "Ingestion Core",
+        title: "Step 1 // Multi-Source Intake",
+        summary: "Scrapes unstructured feeds from 150+ news portals, the GDELT event registry, citizen WhatsApp/Telegram reports, and local channels every 30 minutes.",
         metrics: [
-            { label: "Sources Scanned", value: "150+ Outlets" },
-            { label: "Cycle Frequency", value: "Every 30 Mins" },
-            { label: "Data Integrity", value: "SHA-256 Hashed" }
+            { label: "Feeds Monitored", value: "150+ Outlets" },
+            { label: "Refresh Loop", value: "30-Min Cycle" },
+            { label: "Data Hashing", value: "SHA-256 Verified" }
         ],
-        codeSnippet: `[SENTINEL] :: INGESTING :: REDDIT/MUMBAI-COMMUNITY -> 15 SIGNALS\n[SENTINEL] :: INGESTING :: PIB-GOV-FEEDS -> 24 BULLETINS\n[INTEGRITY] :: HASH CHECK PASSED -> 0 DUPES`
+        codeSnippet: `[SENTINEL] :: INGESTING :: CIVIC-FEEDS -> 15 INCOMING SIGNALS\n[SENTINEL] :: INGESTING :: SOCIAL-TELEGRAM -> 9 CHAT REPORTS\n[SECURITY] :: INTEGRITY CHECK -> HASH AUTHENTICATED`
     },
     {
         id: "step-2",
         stepNumber: "02",
-        name: "Analysis",
-        tag: "Neural Engine",
-        title: "Step 2 // DistilBERT & Anger Dynamics",
-        summary: "Raw text undergoes GPU-accelerated NLP processing: sentiment polarity scoring, heuristic Anger Intensity (0-10), and multi-layer fake news anomaly filtering.",
+        name: "Detect",
+        tag: "AI NLP Engine",
+        title: "Step 2 // DistilBERT Sentiment & Anger Analysis",
+        summary: "Applies real-time GPU NLP processing to evaluate sentiment polarity, compute calibrated public anger intensity (0-10), and screen fake news clickbait.",
         metrics: [
-            { label: "NLP Model", value: "DistilBERT GPU" },
-            { label: "Anger Index", value: "0.0 - 10.0 Scale" },
-            { label: "Inference Time", value: "< 42ms / batch" }
+            { label: "Model Architecture", value: "DistilBERT GPU" },
+            { label: "Anger Calibrator", value: "0.0 - 10.0 Rating" },
+            { label: "Classification Speed", value: "< 42ms / batch" }
         ],
-        codeSnippet: `[NEURAL]   :: SENTIMENT :: CLUSTER-8A2F -> { SCORE: -0.84 }\n[HEURISTIC]:: ANGER DYNAMICS -> { RATING: 8.6/10 HIGH }\n[ARMOR]    :: FAKE CHECK -> { CLICKBAIT: 0.04, RELIABLE: YES }`
+        codeSnippet: `[NEURAL]   :: SENTIMENT SCORING -> { SCORE: -0.87 CRITICAL }\n[HEURISTIC]:: CALIBRATED ANGER -> { VALUE: 8.8/10 ESCALATED }\n[SHIELD]   :: SPAM/FAKE FILTER -> { TRUST: 96% AUTHENTIC }`
     },
     {
         id: "step-3",
         stepNumber: "03",
-        name: "Synthesis",
-        tag: "Cluster & Scoring",
-        title: "Step 3 // Semantic Clustering & Risk Scoring",
-        summary: "Individual reports are grouped into unified Issue Clusters using cosine embeddings. A weighted Governance Risk Score (0-100%) ranks issues by priority.",
+        name: "Prioritize",
+        tag: "GRI Indexer",
+        title: "Step 3 // Semantic Grouping & Risk Indexing",
+        summary: "Groups individual citizen complaints into unified issue clusters using cosine similarity, calculating a weighted Governance Risk Index (GRI) to triage critical events.",
         metrics: [
-            { label: "Clustering", value: "Cosine Similarity" },
-            { label: "Priority Threshold", value: "> 80% = Critical" },
-            { label: "Deduplication", value: "Zero Redundancy" }
+            { label: "Clustering Model", value: "Cosine Similarity" },
+            { label: "Urgency Rating", value: "Weighted Risk Index" },
+            { label: "Deduplication", value: "Unified Clusters" }
         ],
-        codeSnippet: `[SYNTHESIS]:: CLUSTER -> ISSUE-44C [WATER PIPELINE RUPTURE]\n[PRIORITY] :: GRI SCORE: 92.5 [CRITICAL ESCALATION]\n[GEO]      :: MAPPED -> ZONE-4 (KATRA COMMERCIAL)`
+        codeSnippet: `[CLUSTER]:: MATCHED -> CLUSTER-24B [DEEP WATER MAIN LEAK]\n[PRIORITY]:: COMPUTING GRI -> WEIGHTED SCORE: 94% (CRITICAL)\n[ROUTING] :: ASSIGNING COMPLIANCE ENVELOPE -> ZONE-4`
     },
     {
         id: "step-4",
         stepNumber: "04",
-        name: "Action",
-        tag: "Resolution Dispatch",
-        title: "Step 4 // Automated Escalation & Proof-of-Work",
-        summary: "Critical clusters automatically dispatch high-priority compliance directives to responsible departments (PWD, Jal Nigam, Police) with public resolution tracking.",
+        name: "Assign",
+        tag: "Escalation Hub",
+        title: "Step 4 // Automated Department Routing",
+        summary: "Instantly generates compliance tickets and dispatches encrypted alerts to target departments (PWD, Municipal Corp, Jal Nigam) based on class taxonomy.",
         metrics: [
-            { label: "Auto-Dispatch", value: "Instant Routing" },
-            { label: "Auditing", value: "Proof of Work" },
-            { label: "Public Portal", value: "Transparent Feed" }
+            { label: "Routing Latency", value: "Instantaneous" },
+            { label: "Encrypted Push", value: "Active Webhooks" },
+            { label: "Notification", value: "Direct SMS / Email" }
         ],
-        codeSnippet: `[COMMAND]  :: ALERT DISPATCHED -> DEPT: JAL NIGAM\n[DISPATCH] :: COMPLIANCE PDF GENERATED #JN-98124\n[STATUS]   :: ESCALATED -> PENDING PROOF OF WORK VERIFICATION`
+        codeSnippet: `[COMMAND]  :: COMPLIANCE DIRECTIVE PUSHED -> DEPT: JAL NIGAM\n[DISPATCH] :: DIRECTIVE GENERATED -> #JN-98124\n[STATUS]   :: ESCALATED -> DEPT ACKNOWLEDGED`
+    },
+    {
+        id: "step-5",
+        stepNumber: "05",
+        name: "Resolve",
+        tag: "Proof-Of-Work",
+        title: "Step 5 // Verifiable Resolution",
+        summary: "Closes the loop by requiring geo-tagged photo uploads and cryptographic verification from citizen leaders before marking the issue resolved.",
+        metrics: [
+            { label: "Audit Mechanism", value: "Proof of Work" },
+            { label: "Geotag Validation", value: "GPS Locked" },
+            { label: "Citizen Audit", value: "Unbounded Trust" }
+        ],
+        codeSnippet: `[RESOLVER] :: RESOLUTION PICTURE UPLOADED -> PARSING METADATA\n[GEOCHECK] :: LOCATION LOCKED -> Prayagraj Civil Lines [MATCHED]\n[SUCCESS]  :: VERIFIED BY CITIZENS -> CLOSING COMPLAINT #JN-98124`
     }
 ];
 
@@ -68,22 +82,44 @@ const IntelligencePipeline = () => {
     return (
         <section className="pipeline-section" id="pipeline">
             <div className="pipeline-inner">
-                {/* Editorial Section Header */}
+                {/* Section Header */}
                 <div className="pipeline-header">
                     <div className="mn-tag-row">
-                        <span className="mn-badge">INTELLIGENCE // PIPELINE</span>
-                        <span className="mn-badge-secondary">[ 4 CONTINUOUS STAGES ]</span>
+                        <span className="mn-badge">HOW IT WORKS // PIPELINE</span>
+                        <span className="mn-badge-secondary">[ 5 ACTIVE STAGES ]</span>
                     </div>
                     <h2 className="pipeline-title">
-                        The Autonomous <span>Intelligence Cycle</span>
+                        The <span>Civic Intelligence Cycle</span>
                     </h2>
                     <p className="pipeline-subtitle">
-                        From unstructured citizen signals to verified governance action in seconds.
+                        Simplifying the process from raw citizen signal ingestion to verified resolution.
                     </p>
                 </div>
 
+                {/* Horizontal Workflow Flowchart (Visual Representation) */}
+                <div className="workflow-flowchart-bar">
+                    {PIPELINE_STEPS.map((step, idx) => (
+                        <React.Fragment key={step.id}>
+                            <div 
+                                className={`flow-node ${activeStep === idx ? 'active' : ''} ${activeStep > idx ? 'completed' : ''}`}
+                                onClick={() => setActiveStep(idx)}
+                            >
+                                <div className="flow-node-circle">
+                                    {idx + 1}
+                                </div>
+                                <span className="flow-node-name">{step.name}</span>
+                            </div>
+                            {idx < PIPELINE_STEPS.length - 1 && (
+                                <div className={`flow-connector ${activeStep > idx ? 'completed' : ''}`}>
+                                    <div className="connector-line" />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+
                 {/* Step Selector Pills */}
-                <div className="pipeline-stepper-nav">
+                <div className="pipeline-stepper-nav" style={{ marginTop: '24px' }}>
                     {PIPELINE_STEPS.map((step, idx) => (
                         <button
                             key={step.id}
@@ -110,7 +146,7 @@ const IntelligencePipeline = () => {
                     <div className="pipeline-left-card">
                         <div className="step-tag-row">
                             <span className="step-tag-pill">{current.tag}</span>
-                            <span className="mn-step-indicator">STAGE {current.stepNumber} OF 04</span>
+                            <span className="mn-step-indicator">STAGE {current.stepNumber} OF 05</span>
                         </div>
 
                         <h3 className="step-main-title">{current.title}</h3>
@@ -137,7 +173,7 @@ const IntelligencePipeline = () => {
                                 className="pipe-ctrl-btn next-btn"
                                 onClick={() => setActiveStep(prev => (prev + 1) % PIPELINE_STEPS.length)}
                             >
-                                {activeStep === 3 ? "Restart Cycle" : "Next Stage"} <ArrowRight size={16} />
+                                {activeStep === 4 ? "Restart Cycle" : "Next Stage"} <ArrowRight size={16} />
                             </button>
                         </div>
                     </div>
@@ -150,7 +186,7 @@ const IntelligencePipeline = () => {
                                 <span className="dot dot-yellow" />
                                 <span className="dot dot-green" />
                             </div>
-                            <span className="term-title">AI_PIPELINE_TELEMETRY // {current.name.toUpperCase()}</span>
+                            <span className="term-title">TELEMETRY_LOG // {current.name.toUpperCase()}</span>
                             <span className="term-status-live"><span className="blink-dot" /> LIVE</span>
                         </div>
 
@@ -162,8 +198,8 @@ const IntelligencePipeline = () => {
                             <div className="terminal-live-monitor">
                                 <div className="monitor-row">
                                     <span>Latency: <strong className="text-accent">14ms</strong></span>
-                                    <span>Throughput: <strong className="text-green">240 sig/s</strong></span>
-                                    <span>Reliability: <strong className="text-blue">99.98%</strong></span>
+                                    <span>Ingest Rate: <strong className="text-green">240 sig/s</strong></span>
+                                    <span>Accuracy: <strong className="text-blue">95.4%</strong></span>
                                 </div>
                             </div>
                         </div>
