@@ -391,7 +391,7 @@ const LandingPage = () => {
                         <div className="mn-tag-row">
                             <span className="mn-badge">THE CRITICAL DEFICIT</span>
                         </div>
-                        <h2 className="section-title" style={{ fontSize: '2.5rem', marginBottom: '20px' }}>
+                        <h2 className="section-title" style={{ fontSize: '3.4rem', marginBottom: '20px' }}>
                             Governing Blind
                         </h2>
                         <p className="hero-sub" style={{ fontSize: '1.15rem', maxWidth: '600px', lineHeight: '1.6' }}>
@@ -762,7 +762,7 @@ const LandingPage = () => {
                             <span className="mn-badge">VERIFICATION // GUARD</span>
                             <span className="mn-badge-secondary">[ INGESTION FILTER ]</span>
                         </div>
-                        <h2 className="section-title" style={{ fontSize: '2.5rem', marginBottom: '20px' }}>
+                        <h2 className="section-title" style={{ fontSize: '3.4rem', marginBottom: '20px' }}>
                             Fake News Shield
                         </h2>
                         <p className="hero-sub" style={{ fontSize: '1.15rem', maxWidth: '600px', lineHeight: '1.6' }}>
