@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from ..mongodb import articles_collection, sources_collection, detection_results_collection, community_reviews_collection
+from ..database import articles_collection, sources_collection, detection_results_collection, community_reviews_collection
 from ..utils import gen_uuid, get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/api", tags=["Complaints"])

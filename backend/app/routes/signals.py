@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..mongodb import news_articles_collection
+from ..database import news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Signals"])
 
@@ -7,7 +7,7 @@ router = APIRouter(prefix="/api", tags=["Signals"])
 async def get_signals():
     """Fallback legacy equivalent route, now loading from news_articles_collection."""
     results = await news_articles_collection.find(
-        {"risk_score": {"$exists": True}}
+        {}
     ).sort("risk_score", -1).limit(100).to_list(100)
 
     def _article_location_str(a: dict) -> str:

@@ -71,7 +71,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def get_current_user(auth: HTTPAuthorizationCredentials = Security(security)):
     """Dependency to get the current user from JWT token."""
-    from .mongodb import users_collection
+    from .database import users_collection
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
@@ -100,7 +100,7 @@ async def get_current_user_optional(request: Request):
         return None
     
     token = auth_header.split(" ")[1]
-    from .mongodb import users_collection
+    from .database import users_collection
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("user_id")

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..mongodb import users_collection, resolutions_collection
+from ..database import users_collection, resolutions_collection
 
 router = APIRouter(prefix="/api", tags=["Leaderboard"])
 
@@ -18,7 +18,7 @@ async def get_leaderboard():
         man_resolved = await resolutions_collection.count_documents({"resolved_by": uid, "status": "RESOLVED"})
         
         # Count signal resolutions
-        from ..mongodb import signal_problems_collection
+        from ..database import signal_problems_collection
         sig_total = await signal_problems_collection.count_documents({"$or": [{"assigned_to": uid}, {"resolved_by": uid}]})
         sig_resolved = await signal_problems_collection.count_documents({"resolved_by": uid, "status": "Problem Resolved"})
         

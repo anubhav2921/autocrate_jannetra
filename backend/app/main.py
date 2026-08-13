@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app import firebase_admin_config
+
 from app.routes import (
     account, alerts, analytics, articles, auth, chatbot,
     citizen_reports, complaints, dashboard, leaderboard,
@@ -46,9 +46,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Current Environment: {ENVIRONMENT}")
 
     # Environment Variables Audit
-    required_vars = ["MONGO_URL", "NVIDIA_API_KEY"]
+    required_vars = ["SUPABASE_URL", "SUPABASE_KEY", "NVIDIA_API_KEY"]
     if ENVIRONMENT == "production":
-        missing = [v for v in required_vars if not os.getenv(v) and not os.getenv("MONGO_URI")]
+        missing = [v for v in required_vars if not os.getenv(v)]
         if missing:
             logger.critical(f"❌ Missing critical environment variables: {missing}")
             # In some platforms, we might want to exit(1) here to fail the deployment

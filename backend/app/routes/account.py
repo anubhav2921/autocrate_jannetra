@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from ..mongodb import users_collection, resolutions_collection
+from ..database import users_collection, resolutions_collection
 from ..utils import create_access_token
 
 router = APIRouter(prefix="/api/account", tags=["Account"])
@@ -44,7 +44,7 @@ async def get_profile(user_id: str):
     manual_in_progress = await resolutions_collection.count_documents({"resolved_by": user_id, "status": "IN_PROGRESS"})
     
     # Count signal resolutions (from signal_problems_collection)
-    from ..mongodb import signal_problems_collection
+    from ..database import signal_problems_collection
     signal_total = await signal_problems_collection.count_documents({"resolved_by": user_id})
     signal_resolved = await signal_problems_collection.count_documents({"resolved_by": user_id, "status": "Problem Resolved"})
     

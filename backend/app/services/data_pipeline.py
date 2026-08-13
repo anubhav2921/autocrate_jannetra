@@ -111,15 +111,15 @@ def _categorize_text(text: str) -> str:
 
 def _get_existing_clusters() -> list[dict]:
     """Fetch active issues from signal_problems collection."""
-    from pymongo import MongoClient
-    import os
-    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
-    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
-    client = MongoClient(mongo_url)
-    db = client[mongo_db_name]
-    # Fetch clusters to keep grouping consistent across runs
-    clusters = list(db["signal_problems"].find({}))
-    client.close()
+    from app.database import db
+    import asyncio
+    try:
+        # We need an event loop to run async methods from mongodb.py
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    clusters = loop.run_until_complete(db["signal_problems"].find({}).to_list())
     return clusters
 
 
@@ -155,13 +155,16 @@ def _store_aggregated_clusters(clusters: list[dict]):
     """Upsert clusters into the signal_problems collection."""
     if not clusters:
         return
-    from pymongo import MongoClient
-    import os
-    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
-    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
-    client = MongoClient(mongo_url)
-    db = client[mongo_db_name]
-    
+    from app.database import db
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
     for cluster in clusters:
         cluster["priority_score"] = _calculate_priority(cluster)
         
@@ -174,25 +177,31 @@ def _store_aggregated_clusters(clusters: list[dict]):
         # Trending score for dashboard sorting
         cluster["trending_score"] = cluster["priority_score"]
         
-        db["signal_problems"].update_one(
-            {"id": cluster["id"]},
-            {"$set": cluster},
-            upsert=True
+        # upsert=True: insert if not existing, update if existing
+        loop.run_until_complete(
+            db["signal_problems"].update_one(
+                {"id": cluster["id"]},
+                {"$set": cluster},
+                upsert=True
+            )
         )
     logger.info(f"✅ Stored {len(clusters)} aggregated signal clusters.")
-    client.close()
 
 
 def _get_existing_hashes() -> set:
     """Fetch existing content hashes to avoid reprocessing EXACT signals."""
-    from pymongo import MongoClient
-    import os
-    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
-    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
-    client = MongoClient(mongo_url)
-    db = client[mongo_db_name]
-    hashes = {doc["content_hash"] for doc in db["news_articles"].find({}, {"content_hash": 1}) if "content_hash" in doc}
-    client.close()
+    from app.database import db
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+    docs = loop.run_until_complete(db["news_articles"].find({}).to_list())
+    hashes = {doc["content_hash"] for doc in docs if "content_hash" in doc}
     return hashes
 
 
@@ -200,21 +209,25 @@ def _store_articles_sync(records: list[dict]) -> int:
     """Store raw article signals to MongoDB news_articles collection."""
     if not records:
         return 0
-    from pymongo import MongoClient
-    import os
-    mongo_url = os.getenv("MONGO_URL") or os.getenv("MONGO_URI") or "mongodb://localhost:27017"
-    mongo_db_name = os.getenv("MONGO_DB_NAME") or os.getenv("DB_NAME") or "governance_db"
-    client = MongoClient(mongo_url)
-    db = client[mongo_db_name]
+    from app.database import db
+    import asyncio
     try:
-        result = db["news_articles"].insert_many(records, ordered=False)
-        logger.info(f"✅ Stored {len(result.inserted_ids)} raw signals.")
-        return len(result.inserted_ids)
-    except Exception as e:
-        logger.warning(f"[Pipeline] Signal storage error: {e}")
-        return 0
-    finally:
-        client.close()
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            raise RuntimeError("closed")
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+    stored = 0
+    for record in records:
+        try:
+            loop.run_until_complete(db["news_articles"].insert_one(record))
+            stored += 1
+        except Exception as e:
+            logger.debug(f"[Pipeline] Skipped duplicate/error: {e}")
+    logger.info(f"✅ Stored {stored} raw signals.")
+    return stored
 
 
 def _process_article(article: dict) -> dict:
@@ -260,31 +273,58 @@ def _process_article(article: dict) -> dict:
     return article
 
 
-def run_pipeline() -> dict:
+def run_pipeline(city: str = None) -> dict:
     """Execute the intelligent ingestion pipeline with signal aggregation."""
     start_time = time.time()
     logger.info("=" * 60)
     logger.info("[Pipeline] ▶ Starting Signal Aggregation & Scoring Pipeline...")
     logger.info("=" * 60)
+
+    if city:
+        from app.database import db
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        last_city_doc = loop.run_until_complete(db["scraper_config"].find_one({"id": "last_city"}))
+        last_city = last_city_doc.get("city") if last_city_doc else None
+        
+        if last_city and last_city.lower() != city.lower():
+            logger.info(f"[Pipeline] City changed from {last_city} to {city}. Clearing old data.")
+            loop.run_until_complete(db["news_articles"].delete_many({}))
+            loop.run_until_complete(db["signal_problems"].delete_many({}))
+        
+        loop.run_until_complete(
+            db["scraper_config"].update_one(
+                {"id": "last_city"},
+                {"$set": {"city": city, "id": "last_city"}}
+            )
+        )
  
     all_articles: list[dict] = []
- 
+
     # Stage 1: Collect from all sources
     scrapers = [
-        # NOTE: RSS feeds removed to strictly avoid scraping generic daily news.
-        ("News APIs", scrape_news_apis),      # Uses specific problem queries like "pothole"
-        ("Gov Portals", scrape_government_portals),
-        ("Reddit", scrape_reddit_complaints)
+        ("RSS Feeds", lambda city=None: scrape_rss_feeds()),  # Verified Indian news outlets
+        ("News APIs", scrape_news_apis),                       # NewsAPI + GDELT (specific governance queries)
+        ("Gov Portals", scrape_government_portals),            # PIB + data.gov.in
+        ("Reddit", scrape_reddit_complaints)                   # Indian subreddit complaints via RSS
     ]
- 
+
     for name, scraper_func in scrapers:
         try:
-            articles = scraper_func()
+            if name in ("News APIs", "Reddit"):
+                articles = scraper_func(city=city)
+            else:
+                articles = scraper_func()
             all_articles.extend(articles)
-            logger.info(f"[Pipeline] %s: %d raw signals", name, len(articles))
+            logger.info("[Pipeline] %s: %d raw signals", name, len(articles))
         except Exception as e:
-            logger.error(f"[Pipeline] %s scraper failed: %s", name, e)
- 
+            logger.error("[Pipeline] %s scraper failed: %s", name, e)
+
     if not all_articles:
         return {"status": "empty", "total_scraped": 0, "elapsed_seconds": round(time.time() - start_time, 2)}
  

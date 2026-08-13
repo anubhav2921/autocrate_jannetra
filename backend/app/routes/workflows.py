@@ -3,7 +3,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from ..mongodb import (
+from ..database import (
     signal_problems_collection,
     news_articles_collection,
     activity_logs_collection

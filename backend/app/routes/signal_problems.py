@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from ..mongodb import (
+from ..database import (
     news_articles_collection, signal_problems_collection
 )
 from ..services.ai_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem

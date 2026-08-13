@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime
-from ..mongodb import news_articles_collection
+from ..database import news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Articles"])
 

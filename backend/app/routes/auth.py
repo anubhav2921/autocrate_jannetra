@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-from ..mongodb import users_collection
+from ..database import users_collection
 from ..services.sms_service import send_otp_sms, send_email_otp
 from ..utils import gen_uuid, create_access_token
 
@@ -170,57 +170,54 @@ async def login(req: LoginRequest):
     }
 
 
-@router.post("/google")
-async def google_auth(request: Request):
+@router.post("/supabase-login")
+async def supabase_login(request: Request):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
 
     id_token = auth_header.split("Bearer ")[1].strip()
-    print(f"[AUTH-DEBUG] Google Auth Token: {id_token[:40]}... (Length: {len(id_token)})")
-
+    
+    from ..supabase_client import supabase
     try:
-        from firebase_admin import auth as firebase_auth
-        from ..firebase_admin_config import initialize_firebase
-        initialize_firebase()
-        decoded_token = firebase_auth.verify_id_token(id_token)
-    except ImportError:
-        raise HTTPException(status_code=500, detail="firebase-admin package not installed.")
+        user_res = supabase.auth.get_user(id_token)
+        sb_user = user_res.user
     except Exception as e:
-        error_msg = str(e)
-        print(f"[AUTH-DEBUG] Google Auth Token verification failed: {error_msg}")
-        if "serviceAccountKey.json" in error_msg or "FileNotFoundError" in error_msg or "default Firebase app does not exist" in error_msg:
-            raise HTTPException(status_code=500, detail="Firebase Admin not configured. Please check serviceAccountKey.json in backend/app/")
-        raise HTTPException(status_code=401, detail=f"DEBUG-ERROR: {error_msg[:50]}")
+        raise HTTPException(status_code=401, detail=f"Supabase token verification failed: {e}")
 
-    uid = decoded_token["uid"]
-    email = decoded_token.get("email", "")
-    name = decoded_token.get("name", email.split("@")[0] if email else "User")
-    picture = decoded_token.get("picture", "")
+    uid = sb_user.id
+    email = sb_user.email or ""
+    phone_number = sb_user.phone or ""
+    name = sb_user.user_metadata.get("full_name") or sb_user.user_metadata.get("name") or (email.split("@")[0] if email else f"User {phone_number[-4:] if phone_number else ''}")
+    picture = sb_user.user_metadata.get("avatar_url") or sb_user.user_metadata.get("picture") or ""
+    provider = sb_user.app_metadata.get("provider", "email")
 
     user = await users_collection.find_one({"google_uid": uid})
-    if not user and email:
-        user = await users_collection.find_one({"email": email})
+    if not user:
+        user = await users_collection.find_one({"email": email}) if email else None
+    if not user:
+        user = await users_collection.find_one({"phone_number": phone_number}) if phone_number else None
 
     if user:
-        await users_collection.update_one(
-            {"id": user["id"]},
-            {"$set": {"google_uid": uid, "picture": picture, "auth_provider": "google"}}
-        )
-        user["google_uid"] = uid
-        user["picture"] = picture
-        user["auth_provider"] = "google"
+        update = {"google_uid": uid, "picture": picture, "auth_provider": provider}
+        if phone_number and not user.get("phone_number"):
+            update["phone_number"] = phone_number
+        if email and not user.get("email"):
+            update["email"] = email
+        await users_collection.update_one({"id": user["id"]}, {"$set": update})
+        user.update(update)
     else:
         user = {
             "id": gen_uuid(),
             "name": name,
-            "email": email,
+            "email": email or None,
             "password_hash": "",
             "role": "LEADER",
-            "department": "", # Default empty
+            "department": "", 
             "google_uid": uid,
+            "phone_number": phone_number or None,
             "picture": picture,
-            "auth_provider": "google",
+            "auth_provider": provider,
             "is_active": True,
             "created_at": datetime.utcnow(),
         }
@@ -234,92 +231,10 @@ async def google_auth(request: Request):
         "user": {
             "id": user["id"],
             "name": user["name"],
-            "email": user["email"],
-            "role": user.get("role"),
-            "department": user.get("department"),
-            "picture": user.get("picture"),
-            "auth_provider": user.get("auth_provider"),
-        },
-    }
-
-
-
-@router.post("/firebase-login")
-async def firebase_phone_login(request: Request):
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header")
-
-    id_token = auth_header.split("Bearer ")[1].strip()
-    print(f"[AUTH-DEBUG] Phone Auth Token: {id_token[:40]}... (Length: {len(id_token)})")
-
-    try:
-        from firebase_admin import auth as firebase_auth
-        from ..firebase_admin_config import initialize_firebase
-        initialize_firebase()
-        decoded_token = firebase_auth.verify_id_token(id_token)
-    except ImportError:
-        raise HTTPException(status_code=500, detail="firebase-admin package not installed.")
-    except Exception as e:
-        error_msg = str(e)
-        print(f"[AUTH-DEBUG] Phone/Firebase Login Token verification failed: {error_msg}")
-        if "serviceAccountKey.json" in error_msg or "FileNotFoundError" in error_msg or "default Firebase app does not exist" in error_msg:
-            raise HTTPException(status_code=500, detail="Firebase Admin not configured. Please check serviceAccountKey.json in backend/app/")
-        raise HTTPException(status_code=401, detail=f"DEBUG-ERROR: {error_msg[:50]}")
-
-    uid = decoded_token["uid"]
-    phone_number = decoded_token.get("phone_number", "")
-    email = decoded_token.get("email", "")
-    name = decoded_token.get("name", "")
-
-    if not phone_number and not email:
-        raise HTTPException(status_code=400, detail="Token does not contain a phone number or email.")
-
-    user = await users_collection.find_one({"firebase_uid": uid})
-    if not user and phone_number:
-        user = await users_collection.find_one({"phone_number": phone_number})
-    if not user and email:
-        user = await users_collection.find_one({"email": email})
-
-    if user:
-        update = {"firebase_uid": uid}
-        if phone_number:
-            update["phone_number"] = phone_number
-        if not user.get("auth_provider") or user.get("auth_provider") == "email":
-            update["auth_provider"] = "phone"
-        await users_collection.update_one({"id": user["id"]}, {"$set": update})
-        user.update(update)
-        print(f"[AUTH] Firebase phone login: existing user {phone_number or email}")
-    else:
-        display_name = name or (f"User {phone_number[-4:]}" if phone_number else "User")
-        user = {
-            "id": gen_uuid(),
-            "name": display_name,
-            "email": email or None,
-            "password_hash": "",
-            "role": "LEADER",
-            "department": "",
-            "firebase_uid": uid,
-            "phone_number": phone_number or None,
-            "auth_provider": "phone",
-            "is_active": True,
-            "created_at": datetime.utcnow(),
-        }
-        await users_collection.insert_one(user)
-        print(f"[AUTH] Firebase phone login: new user created for {phone_number}")
-
-    token = create_access_token(data={"user_id": user["id"], "department": user.get("department", "")})
-
-    return {
-        "message": "Login successful",
-        "token": token,
-        "user": {
-            "id": user["id"],
-            "name": user["name"],
             "email": user.get("email") or "",
             "phone_number": user.get("phone_number") or "",
             "role": user.get("role"),
-            "department": user.get("department"),
+            "department": user.get("department") or "",
             "picture": user.get("picture") or "",
             "auth_provider": user.get("auth_provider"),
         },
@@ -484,7 +399,7 @@ class CreateUserRequest(BaseModel):
     name: str
     email: Optional[str] = ""
     phone: Optional[str] = ""
-    firebase_uid: Optional[str] = ""
+    google_uid: Optional[str] = ""
 
 
 @router.post("/users/create")
@@ -495,7 +410,7 @@ async def create_user_profile(req: CreateUserRequest):
 
     email = clean_str(req.email)
     phone_number = clean_str(req.phone)
-    firebase_uid = clean_str(req.firebase_uid)
+    google_uid = clean_str(req.google_uid)
     name = clean_str(req.name)
 
     if not email and not phone_number:
@@ -504,8 +419,8 @@ async def create_user_profile(req: CreateUserRequest):
         return {"success": False, "error": "Name is required."}
 
     user = None
-    if firebase_uid:
-        user = await users_collection.find_one({"firebase_uid": firebase_uid})
+    if google_uid:
+        user = await users_collection.find_one({"google_uid": google_uid})
     if not user and email:
         user = await users_collection.find_one({"email": email})
     if not user and phone_number:
@@ -513,8 +428,8 @@ async def create_user_profile(req: CreateUserRequest):
 
     if user:
         update = {}
-        if firebase_uid and not user.get("firebase_uid"):
-            update["firebase_uid"] = firebase_uid
+        if google_uid and not user.get("google_uid"):
+            update["google_uid"] = google_uid
         if email and not user.get("email"):
             update["email"] = email
         if phone_number and not user.get("phone_number"):
@@ -535,7 +450,7 @@ async def create_user_profile(req: CreateUserRequest):
             "password_hash": "",
             "role": "LEADER",
             "department": "",
-            "firebase_uid": firebase_uid or None,
+            "google_uid": google_uid or None,
             "auth_provider": auth_provider,
             "is_active": True,
             "created_at": datetime.utcnow(),
@@ -559,6 +474,6 @@ async def create_user_profile(req: CreateUserRequest):
             "department": user.get("department") or "",
             "picture": user.get("picture") or "",
             "auth_provider": user.get("auth_provider"),
-            "firebase_uid": user.get("firebase_uid") or "",
+            "google_uid": user.get("google_uid") or "",
         },
     }

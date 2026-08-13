@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from ..mongodb import system_metrics_collection
+from ..database import system_metrics_collection
 from ..services.system_monitoring_service import generate_system_metrics, analyze_system_metric
 
 router = APIRouter(prefix="/api", tags=["System Monitoring"])

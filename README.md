@@ -4,7 +4,7 @@
 
   [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
   [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-  [![MongoDB](https://img.shields.io/badge/MongoDB-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+  [![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
   [![Transformers](https://img.shields.io/badge/Transformers-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black)](https://huggingface.co/transformers/)
 </div>
 
@@ -80,7 +80,7 @@ The **Risk Score** is calculated across 5 areas:
 
 ## 🗄️ Core Data Models & Schemas
 
-JanNetra utilizes a robust schema-validated MongoDB backend for signal persistence.
+JanNetra utilizes a robust schema-validated **Supabase (PostgreSQL)** backend for signal persistence.
 
 | Entity | Description | Core Attributes |
 | :--- | :--- | :--- |
@@ -143,24 +143,27 @@ graph TD
 ## ⚡ Technical Specification & Security
 
 ### **1. Security Architecture**
-- **Authentication:** Multi-mode auth (Google, Phone OTP, Email) powered by **Firebase Auth**.
+- **Authentication:** Multi-mode auth (Google, Phone OTP, Email) powered by **Supabase Auth**.
 - **Authorization:** Role-Based Access Control (RBAC) categorizing users into `LEADER`, `ADMIN`, and `ANALYST` roles.
 - **CORS Policy:** Strict origin validation for production and development environments.
 - **Data Integrity:** SHA-256 content hashing for deduplication and tamper-evidence in the intelligence pipeline.
 
 ### **2. Performance Optimization**
 - **GPU Acceleration:** Leveraging **PyTorch + CUDA** for real-time sentiment extraction via DistilBERT.
-- **Asynchronous IO:** Backend built on **FastAPI** with `Motor` (Async MongoDB driver) to handle high-concurrency ingestion.
+- **Asynchronous IO:** Backend built on **FastAPI** utilizing the Supabase PostgREST client to handle high-concurrency ingestion seamlessly.
 - **Background Scheduler:** **APScheduler** manages the 30-minute intelligence cycle without blocking the main event loop.
 
 ### **3. Environment Configuration (.env)**
 Ensure the following variables are configured in the `backend/.env` file:
 ```bash
-MONGO_URL=mongodb://localhost:27017
-MONGO_DB_NAME=governance_db
-NEWSAPI_KEY=your_key_here
-FIREBASE_CONFIG_JSON_PATH=./firebase_config.json
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_jwt_secret
+NEWSAPI_KEY=your_newsapi_key
 ```
+
+### **4. Database Schema Setup**
+- Ensure you apply the `schema.sql` file in your Supabase SQL Editor before starting the application to establish the required tables.
 
 ---
 

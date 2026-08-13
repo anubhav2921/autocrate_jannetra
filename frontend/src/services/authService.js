@@ -1,17 +1,9 @@
 // 
-// JanNetra — Firebase Auth Service (Improved Version)
+// JanNetra — Supabase Auth Service
 // Clean + Safe + Production Ready
 //
 
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signInWithPhoneNumber,
-    sendPasswordResetEmail,
-    signInWithPopup,
-    RecaptchaVerifier,
-} from 'firebase/auth';
-import { auth, googleProvider } from '../config/firebase';
+import { supabase } from '../supabase';
 import api from './apiClient';
 
 // Using consolidated 'api' from apiClient.js automatically handles environment-specific URLs.
@@ -21,9 +13,14 @@ import api from './apiClient';
 // ==============================
 export async function signUpWithEmail(email, password) {
     try {
-        const result = await createUserWithEmailAndPassword(auth, email, password);
-        const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+        });
+        if (error) throw error;
+        
+        // Supabase returns a session with access_token
+        return { user: data.user, idToken: data.session?.access_token || null };
     } catch (error) {
         console.error('[Signup Error]', error);
         throw error;
@@ -35,9 +32,13 @@ export async function signUpWithEmail(email, password) {
 // ==============================
 export async function loginWithEmail(email, password) {
     try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+        if (error) throw error;
+        
+        return { user: data.user, idToken: data.session?.access_token || null };
     } catch (error) {
         console.error('[Email Login Error]', error);
         throw error;
@@ -45,29 +46,15 @@ export async function loginWithEmail(email, password) {
 }
 
 // ==============================
-// 🔹 reCAPTCHA Setup
-// ==============================
-export function setupRecaptcha(containerId) {
-    try {
-        return new RecaptchaVerifier(auth, containerId, {
-            size: 'invisible',
-            callback: () => { },
-            'expired-callback': () => {
-                console.warn('reCAPTCHA expired');
-            },
-        });
-    } catch (err) {
-        console.error('Recaptcha error:', err);
-        throw err;
-    }
-}
-
-// ==============================
 // 🔹 Phone OTP — Send
 // ==============================
-export async function loginWithPhoneOTP(phoneNumber, appVerifier) {
+export async function loginWithPhoneOTP(phoneNumber) {
     try {
-        return await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        const { data, error } = await supabase.auth.signInWithOtp({
+            phone: phoneNumber,
+        });
+        if (error) throw error;
+        return data;
     } catch (error) {
         console.error('[Phone OTP Error]', error);
         throw error;
@@ -77,11 +64,15 @@ export async function loginWithPhoneOTP(phoneNumber, appVerifier) {
 // ==============================
 // 🔹 Phone OTP — Verify
 // ==============================
-export async function verifyOTP(confirmationResult, code) {
+export async function verifyOTP(phoneNumber, code) {
     try {
-        const result = await confirmationResult.confirm(code);
-        const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
+        const { data, error } = await supabase.auth.verifyOtp({
+            phone: phoneNumber,
+            token: code,
+            type: 'sms'
+        });
+        if (error) throw error;
+        return { user: data.user, idToken: data.session?.access_token || null };
     } catch (error) {
         console.error('[OTP Verify Error]', error);
         throw error;
@@ -93,7 +84,8 @@ export async function verifyOTP(confirmationResult, code) {
 // ==============================
 export async function resetPassword(email) {
     try {
-        await sendPasswordResetEmail(auth, email);
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+        if (error) throw error;
         return { success: true };
     } catch (error) {
         console.error('[Reset Password Error]', error);
@@ -106,9 +98,15 @@ export async function resetPassword(email) {
 // ==============================
 export async function loginWithGoogle() {
     try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken();
-        return { user: result.user, idToken };
+        const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + '/login'
+            }
+        });
+        if (error) throw error;
+        // OAuth login redirects, so we don't return tokens directly here
+        return data;
     } catch (error) {
         console.error('[Google Login Error]', error);
         throw error;
@@ -134,12 +132,11 @@ export async function createUserProfile(payload) {
 }
 
 // ==============================
-// 🔥 IMPORTANT FIX
-// 🔹 Backend: Verify Firebase Token
+// 🔹 Backend: Verify Supabase Token
 // ==============================
-export async function verifyFirebaseToken(
+export async function verifySupabaseToken(
     idToken,
-    endpoint = '/auth/firebase-login'
+    endpoint = '/auth/supabase-login'
 ) {
     try {
         const response = await api.post(
@@ -154,15 +151,14 @@ export async function verifyFirebaseToken(
 
         return response;
     } catch (error) {
-        console.error('[Firebase Verify Error]', error);
+        console.error('[Supabase Verify Error]', error);
 
-        // ✅ Proper error propagation (NO fake messages)
         throw {
             message:
                 error.response?.data?.detail ||
                 error.response?.data?.error ||
                 error.message ||
-                'Firebase verification failed',
+                'Supabase verification failed',
             status: error.response?.status,
         };
     }
