@@ -20,7 +20,8 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
     const dropdownRef = useRef(null);
     const locationDropdownRef = useRef(null);
     const navigate = useNavigate();
-    const { hasLocation, locationLabel } = useLocation();
+    const { location, hasLocation, locationLabel } = useLocation();
+
 
     useEffect(() => {
         fetchLocationDashboard(location)

@@ -628,27 +628,30 @@ const ReportIssue = () => {
                 .report-full-page {
                     position: fixed;
                     inset: 0;
-                    background: var(--bg-primary);
+                    background: rgba(9, 9, 11, 0.75);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
                     color: var(--text-primary);
                     z-index: 10000;
                     display: flex;
                     flex-direction: column;
-                    font-family: 'Inter', sans-serif;
+                    font-family: 'Plus Jakarta Sans', sans-serif;
                 }
                 .guided-header {
-                    height: 64px;
+                    height: 68px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 0 20px;
-                    background: var(--navbar-bg);
-                    backdrop-filter: blur(10px);
+                    padding: 0 24px;
+                    background: rgba(14, 14, 18, 0.6);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
                     z-index: 10;
-                    border-bottom: 1px solid var(--border-color);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
                 }
                 .step-indicator { display: flex; gap: 8px; }
-                .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-color); transition: all 0.3s; }
-                .step-dot.active { background: #6366f1; width: 24px; border-radius: 10px; }
+                .step-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); transition: all 0.3s; }
+                .step-dot.active { background: #A881FE; width: 24px; border-radius: 10px; box-shadow: 0 0 10px rgba(168, 129, 254, 0.5); }
                 .step-dot.done { background: #10b981; }
 
                 .guided-container { flex: 1; position: relative; overflow: hidden; }
@@ -656,18 +659,19 @@ const ReportIssue = () => {
                 /* Intro View */
                 .intro-view { height: 100%; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
                 .intro-content { max-width: 600px; width: 100%; text-align: center; }
-                .main-title { font-size: 2.5rem; font-weight: 800; color: var(--text-primary); }
-                .subtitle { color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 40px; }
+                .main-title { font-size: 2.5rem; font-weight: 800; color: #ffffff; letter-spacing: -0.03em; }
+                .subtitle { color: #a1a1aa; font-size: 1.1rem; margin-bottom: 40px; }
                 .how-it-works-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 40px; }
-                .work-card { background: var(--bg-glass); border: 1px solid var(--border-color); padding: 24px; border-radius: 20px; text-align: left; transition: all 0.3s; }
-                .work-card:hover { background: var(--bg-glass-hover); border-color: #6366f1; transform: translateY(-4px); }
-                .card-icon { color: #6366f1; margin-bottom: 16px; }
-                .work-card h4 { font-size: 1.1rem; margin-bottom: 8px; color: var(--text-primary); }
-                .work-card p { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5; }
-                .start-btn { padding: 20px; font-size: 1.1rem; border-radius: 16px; margin-top: 20px; }
+                .work-card { background: rgba(18, 18, 24, 0.65); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); padding: 24px; border-radius: 20px; text-align: left; transition: all 0.3s; }
+                .work-card:hover { background: rgba(18, 18, 24, 0.85); border-color: rgba(168, 129, 254, 0.4); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); }
+                .card-icon { color: #A881FE; margin-bottom: 16px; }
+                .work-card h4 { font-size: 1.1rem; margin-bottom: 8px; color: #ffffff; font-weight: 700; }
+                .work-card p { font-size: 0.85rem; color: #a1a1aa; line-height: 1.5; }
+                .start-btn { padding: 20px; font-size: 1.1rem; border-radius: 16px; margin-top: 20px; background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%); border: none; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(168, 129, 254, 0.4); }
                 .ml-s { margin-left: 8px; }
 
                 /* Camera Styles */
+
                 .camera-fullscreen { position: absolute; inset: 0; background: black; }
                 .camera-loading-overlay {
                     position: absolute; inset: 0; 
