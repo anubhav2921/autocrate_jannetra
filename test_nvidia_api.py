@@ -18,8 +18,8 @@ load_dotenv()
 
 # ─── CONFIG ───────────────────────────────────────────────────
 API_KEY   =
-MODEL     = "meta/llama-3.2-11b-vision-instruct"
-API_URL   = "https://integrate.api.nvidia.com/v1/chat/completions"
+MODEL     = ""
+API_URL   = ""
 IMAGE_PATH = "test_image.jpg"   # <-- place your test image here
 # ──────────────────────────────────────────────────────────────
 
