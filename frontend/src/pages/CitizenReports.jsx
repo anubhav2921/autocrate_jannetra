@@ -48,11 +48,20 @@ export default function CitizenReports() {
             if (filterStatus === 'Resolved' && p.status !== 'Problem Resolved') return false;
             if (filterStatus === 'Pending' && p.status !== 'Pending') return false;
         }
-        if (search && !p.title.toLowerCase().includes(search.toLowerCase()) &&
-            !p.id.toLowerCase().includes(search.toLowerCase()) &&
-            !p.category.toLowerCase().includes(search.toLowerCase())) return false;
+        if (search) {
+            const q = search.toLowerCase();
+            const matches = 
+                (p.title && p.title.toLowerCase().includes(q)) ||
+                (p.id && p.id.toLowerCase().includes(q)) ||
+                (p.category && p.category.toLowerCase().includes(q)) ||
+                (p.location && typeof p.location === 'string' && p.location.toLowerCase().includes(q)) ||
+                (p.department && p.department.toLowerCase().includes(q)) ||
+                (p.description && p.description.toLowerCase().includes(q));
+            if (!matches) return false;
+        }
         return true;
     });
+
 
     const stats = {
         total: problems.length,

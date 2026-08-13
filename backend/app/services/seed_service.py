@@ -3,7 +3,7 @@ Seed Service — Ensures the database has initial data for the dashboard.
 """
 import logging
 from datetime import datetime
-from ..mongodb import signal_problems_collection, news_articles_collection
+from ..database import signal_problems_collection, news_articles_collection
 
 logger = logging.getLogger("jannetra.seed")
 
@@ -95,7 +95,7 @@ async def seed_if_empty():
             "created_at": datetime.utcnow(),
             "auth_provider": "email"
         }
-        from ..mongodb import users_collection
+        from ..database import users_collection
         await users_collection.insert_one(admin_doc)
         logger.info("✅ Inserted seed admin user.")
         

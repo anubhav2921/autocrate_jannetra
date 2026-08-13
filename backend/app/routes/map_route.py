@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from ..mongodb import articles_collection, gri_scores_collection, sentiment_records_collection, detection_results_collection, news_articles_collection
+from ..database import articles_collection, gri_scores_collection, sentiment_records_collection, detection_results_collection, news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Map"])
 

@@ -6,11 +6,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-key = os.getenv("NVIDIA_API_KEY_3")
+key = os.getenv("NVIDIA_API_KEY") or os.getenv("NVIDIA_API_KEY_3")
 model = "meta/llama-3.1-70b-instruct"
 url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 def test():
+    if not key:
+        print("[ERROR] NVIDIA_API_KEY is not set in environment.")
+        return
     print(f"Testing with key: {key[:10]}...")
     headers = {
         "Authorization": f"Bearer {key}",

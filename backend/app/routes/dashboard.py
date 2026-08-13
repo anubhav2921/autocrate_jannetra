@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from datetime import datetime, timedelta
-from ..mongodb import (
+from ..database import (
     news_articles_collection, articles_collection,
     alerts_collection, signal_problems_collection
 )

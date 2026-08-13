@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Query, HTTPException
 from datetime import datetime
-from ..mongodb import news_articles_collection
+from ..database import news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Data Pipeline"])
 
 
 @router.post("/pipeline/run")
-def trigger_pipeline():
+def trigger_pipeline(city: str = Query(None)):
     """Manually trigger the data ingestion pipeline."""
     from ..services.data_pipeline import run_pipeline
     try:
-        result = run_pipeline()
+        result = run_pipeline(city=city)
         return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
@@ -90,6 +90,7 @@ async def news_article_stats():
 
 @router.get("/news-articles")
 async def list_news_articles(
+    city: str = Query(None),
     category: str = Query(None),
     risk_level: str = Query(None),
     label: str = Query(None),
@@ -97,6 +98,8 @@ async def list_news_articles(
     limit: int = Query(20, ge=1, le=100),
 ):
     match = {}
+    if city:
+        match["city"] = city
     if category:
         match["category"] = category
     if risk_level:

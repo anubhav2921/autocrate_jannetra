@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from ..mongodb import (
+from ..database import (
     news_articles_collection, articles_collection, gri_scores_collection, 
     sentiment_records_collection, detection_results_collection, signal_problems_collection
 )
@@ -242,7 +242,7 @@ async def risk_summary(
 @router.get("/analytics/landing-stats")
 async def get_landing_stats():
     """Consolidated stats for the landing page hero section."""
-    from ..mongodb import articles_collection, signal_problems_collection, system_metrics_collection
+    from ..database import articles_collection, signal_problems_collection, system_metrics_collection
     
     # 1. Issues Processed (Total Articles + Active Clusters)
     art_count = await articles_collection.count_documents({})

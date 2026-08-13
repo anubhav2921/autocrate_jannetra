@@ -8,6 +8,7 @@ import {
     AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame, Globe, Users,
 } from 'lucide-react';
 import { fetchLocationDashboard } from '../services/api';
+import api from '../services/api';
 import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
@@ -18,6 +19,44 @@ export default function Dashboard() {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
+
+    // New States for City Scraping
+    const [activeTab, setActiveTab] = useState('overview');
+    const [feedCity, setFeedCity] = useState('');
+    const [feedData, setFeedData] = useState([]);
+    const [feedLoading, setFeedLoading] = useState(false);
+    const [triggerMessage, setTriggerMessage] = useState('');
+
+    const fetchFeed = (city) => {
+        setFeedLoading(true);
+        api.get('/news-articles', { params: city ? { city } : {} })
+            .then(res => setFeedData(res.data?.articles || []))
+            .catch(console.error)
+            .finally(() => setFeedLoading(false));
+    };
+
+    const handleTriggerScraper = (cityToScrape) => {
+        if (!cityToScrape || !cityToScrape.trim()) return;
+        setTriggerMessage(`Starting scraper for ${cityToScrape}...`);
+        api.post('/pipeline/run', null, { params: { city: cityToScrape.trim() } })
+            .then(res => {
+                setTriggerMessage(res.message || `Scraper finished for ${cityToScrape}.`);
+                setActiveTab('feed');
+                fetchFeed(cityToScrape.trim());
+            })
+            .catch(err => {
+                console.error(err);
+                setTriggerMessage('Failed to start scraper.');
+            });
+    };
+
+    const handleCityChange = (e) => {
+        const selectedCity = e.target.value;
+        setFeedCity(selectedCity);
+        if (selectedCity) {
+            handleTriggerScraper(selectedCity);
+        }
+    };
 
     useEffect(() => {
         setLoading(true);
@@ -92,6 +131,42 @@ export default function Dashboard() {
                 </div>
             </div>
 
+            {/* City Scraper Trigger */}
+            <div className="glass-card animate-in" style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <span style={{ color: 'white', fontWeight: 500 }}>Select City:</span>
+                <select 
+                    value={feedCity} 
+                    onChange={handleCityChange}
+                    style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: '#1e293b', color: 'white', flex: 1 }}
+                >
+                    <option value="">-- Choose a city to scrape --</option>
+                    <option value="Prayagraj">Prayagraj</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Bangalore">Bangalore</option>
+                    <option value="Chennai">Chennai</option>
+                </select>
+                {triggerMessage && <span style={{ fontSize: '0.9rem', color: '#10b981' }}>{triggerMessage}</span>}
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+                <button 
+                    onClick={() => setActiveTab('overview')} 
+                    style={{ background: 'transparent', border: 'none', color: activeTab === 'overview' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                    Overview
+                </button>
+                <button 
+                    onClick={() => { setActiveTab('feed'); if (feedCity) fetchFeed(feedCity); }} 
+                    style={{ background: 'transparent', border: 'none', color: activeTab === 'feed' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                    Live Feed {feedCity && `(${feedCity})`}
+                </button>
+            </div>
+
+            {activeTab === 'overview' ? (
+                <>
             {/* Stat Cards */}
             <div className="stats-grid">
                 <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
@@ -269,6 +344,38 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
+            </>
+            ) : (
+                <div className="glass-card animate-in">
+                    <div className="section-title" style={{ display: 'flex', alignItems: 'center' }}>
+                        <Newspaper size={18} style={{ marginRight: '8px' }} /> Live Feed for {feedCity || 'All Cities'}
+                        <button onClick={() => fetchFeed(feedCity)} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Refresh</button>
+                    </div>
+                    {feedLoading ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading feed...</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {feedData.length === 0 ? (
+                                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No signals found in feed. Start scraper to fetch data.</div>
+                            ) : (
+                                feedData.map(a => (
+                                    <div key={a.id} style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <h4 style={{ margin: 0, color: 'var(--accent-blue)', flex: 1 }}>{a.title}</h4>
+                                            <span className={`badge badge-${a.risk_level?.toLowerCase() || 'low'}`} style={{ marginLeft: '12px' }}>{a.risk_level || 'LOW'} RISK</span>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                                            <span><strong>Source:</strong> {a.source_name}</span>
+                                            <span><strong>Category:</strong> {a.category}</span>
+                                            <span><strong>Date:</strong> {new Date(a.published_at).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

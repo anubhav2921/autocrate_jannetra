@@ -7,7 +7,7 @@ console.log(`[JanNetra Config] API Base URL: ${BASE_URL}`);
 
 const apiClient = axios.create({
     baseURL: `${BASE_URL}/api`,
-    timeout: 30000, // Increased timeout for pipeline triggers
+    timeout: 300000, // Increased timeout to 5 mins for pipeline triggers
     headers: { 'Content-Type': 'application/json' },
 });
 

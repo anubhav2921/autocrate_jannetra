@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 from typing import Optional
 from datetime import datetime
-from ..mongodb import alerts_collection, news_articles_collection
+from ..database import alerts_collection, news_articles_collection
 
 router = APIRouter(prefix="/api", tags=["Alerts"])
 

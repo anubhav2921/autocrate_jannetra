@@ -2,7 +2,7 @@ import io
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from ..mongodb import (
+from ..database import (
     articles_collection, gri_scores_collection, alerts_collection,
     detection_results_collection, sentiment_records_collection, news_articles_collection,
     signal_problems_collection

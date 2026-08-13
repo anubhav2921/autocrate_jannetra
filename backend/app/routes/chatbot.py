@@ -1,7 +1,7 @@
 import re
 from fastapi import APIRouter
 from pydantic import BaseModel
-from ..mongodb import (
+from ..database import (
     news_articles_collection, alerts_collection, resolutions_collection, signal_problems_collection
 )
 from ..services.ai_service import query_chatbot_with_context

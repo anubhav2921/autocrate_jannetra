@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from ..mongodb import sources_collection, news_articles_collection, detection_results_collection
+from ..database import sources_collection, news_articles_collection, detection_results_collection
 from ..utils import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Sources"])

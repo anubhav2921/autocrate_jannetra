@@ -8,9 +8,16 @@ import base64
 import json
 import re
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables from backend/.env or .env
+dotenv_backend = os.path.join(os.path.dirname(__file__), "backend", ".env")
+if os.path.exists(dotenv_backend):
+    load_dotenv(dotenv_backend)
+load_dotenv()
 
 # ─── CONFIG ───────────────────────────────────────────────────
-API_KEY   = os.getenv("NVIDIA_API_KEY", "deepgreen")
+API_KEY   = "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"
 MODEL     = "meta/llama-3.2-11b-vision-instruct"
 API_URL   = "https://integrate.api.nvidia.com/v1/chat/completions"
 IMAGE_PATH = "test_image.jpg"   # <-- place your test image here
@@ -72,6 +79,12 @@ def test_nvidia_vision(image_path: str):
     print(f"  JanNetra - NVIDIA Vision API Test")
     print(f"{'='*60}")
 
+    # 0. Check API Key
+    if not API_KEY:
+        print("[ERROR] NVIDIA_API_KEY is not set.")
+        print("  → Please configure NVIDIA_API_KEY in backend/.env")
+        return
+
     # 1. Load, compress & encode image
     if not os.path.exists(image_path):
         print(f"[ERROR] Image not found: {image_path}")
@@ -110,7 +123,7 @@ def test_nvidia_vision(image_path: str):
     }
 
     # 3. Call API
-    print(f"[->] Calling NVIDIA API  (model: {MODEL}) ...")
+    print(f"[→] Calling NVIDIA API  (model: {MODEL}) ...")
     try:
         resp = requests.post(API_URL, headers=headers, json=payload, timeout=120)
         resp.raise_for_status()
@@ -136,13 +149,13 @@ def test_nvidia_vision(image_path: str):
             raw_text = m.group(0)
 
     try:
-        ai_data = json.loads(raw_text)
+        data = json.loads(raw_text)
         with open("desc.txt", "w") as f:
-            f.write(ai_data.get("ai_description", "N/A"))
+            f.write(data.get("ai_description", "N/A"))
         print("\nAI description written to desc.txt")
         
         print(f"{'='*60}")
-        print("  [SUCCESS]  PARSED RESULT")
+        print("  ✅  PARSED RESULT")
         print(f"{'='*60}")
         for k, v in ai_data.items():
             label = k.replace("_", " ").title()

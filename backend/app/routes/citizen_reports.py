@@ -6,7 +6,7 @@ import json
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pydantic import BaseModel
-from firebase_admin import storage
+# Removed firebase_admin import to fully transition to Supabase
 from dotenv import load_dotenv
 
 # Fully absolute dotenv loader for production edge-cases
@@ -14,27 +14,27 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 env_path = os.path.join(backend_dir, ".env")
 load_dotenv(dotenv_path=env_path)
 
-from ..mongodb import (
+from ..database import (
     articles_collection, 
     detection_results_collection, 
     sources_collection,
-    signal_problems_collection
+    signal_problems_collection,
+    citizen_reports_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
+import random
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
 
 
-async def _upload_to_firebase(file_content: bytes, filename: str, content_type: str = "image/jpeg") -> str:
-    """Uploads bytes to Firebase Storage and returns public URL."""
+async def _upload_to_storage(file_content: bytes, filename: str, content_type: str = "image/jpeg") -> str:
+    """Mock upload to Storage (Supabase pending full setup). Returns a dummy URL."""
     try:
-        bucket = storage.bucket("jannetra.firebasestorage.app")
-        blob = bucket.blob(f"citizen_reports/{filename}")
-        blob.upload_from_string(file_content, content_type=content_type)
-        blob.make_public()
-        return blob.public_url
+        # Supabase Storage implementation will go here.
+        # For now, return a placeholder URL so the AI vision pipeline can proceed.
+        return f"https://placeholder.com/{filename}"
     except Exception as e:
-        print(f"Firebase Upload Error: {e}")
+        print(f"Storage Upload Error: {e}")
         return ""
 
 @router.post("/upload-audio")
@@ -45,7 +45,7 @@ async def upload_audio(audio: UploadFile = File(...)):
         ext = audio.filename.split(".")[-1] if "." in audio.filename else "m4a"
         filename = f"audio_{uuid.uuid4()}.{ext}"
         mime_type = audio.content_type or "audio/m4a"
-        audio_url = await _upload_to_firebase(content, filename, mime_type)
+        audio_url = await _upload_to_storage(content, filename, mime_type)
         return {"success": True, "audio_url": audio_url}
     except Exception as e:
         print(f"Audio upload failed: {e}")
@@ -69,13 +69,12 @@ async def analyze_reported_issue(
     ext = image.filename.split(".")[-1]
     filename = f"{uuid.uuid4()}.{ext}"
     
-    # 1. Upload to Firebase
+    # 1. Upload to Storage
     mime_type = image.content_type or "image/jpeg"
-    image_url = await _upload_to_firebase(content, filename, mime_type)
+    image_url = await _upload_to_storage(content, filename, mime_type)
     print(f"Image uploaded to: {image_url} with mime: {mime_type}")
     
     # 2. AI Vision Pipeline with NVIDIA Vision
-    # Constructing prompt for specific issue detection
     prompt = """
     You are an expert field inspector for JanNetra, a civic governance platform. 
     Analyze the provided image and describe it as if you are reporting it to a senior city official.
@@ -185,7 +184,7 @@ async def analyze_reported_issue(
             elif "```" in raw_text:
                 extracted_json = raw_text.split("```")[1].strip()
             else:
-                json_match = re.search(r'\\{[\\s\\S]*\\}', raw_text)
+                json_match = re.search(r'\{[\s\S]*\}', raw_text)
                 if json_match:
                     extracted_json = json_match.group(0)
                     
@@ -241,9 +240,9 @@ async def analyze_reported_issue(
 
 
 class FinalReportSubmit(BaseModel):
-    report_id: str
+    report_id: Optional[str] = None
     image_url: Optional[str] = ""
-    detected_issue: Optional[str] = "Unknown Issue"
+    detected_issue: Optional[str] = "Citizen Report"
     user_description: Optional[str] = ""
     latitude: Optional[float] = 0.0
     longitude: Optional[float] = 0.0
@@ -254,49 +253,17 @@ class FinalReportSubmit(BaseModel):
 @router.post("/report-issue/submit")
 async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dict] = Depends(get_current_user_optional)):
     """
-    Persists the final issue report into the database.
+    Persists the final issue report into the database with a unique ID.
+    Stores in both dedicated citizen_reports table and signal_problems for immediate action.
     """
-    # 1. Create source if not exists (Citizen Reports)
-    source_id = "citizen_reporter"
-    source = await sources_collection.find_one({"id": source_id})
-    if not source:
-        await sources_collection.insert_one({
-            "id": source_id,
-            "name": "Citizen Reported",
-            "source_type": "COMPLAINT",
-            "reliability_score": 1.0
-        })
+    # 1. Guarantee a unique report_id if not provided or invalid
+    report_id = req.report_id
+    if not report_id or len(report_id.strip()) < 3:
+        report_id = f"JN-{random.randint(100000, 999999)}"
+    else:
+        report_id = report_id.strip()
 
-    # 2. Save Article
-    article = {
-        "id": req.report_id,
-        "title": req.detected_issue,
-        "content": req.user_description,
-        "summary": req.user_description[:200],
-        "category": req.detected_issue,
-        "source_id": source_id,
-        "url": req.image_url,
-        "location": f"{req.latitude}, {req.longitude}",
-        "city": "Prayagraj", # Default or infer from lat/lng
-        "ingested_at": datetime.datetime.utcnow(),
-        "risk_score": 75 if req.metadata.get("severity", "Medium") == "High" else 50,
-        "risk_level": req.metadata.get("severity", "MEDIUM").upper(),
-    }
-    await articles_collection.insert_one(article)
-    
-    # 3. Save Detection Results
-    detection = {
-        "id": gen_uuid(),
-        "article_id": req.report_id,
-        "label": "REAL",
-        "confidence_score": 0.95,
-        "explanation": f"Reported by citizen and verified via AI Vision. {req.metadata.get('ai_description', '')}",
-        "created_at": datetime.datetime.utcnow(),
-    }
-    await detection_results_collection.insert_one(detection)
-
-    # 4. Instant NLP & Dashboard Integration
-    # Create the Signal Problem so the Leader Dashboard sees it immediately!
+    # 2. Map department
     department_map = {
         "Garbage Dumping": "municipal",
         "Water Logging": "municipal",
@@ -307,45 +274,82 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
     }
     assigned_dept = department_map.get(req.detected_issue, "municipal")
     
-    # Allow user override for proper authority routing
-    if req.metadata.get("department_tag"):
+    if req.metadata and req.metadata.get("department_tag"):
         assigned_dept = req.metadata["department_tag"].lower()
-    
-    # Always insert the report into signals collection so no public grievances are silently dropped!
-    ai_desc = req.metadata.get("ai_description", "Verified by Citizen")
-    audio_evidence = req.metadata.get("audio_url", "")
-    
+
+    ai_desc = req.metadata.get("ai_description", "Verified by Citizen") if req.metadata else "Verified by Citizen"
+    audio_evidence = req.metadata.get("audio_url", "") if req.metadata else ""
+    rec_solution = req.metadata.get("recommended_solution", "Immediate dispatch of field team to investigate the citizen report.") if req.metadata else "Immediate dispatch of field team to investigate the citizen report."
+    raw_sev = str(req.metadata.get("severity", "Medium")).capitalize() if req.metadata else "Medium"
+    raw_urgency = str(req.metadata.get("urgency", "Medium")).capitalize() if req.metadata else "Medium"
+    conf_score = float(req.metadata.get("confidence_score", req.metadata.get("confidence", 90))) if req.metadata else 90.0
+
+    risk_score = 75 if raw_sev == "High" or raw_sev == "Critical" else 50
+
+    now = datetime.datetime.utcnow()
+
+    # 3. Insert into dedicated citizen_reports_collection
+    citizen_doc = {
+        "id": report_id,
+        "title": req.detected_issue or "Citizen Report",
+        "category": "Citizen Report",
+        "department": assigned_dept,
+        "user_description": req.user_description,
+        "ai_description": ai_desc,
+        "image_url": req.image_url,
+        "audio_url": audio_evidence,
+        "latitude": req.latitude,
+        "longitude": req.longitude,
+        "location": f"Lat {req.latitude:.4f}, Lng {req.longitude:.4f}" if req.latitude and req.longitude else "Prayagraj, Urban Sector",
+        "city": "Prayagraj",
+        "district": "Prayagraj",
+        "state": "Uttar Pradesh",
+        "ward": "Unknown",
+        "severity": raw_sev,
+        "urgency": raw_urgency,
+        "confidence_score": conf_score,
+        "expected_solution": rec_solution,
+        "status": "Pending",
+        "progress": 0,
+        "metadata": req.metadata or {},
+        "created_at": now,
+        "last_updated": now
+    }
+    await citizen_reports_collection.insert_one(citizen_doc)
+
+    # 4. Insert into signal_problems_collection for immediate Leader Dashboard visibility
     signal_problem = {
-        "id": req.report_id,  # Link IDs directly for tracking
-        "title": req.detected_issue,
+        "id": report_id,
+        "title": req.detected_issue or "Citizen Report",
         "category": "Citizen Report",
         "department": assigned_dept,
         "state": "Uttar Pradesh",
         "district": "Prayagraj",
         "city": "Prayagraj",
         "ward": "Unknown",
-        "location": f"Lat {req.latitude}, Lng {req.longitude}",
-        "detected_at": datetime.datetime.utcnow(),
-        "created_at": datetime.datetime.utcnow(),
-        "last_updated": datetime.datetime.utcnow(),
-        "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip(),
-        "report_description": ai_desc, # Explicitly mapped standalone description field
+        "location": citizen_doc["location"],
+        "detected_at": now,
+        "created_at": now,
+        "last_updated": now,
+        "description": f"{req.user_description}\n\nAI Analysis: {ai_desc}".strip() if req.user_description else ai_desc,
+        "report_description": ai_desc,
         "location_detail": f"Auto-detected at {req.latitude}, {req.longitude}",
         "evidence_summary": ai_desc,
         "image_url": req.image_url,
         "audio_url": audio_evidence,
-        "expected_solution": req.metadata.get("recommended_solution", "Immediate dispatch of field team to investigate the citizen report."),
-        "risk_score": article["risk_score"],
-        "priority_score": article["risk_score"],
-        "severity": article["risk_level"],
+        "expected_solution": rec_solution,
+        "risk_score": risk_score,
+        "priority_score": risk_score,
+        "severity": raw_sev,
         "frequency": 1,
         "source": "Citizen Application",
         "source_type": "citizen",
         "status": "Pending",
-        "has_ai_summary": True, # Pre-summarized conceptually
+        "progress": 0,
+        "has_ai_summary": True,
         "sample_records": [{
              "title": req.detected_issue, 
-             "severity": article["risk_level"], 
+             "severity": raw_sev, 
              "source": "Citizen App"
         }],
         "resolution_proof_url": None,
@@ -355,108 +359,217 @@ async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dic
     }
     await signal_problems_collection.insert_one(signal_problem)
 
-    return {"success": True, "report_id": req.report_id}
+    # 5. Optionally record Source and Article for legacy compatibility
+    try:
+        source_id = "00000000-0000-0000-0000-000000000001"
+        source = await sources_collection.find_one({"id": source_id})
+        if not source:
+            await sources_collection.insert_one({
+                "id": source_id,
+                "name": "Citizen Reported",
+                "source_type": "COMPLAINT",
+                "credibility_tier": "VERIFIED",
+                "historical_accuracy": 1.0
+            })
+
+        art_uuid = gen_uuid()
+        article = {
+            "id": art_uuid,
+            "title": req.detected_issue or "Citizen Report",
+            "raw_text": req.user_description or ai_desc,
+            "content_hash": f"hash_{report_id}",
+            "category": req.detected_issue or "Citizen Report",
+            "source_id": source_id,
+            "location": f"{req.latitude}, {req.longitude}",
+            "ingested_at": now,
+        }
+        await articles_collection.insert_one(article)
+        
+        detection = {
+            "id": gen_uuid(),
+            "article_id": art_uuid,
+            "label": "REAL",
+            "confidence_score": conf_score / 100.0 if conf_score > 1 else conf_score,
+            "evaluated_at": now,
+        }
+        await detection_results_collection.insert_one(detection)
+    except Exception as legacy_err:
+        print(f"Non-critical legacy insert notice: {legacy_err}")
+
+    return {"success": True, "report_id": report_id}
+
 
 
 @router.get("/report/{report_id}")
 async def get_report_status(report_id: str):
     """
     Retrieves the status for a specific citizen report.
-    Checks mapped signal_problem for updated resolutions by leaders.
+    Checks citizen_reports, signal_problems, and articles collections.
     """
-    article = await articles_collection.find_one({"id": report_id})
-    if not article:
-        raise HTTPException(status_code=404, detail="Report not found")
-        
-    # Check if a leader updated the associated signal problem
-    signal_problem = await signal_problems_collection.find_one({"id": report_id})
+    clean_id = report_id.strip()
     
-    status = "Escalated to Dept"
+    # Check signal_problems first (most actively updated by leaders/workflows)
+    sp = await signal_problems_collection.find_one({"id": clean_id})
+    cr = await citizen_reports_collection.find_one({"id": clean_id})
+    art = await articles_collection.find_one({"id": clean_id})
+
+    if not sp and not cr and not art:
+        raise HTTPException(status_code=404, detail="Report not found or invalid ID")
+
+    # Determine status & progress
+    status = "Pending"
+    progress = 15
+    category = "Citizen Report"
+    severity = "Medium"
+    description = ""
     last_update = "Just Now"
-    progress = 0
-    description = article.get("content", "")
-    
-    if signal_problem:
-        progress = signal_problem.get("progress", 0)
-        if signal_problem.get("description"):
-            description = signal_problem["description"]
-        # Give priority to Leader Dashboard status updates
-        if signal_problem.get("status"):
-            status = signal_problem["status"]
+    location_str = ""
+    image_url = ""
+
+    if sp:
+        status = sp.get("status", "Pending")
+        category = sp.get("category") or sp.get("title") or "Citizen Report"
+        severity = sp.get("severity", "Medium")
+        description = sp.get("description") or sp.get("report_description") or ""
+        location_str = sp.get("location") or sp.get("location_detail") or ""
+        image_url = sp.get("image_url") or ""
+        
+        if status in ["Problem Resolved", "Resolved", "resolved"]:
+            progress = 100
+        elif status in ["In Progress", "in_progress", "Escalated to Dept"]:
+            progress = sp.get("progress") or 60
+        else:
+            progress = sp.get("progress") or 25
+
+        dt = sp.get("resolved_at") or sp.get("last_updated") or sp.get("created_at") or sp.get("detected_at")
+        if dt:
+            last_update = dt.strftime("%Y-%m-%d %H:%M:%S") if hasattr(dt, "strftime") else str(dt)[:19]
             
-        if signal_problem.get("resolved_at"):
-            dt = signal_problem["resolved_at"]
-            if isinstance(dt, datetime.datetime):
-                last_update = dt.strftime("%Y-%m-%d %H:%M:%S")
-        elif "last_updated" in signal_problem:
-            dt = signal_problem["last_updated"]
-            if isinstance(dt, datetime.datetime):
-                last_update = dt.strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        # Fallback to article tracking
-        risk_score = article.get("risk_score", 50)
-        status = "Escalated to Dept" if risk_score >= 75 else "AI Analysis Complete"
-        progress = int(risk_score / 2) if risk_score < 100 else 50
-        if "ingested_at" in article:
-            dt = article["ingested_at"]
-            if isinstance(dt, datetime.datetime):
-                last_update = dt.strftime("%Y-%m-%d %H:%M:%S")
+    elif cr:
+        status = cr.get("status", "Pending")
+        category = cr.get("category") or cr.get("title") or "Citizen Report"
+        severity = cr.get("severity", "Medium")
+        description = cr.get("user_description") or cr.get("ai_description") or ""
+        location_str = cr.get("location") or ""
+        image_url = cr.get("image_url") or ""
+        
+        if status in ["Problem Resolved", "Resolved"]:
+            progress = 100
+        elif status == "In Progress":
+            progress = cr.get("progress") or 50
+        else:
+            progress = cr.get("progress") or 20
+
+        dt = cr.get("resolved_at") or cr.get("last_updated") or cr.get("created_at")
+        if dt:
+            last_update = dt.strftime("%Y-%m-%d %H:%M:%S") if hasattr(dt, "strftime") else str(dt)[:19]
+
+    elif art:
+        category = art.get("category", "General Civic Issue")
+        severity = art.get("risk_level", "MEDIUM")
+        description = art.get("content", "")
+        location_str = art.get("location", "")
+        image_url = art.get("url", "")
+        progress = 20
+        dt = art.get("ingested_at")
+        if dt:
+            last_update = dt.strftime("%Y-%m-%d %H:%M:%S") if hasattr(dt, "strftime") else str(dt)[:19]
 
     return {
-        "id": article["id"],
+        "id": clean_id,
         "status": status,
-        "category": article.get("category", "General Civic Issue"),
+        "category": category,
         "lastUpdate": last_update,
-        "severity": article.get("risk_level", "MEDIUM"),
+        "severity": severity,
         "progress": progress,
-        "description": description
+        "description": description,
+        "location": location_str,
+        "image_url": image_url
     }
 
+
 @router.get("/citizen-reports/list")
-async def list_citizen_reports(current_user: Optional[dict] = Depends(get_current_user_optional)):
+async def list_citizen_reports(
+    status: Optional[str] = None,
+    severity: Optional[str] = None,
+    city: Optional[str] = None,
+    district: Optional[str] = None,
+    state: Optional[str] = None,
+    ward: Optional[str] = None,
+    current_user: Optional[dict] = Depends(get_current_user_optional)
+):
     """
-    Returns a list of all signal problems that were reported by citizens.
-    Sorted by priority_score descending.
+    Returns a list of all citizen reported issues (both pending and resolved).
+    Sorted by created_at descending (newest first).
     """
     match_filter = {
         "category": "Citizen Report", 
-        "deleted": {"$ne": True}, 
-        "status": {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
+        "deleted": {"$ne": True}
     }
+
+    if status and status.upper() != "ALL":
+        if status.lower() == "resolved":
+            match_filter["status"] = "Problem Resolved"
+        elif status.lower() == "pending":
+            match_filter["status"] = {"$in": ["Pending", "Under Review", "pending", "under_review", None]}
+        else:
+            match_filter["status"] = status
+
+    if severity and severity.upper() != "ALL":
+        match_filter["severity"] = severity
+
+    if city:
+        match_filter["city"] = city
+    if district:
+        match_filter["district"] = district
+    if state:
+        match_filter["state"] = state
+    if ward:
+        match_filter["ward"] = ward
     
-    from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(days=5)
-    match_filter["created_at"] = {"$gte": cutoff}
-    
-    # Optional: filter by department if leader
+    # Filter by department if leader
     if current_user and current_user.get("role") != "ADMIN" and current_user.get("department"):
         match_filter["department"] = current_user.get("department")
 
-    cursor = signal_problems_collection.find(match_filter).sort("_id", -1).limit(200)
+    cursor = signal_problems_collection.find(match_filter).sort("created_at", -1).limit(200)
     reports = await cursor.to_list(200)
+
+    # Fallback to citizen_reports_collection if signal_problems was empty
+    if not reports:
+        cr_cursor = citizen_reports_collection.find(match_filter).sort("created_at", -1).limit(200)
+        cr_reports = await cr_cursor.to_list(200)
+        reports = cr_reports
     
-    # We map the data slightly to match the SignalMonitor format exactly
+    # Map the data to match frontend table expectations
     results = []
     for p in reports:
+        created_dt = p.get("created_at") or p.get("detected_at")
+        if hasattr(created_dt, "isoformat"):
+            created_str = created_dt.isoformat()
+        else:
+            created_str = str(created_dt) if created_dt else None
+
         results.append({
             "id": p["id"],
-            "title": p.get("title", ""),
+            "title": p.get("title", "Citizen Report"),
             "severity": str(p.get("severity", "Medium")).capitalize(),
             "category": "Citizen Report",
-            "location": p.get("location", ""),
+            "department": p.get("department", "Municipal"),
+            "location": p.get("location") or p.get("location_detail") or "Prayagraj",
             "detectedAt": p.get("detected_at"),
             "lastUpdated": p.get("last_updated"),
-            "description": p.get("description", ""),
-            "riskScore": p.get("risk_score", 0),
-            "priorityScore": p.get("priority_score", 0),
+            "description": p.get("description") or p.get("user_description") or p.get("report_description") or "",
+            "riskScore": p.get("risk_score", 50),
+            "priorityScore": p.get("priority_score", 50),
             "frequency": p.get("frequency", 1),
             "source": p.get("source", "Citizen Application"),
             "source_url": p.get("source_url"),
-            "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
-            "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
+            "source_type": p.get("source_type", "citizen").lower() if p.get("source_type") else "citizen",
+            "created_at": created_str,
             "status": p.get("status", "Pending"),
             "image_url": p.get("image_url", ""),
             "audio_url": p.get("audio_url", ""),
-            "expectedSolution": p.get("expected_solution", "")
+            "expectedSolution": p.get("expected_solution") or p.get("expectedSolution", "")
         })
     return results
+

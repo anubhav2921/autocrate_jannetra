@@ -56,7 +56,7 @@ def _content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def scrape_newsapi(max_articles: int = 30) -> list[dict]:
+def scrape_newsapi(max_articles: int = 30, city: Optional[str] = None) -> list[dict]:
     """
     Fetch governance-related India news from NewsAPI.org.
     Requires NEWSAPI_KEY in .env (free tier: 100 req/day, 1000 results/day).
@@ -73,8 +73,11 @@ def scrape_newsapi(max_articles: int = 30) -> list[dict]:
     articles: list[dict] = []
     from_date = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    logger.info(f"[NewsAPI] Starting scrape for {len(GOVERNANCE_QUERIES)} categories over the last 7 days.")
-    for query in GOVERNANCE_QUERIES:
+    logger.info(f"[NewsAPI] Starting scrape for {len(GOVERNANCE_QUERIES)} categories over the last 7 days{f' for city: {city}' if city else ''}.")
+    
+    queries = [f"{q} {city}" for q in GOVERNANCE_QUERIES] if city else GOVERNANCE_QUERIES
+    
+    for query in queries:
         logger.info("[NewsAPI] Searching: %s", query)
 
         try:
@@ -139,13 +142,14 @@ def scrape_newsapi(max_articles: int = 30) -> list[dict]:
     return articles
 
 
-def scrape_gdelt(max_articles: int = 20) -> list[dict]:
+def scrape_gdelt(max_articles: int = 20, city: Optional[str] = None) -> list[dict]:
     """
     Fetch India governance-related events from GDELT Project (free, no key).
     Returns normalized article dicts.
     """
     articles: list[dict] = []
-    query = "India (pothole OR sewage OR \"power cut\" OR \"water shortage\" OR \"road damage\")"
+    base_query = "India (pothole OR sewage OR \"power cut\" OR \"water shortage\" OR \"road damage\")"
+    query = f"{base_query} {city}" if city else base_query
 
     logger.info("[GDELT] Fetching events: %s", query)
 
@@ -216,10 +220,10 @@ def scrape_gdelt(max_articles: int = 20) -> list[dict]:
     return articles
 
 
-def scrape_news_apis() -> list[dict]:
+def scrape_news_apis(city: Optional[str] = None) -> list[dict]:
     """Run all news API scrapers and combine results."""
     results = []
-    results.extend(scrape_newsapi())
-    results.extend(scrape_gdelt())
+    results.extend(scrape_newsapi(city=city))
+    results.extend(scrape_gdelt(city=city))
     logger.info("[News APIs] Combined total: %d articles", len(results))
     return results

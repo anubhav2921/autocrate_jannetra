@@ -138,19 +138,81 @@ class ResolutionSchema(BaseModel):
 #  SignalProblem
 # ─────────────────────────────────────────────
 class SignalProblemSchema(BaseModel):
-    id: str  # e.g. "SIG-001"
+    id: str  # e.g. "SIG-001" or "JN-123456"
     title: str
-    severity: str  # Critical | High | Medium | Low
-    category: str
+    severity: str = "Medium"  # Critical | High | Medium | Low
+    category: str = "General"
+    department: Optional[str] = None
+    state: Optional[str] = None
+    district: Optional[str] = None
+    city: Optional[str] = None
+    ward: Optional[str] = None
     location: Optional[str] = None
-    detected_at: Optional[str] = None
+    location_detail: Optional[str] = None
     description: Optional[str] = None
+    report_description: Optional[str] = None
+    evidence_summary: Optional[str] = None
+    expected_solution: Optional[str] = None
+    image_url: Optional[str] = None
+    audio_url: Optional[str] = None
     risk_score: float = 0.0
+    priority_score: float = 0.0
+    frequency: int = 1
     source: Optional[str] = None
     source_url: Optional[str] = None
     source_type: Optional[str] = None
+    status: str = "Pending"  # Pending | In Progress | Problem Resolved
+    progress: int = 0
+    has_ai_summary: bool = False
+    sample_records: List[Dict[str, Any]] = []
+    resolution_proof_url: Optional[str] = None
+    resolution_report: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
+    deleted: bool = False
+    deletion_reason: Optional[str] = None
+    assigned_to: Optional[str] = None
+    assigned_name: Optional[str] = None
+    assigned_at: Optional[datetime] = None
+    anger_avg: float = 0.0
+    detected_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
-    status: str = "Pending"  # Pending | Problem Resolved
+    last_updated: Optional[datetime] = None
+
+
+# ─────────────────────────────────────────────
+#  CitizenReport
+# ─────────────────────────────────────────────
+class CitizenReportSchema(BaseModel):
+    id: str  # e.g. "JN-123456"
+    title: str
+    category: str = "Citizen Report"
+    department: Optional[str] = None
+    user_description: Optional[str] = None
+    ai_description: Optional[str] = None
+    image_url: Optional[str] = None
+    audio_url: Optional[str] = None
+    latitude: Optional[float] = 0.0
+    longitude: Optional[float] = 0.0
+    location: Optional[str] = None
+    city: Optional[str] = "Prayagraj"
+    district: Optional[str] = None
+    state: Optional[str] = None
+    ward: Optional[str] = None
+    severity: str = "Medium"
+    urgency: str = "Medium"
+    confidence_score: float = 0.0
+    expected_solution: Optional[str] = None
+    status: str = "Pending"  # Pending | In Progress | Problem Resolved
+    progress: int = 0
+    resolution_report: Optional[str] = None
+    resolution_proof_url: Optional[str] = None
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    created_at: Optional[datetime] = None
+    last_updated: Optional[datetime] = None
+
 
 
 # ─────────────────────────────────────────────

@@ -7,6 +7,11 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from dotenv import load_dotenv
 
+# Ensure backend/.env or root .env is loaded
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_env = os.path.abspath(os.path.join(_current_dir, "..", "..", ".env"))
+if os.path.exists(_backend_env):
+    load_dotenv(_backend_env)
 load_dotenv()
 
 logger = logging.getLogger("jannetra.ai_service")
@@ -14,8 +19,11 @@ logger = logging.getLogger("jannetra.ai_service")
 # ───────────────────────────────────────────────────────────────────────────
 # NVIDIA Config
 # ───────────────────────────────────────────────────────────────────────────
-NV_API_KEY = os.getenv("NVIDIA_API_KEY")
-NV_MODEL = "meta/llama-3.1-70b-instruct"
+def get_nvidia_api_key() -> Optional[str]:
+    """Retrieve NVIDIA API key dynamically from environment variables."""
+    return os.getenv("NVIDIA_API_KEY") or os.getenv("NVIDIA_API_KEY_BACKUP")
+
+NV_MODEL = os.getenv("NVIDIA_MODEL", "meta/llama-3.2-11b-vision-instruct")
 NV_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 VALID_SEVERITIES = {"Critical", "High", "Medium", "Low"}
@@ -28,15 +36,17 @@ VALID_CATEGORIES = {
 
 def _nv_chat_v1(prompt: str, system_msg: Optional[str] = None) -> Optional[dict]:
     """Helper for NVIDIA Chat API."""
-    if not NV_API_KEY:
+    api_key = get_nvidia_api_key()
+    if not api_key:
         logger.warning("NVIDIA_API_KEY missing in .env")
         return None
     
     headers = {
-        "Authorization": f"Bearer {NV_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
+
     
     payload = {
         "model": NV_MODEL,
@@ -215,7 +225,8 @@ def structure_single_problem(
 
 async def query_chatbot_with_context(question: str, context: str) -> str:
     """Generative chatbot query using NVIDIA NIM with system context."""
-    if not NV_API_KEY:
+    api_key = get_nvidia_api_key()
+    if not api_key:
         return "❌ NVIDIA_API_KEY is not configured in the backend."
 
     system_msg = (
@@ -229,7 +240,7 @@ async def query_chatbot_with_context(question: str, context: str) -> str:
     prompt = f"[SYSTEM CONTEXT]\n{context}\n\n[USER QUESTION]\n{question}"
 
     headers = {
-        "Authorization": f"Bearer {NV_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
     

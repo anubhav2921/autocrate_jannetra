@@ -15,7 +15,7 @@ Provides:
 from fastapi import APIRouter, Query
 from typing import Optional
 
-from ..mongodb import news_articles_collection, signal_problems_collection
+from ..database import news_articles_collection, signal_problems_collection
 
 router = APIRouter(prefix="/api/location", tags=["Location"])
 

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-from ..mongodb import resolutions_collection, users_collection
+from ..database import resolutions_collection, users_collection
 from ..utils import gen_uuid
 
 router = APIRouter(prefix="/api", tags=["Resolutions"])
@@ -64,7 +64,7 @@ async def list_resolutions(user_id: Optional[str] = None):
     res_docs = await cursor.to_list(None)
 
     # signal problem resolutions
-    from ..mongodb import signal_problems_collection
+    from ..database import signal_problems_collection
     sig_query = {"status": "Problem Resolved"}
     if user_id:
         sig_query["resolved_by"] = user_id
