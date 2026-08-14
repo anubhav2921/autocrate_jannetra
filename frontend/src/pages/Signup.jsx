@@ -66,7 +66,7 @@ export default function Signup({ onLogin }) {
         }, 1000);
     };
 
-    //  STEP 1: SEND OTP
+    //  HANDLE SIGNUP / SUBMIT
     const handleSendSignupOtp = async (e) => {
         e.preventDefault();
         setError('');
@@ -81,40 +81,58 @@ export default function Signup({ onLogin }) {
             return;
         }
 
-        const endpoint = activeTab === 'email' ? '/auth/signup' : '/auth/send-phone-otp';
+        // Direct Email Signup without OTP
+        if (activeTab === 'email') {
+            setLoading(true);
+            try {
+                const payload = {
+                    name: form.name,
+                    email: form.email,
+                    password: form.password,
+                    department: form.department,
+                    role: 'LEADER'
+                };
+                const data = await api.post('/auth/signup', payload);
+                if (data.success) {
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    localStorage.setItem('token', data.token);
+                    onLogin(data.user);
+                    navigate('/');
+                } else {
+                    setError(data.error || 'Signup failed. Please try again.');
+                }
+            } catch (err) {
+                setError(err?.response?.data?.error || 'Server connection error. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+            return;
+        }
+
+        // Phone OTP flow
         const cleanedPhone = form.phone.replace(/\D/g, ''); // just numbers
-        const finalPhone = activeTab === 'phone' ? `${form.countryCode}${cleanedPhone}` : '';
+        const finalPhone = `${form.countryCode}${cleanedPhone}`;
 
-        const payload = activeTab === 'email'
-            ? { 
-                name: form.name, 
-                email: form.email, 
-                password: form.password, 
-                department: form.department,
-                role: 'LEADER' 
-            }
-            : { 
-                phone_number: finalPhone, 
-                name: form.name, 
-                password: form.password, 
-                department: form.department 
-            };
+        const payload = { 
+            phone_number: finalPhone, 
+            name: form.name, 
+            password: form.password, 
+            department: form.department 
+        };
 
-        if (activeTab === 'phone') {
-            if (!/^\+[1-9]\d{7,14}$/.test(payload.phone_number)) {
-                setError('Enter valid phone number (e.g. +919876543210)');
-                return;
-            }
+        if (!/^\+[1-9]\d{7,14}$/.test(payload.phone_number)) {
+            setError('Enter valid phone number (e.g. +919876543210)');
+            return;
         }
 
         setLoading(true);
         try {
-            const data = await api.post(endpoint, payload);
+            const data = await api.post('/auth/send-phone-otp', payload);
             if (data.success) {
                 setStep('otp');
                 startResendTimer();
                 setTimeout(() => otpRefs.current[0]?.focus(), 100);
-                setSuccess(data.message || 'OTP sent! Check your ' + activeTab);
+                setSuccess(data.message || 'OTP sent! Check your phone');
             } else {
                 setError(data.error || 'Failed to send OTP.');
             }
@@ -359,7 +377,9 @@ export default function Signup({ onLogin }) {
                             className="btn btn-primary auth-submit"
                             disabled={loading}
                         >
-                            {loading ? 'Sending OTP…' : 'Send OTP'}
+                            {loading
+                                ? (activeTab === 'email' ? 'Creating Account…' : 'Sending OTP…')
+                                : (activeTab === 'email' ? 'Create Account' : 'Send OTP')}
                         </button>
                     </form>
                 )}
