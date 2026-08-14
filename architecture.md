@@ -5,7 +5,7 @@ This document provides a detailed overview of the structural and systemic archit
 ## 1. High-Level Overview
 
 JanNetra operates on a decoupled client-server architecture:
-- **Backend (`/backend`)**: A highly concurrent Python/FastAPI service responsible for data ingestion, AI-driven natural language processing (NLP), fake news detection, and API provisioning. It uses asynchronous MongoDB (Motor) for data persistence.
+- **Backend (`/backend`)**: A highly concurrent Python/FastAPI service responsible for data ingestion, AI-driven natural language processing (NLP), fake news detection, and API provisioning. It uses Supabase (PostgreSQL) for data persistence.
 - **Frontend (`/frontend`)**: A React Single Page Application (SPA) built with Vite, offering real-time dashboards, risk heatmaps, and signal monitoring interfaces.
 
 ---
@@ -38,8 +38,8 @@ graph TD
     end
 
     %% Database Layer
-    subgraph DB_Layer ["Database Layer (MongoDB)"]
-        DB["MongoDB (Motor Async)"]
+    subgraph DB_Layer ["Database Layer (Supabase / PostgreSQL)"]
+        DB["Supabase (PostgreSQL)"]
     end
 
     %% Frontend Layer
@@ -112,8 +112,10 @@ jannetra/
 │   │   ├── scrapers/         # Data Ingestion Modules
 │   │   ├── services/         # Core Business & AI Logic
 │   │   ├── main.py           # FastAPI Application Entrypoint
-│   │   ├── models.py         # Pydantic & MongoDB Schemas
-│   │   ├── mongodb.py        # Database Connection Management
+│   │   ├── models.py         # Pydantic & Database Schemas
+│   │   ├── database.py       # Core Database Access Layer
+│   │   ├── db_helpers.py     # Database Helper Functions
+│   │   ├── supabase_client.py# Supabase Connection Management
 │   │   ├── firebase_admin_config.py # Auth Configuration
 │   │   └── utils.py          # Shared Helper Functions
 │   ├── scripts/              # Utility scripts (e.g., db checks, api tests)
@@ -207,7 +209,7 @@ The data pipeline runs automatically every 30 minutes, ensuring real-time releva
 
 1. **Ingestion Trigger**: `APScheduler` fires the scraper sequence.
 2. **Harvest**: Scrapers pull raw JSON/HTML data.
-3. **Hash Filtering**: The pipeline checks MongoDB `news_articles` for existing `content_hash`es. Duplicates and signals older than 5 days are dropped to conserve NLP processing costs.
+3. **Hash Filtering**: The pipeline checks the Supabase `news_articles` table for existing `content_hash`es. Duplicates and signals older than 5 days are dropped to conserve NLP processing costs.
 4. **NLP & Detection**: Fresh signals undergo Sentiment Analysis, Anger Rating extraction, and Fake News detection.
 5. **Semantic Clustering**: The system attempts to match the new signal with existing `SignalProblem` clusters based on:
    - Same Category & City.
@@ -224,7 +226,7 @@ The data pipeline runs automatically every 30 minutes, ensuring real-time releva
 
 - **Core Backend**: Python 3.11+, FastAPI, Uvicorn
 - **AI / ML**: PyTorch, HuggingFace Transformers (DistilBERT), custom heuristics.
-- **Database**: MongoDB (via Async Motor driver)
+- **Database**: Supabase (PostgreSQL)
 - **Authentication**: Firebase Auth (integrated on both React client and FastAPI via middleware).
 - **Core Frontend**: React.js, Vite, TailwindCSS (for rapid UI styling).
 - **Task Scheduling**: APScheduler (for background intelligence cycles).
