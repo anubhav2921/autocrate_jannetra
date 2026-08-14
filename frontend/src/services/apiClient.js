@@ -1,7 +1,14 @@
 import axios from 'axios';
 
-const VITE_API_URL = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL;
-const BASE_URL = VITE_API_URL ? VITE_API_URL.replace(/\/$/, '') : 'https://jannetra-web-production.up.railway.app';
+const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL;
+let BASE_URL = 'https://jannetra-web-production.up.railway.app';
+
+if (rawApiUrl) {
+    BASE_URL = rawApiUrl.replace(/\/$/, '');
+    if (!BASE_URL.startsWith('http') && !BASE_URL.startsWith('/')) {
+        BASE_URL = `https://${BASE_URL}`;
+    }
+}
 
 console.log(`[JanNetra Config] API Base URL: ${BASE_URL}`);
 
