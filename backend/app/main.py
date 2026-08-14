@@ -16,7 +16,8 @@ from app.routes import (
     account, alerts, analytics, articles, auth, chatbot,
     citizen_reports, complaints, dashboard, leaderboard,
     location, map_route, pipeline, reports, resolutions,
-    scanner, signal_problems, signals, sources, system_monitoring, workflows
+    scanner, signal_problems, signals, sources, system_monitoring, workflows,
+    governance_problems
 )
 
 # Configure logging
@@ -37,6 +38,23 @@ def run_pipeline_job():
         scheduler_logger.info("[Scheduler] ✅ Pipeline complete: %s", result)
     except Exception as exc:
         scheduler_logger.error("[Scheduler] ❌ Pipeline failed: %s", exc)
+
+
+def run_sla_check_job():
+    """Scheduled job: checks for SLA breaches and escalates problems."""
+    try:
+        scheduler_logger.info("[Scheduler] ▶ Starting scheduled SLA compliance check...")
+        import asyncio
+        from app.services.sla_service import check_for_sla_breaches
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        count = loop.run_until_complete(check_for_sla_breaches())
+        loop.close()
+        
+        scheduler_logger.info("[Scheduler] ✅ SLA check complete. Escalated %d problems.", count)
+    except Exception as exc:
+        scheduler_logger.error("[Scheduler] ❌ SLA check job failed: %s", exc)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -74,6 +92,16 @@ async def lifespan(app: FastAPI):
         max_instances=1, 
         coalesce=True
     )
+    
+    # 3. Regular interval: SLA breach check every 1 minute
+    scheduler.add_job(
+        run_sla_check_job, 
+        "interval", 
+        minutes=1, 
+        id="sla_check_job",
+        max_instances=1, 
+        coalesce=True
+    )
 
     try:
         scheduler.start()
@@ -81,10 +109,21 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         scheduler_logger.error(f"❌ Failed to start scheduler: {exc}")
 
+    # Ensure indexes are created
+    try:
+        from app.mongodb import ensure_indexes
+        await ensure_indexes()
+    except Exception as exc:
+        logger.error(f"❌ Index ensuring failed: {exc}")
+
     # Seed initial data if empty
     try:
         from app.services.seed_service import seed_if_empty
         await seed_if_empty()
+        
+        # Seed governance structures
+        from app.services.seed_governance_data import seed_governance_data
+        await seed_governance_data()
     except Exception as exc:
         logger.error(f"❌ Seed failed: {exc}")
 
@@ -145,6 +184,7 @@ app.include_router(signals.router)
 app.include_router(sources.router)
 app.include_router(system_monitoring.router)
 app.include_router(workflows.router)
+app.include_router(governance_problems.router)
 
 @app.get("/")
 async def health_check():

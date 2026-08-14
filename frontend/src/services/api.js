@@ -61,4 +61,26 @@ export const fetchLocationIssues = (locationParams = {}, extra = {}) => {
     return api.get('/location/issues', { params });
 };
 
+// Governance Problems System APIs
+export const fetchGovernanceProblems = (params = {}) => api.get('/problems', { params });
+export const fetchGovernanceProblem = (id) => api.get(`/problems/${id}`);
+export const createGovernanceProblemDirect = (data) => api.post('/problems', data);
+export const verifyProblem = (id, data) => api.post(`/problems/${id}/verify`, data);
+export const getRoutingRecommendation = (id) => api.get(`/problems/${id}/routing-recommendation`);
+export const assignProblem = (id, data) => api.post(`/problems/${id}/assign`, data);
+export const getEligibleAssignees = (id, search = '') => api.get(`/problems/${id}/eligible-assignees`, { params: { search } });
+export const searchUsers = (q = '') => api.get('/auth/users/search', { params: { q } });
+export const acceptProblem = (id) => api.post(`/problems/${id}/accept`);
+export const startProblem = (id) => api.post(`/problems/${id}/start`);
+export const resolveProblem = (id, data) => api.post(`/problems/${id}/resolve`, data);
+export const verifyResolution = (id, data) => api.post(`/problems/${id}/verify-resolution`, data);
+export const escalateProblem = (id, data) => api.post(`/problems/${id}/escalate`, data);
+export const reassignProblem = (id, data) => api.post(`/problems/${id}/reassign`, data);
+export const fetchProblemHistory = (id) => api.get(`/problems/${id}/history`);
+export const fetchOrganizations = () => api.get('/organizations');
+export const fetchJurisdictions = () => api.get('/jurisdictions');
+export const fetchEscalations = () => api.get('/escalations');
+export const fetchNotifications = () => api.get('/notifications');
+export const markNotificationAsRead = (id) => api.post(`/notifications/${id}/read`);
+
 export default api;

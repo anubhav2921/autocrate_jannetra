@@ -58,3 +58,8 @@ Thumbs.db
 # But we keep explicitly named tools if they are in scripts
 !backend/run_backend.ps1
 !README.md
+# Local MongoDB data
+backend/db_data/
+backend/mongodb-win32-x86_64-windows-7.0.14/
+backend/*.log.*
+backend/mongodb.zip

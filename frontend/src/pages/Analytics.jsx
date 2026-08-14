@@ -3,14 +3,13 @@ import {
     LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, Cell, AreaChart, Area,
 } from 'recharts';
-import { TrendingUp, MapPin, Layers, Flame } from 'lucide-react';
+import { TrendingUp, Layers } from 'lucide-react';
 import { fetchSentimentTrend, fetchRiskSummary, fetchCategoryBreakdown } from '../services/api';
-import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 
 export default function Analytics() {
-    const { location } = useLocation();
+    const location = {};
     const [sentiment, setSentiment] = useState([]);
     const [heatmap, setHeatmap] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -19,9 +18,9 @@ export default function Analytics() {
     useEffect(() => {
         setLoading(true);
         Promise.all([
-            fetchSentimentTrend(location),
-            fetchRiskSummary(location),
-            fetchCategoryBreakdown(location),
+            fetchSentimentTrend({}),
+            fetchRiskSummary({}),
+            fetchCategoryBreakdown({}),
         ])
             .then(([sTrend, hMap, cBreak]) => {
                 let trendData = sTrend.trend || [];

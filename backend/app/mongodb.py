@@ -51,4 +51,56 @@ system_metrics_collection = db["system_metrics"]
 community_reviews_collection = db["community_reviews"]
 activity_logs_collection  = db["activity_logs"]
 
+organizations_collection       = db["organizations"]
+jurisdictions_collection       = db["jurisdictions"]
+governance_problems_collection = db["governance_problems"]
+problem_assignments_collection = db["problem_assignments"]
+problem_history_collection    = db["problem_history"]
+escalations_collection         = db["escalations"]
+notifications_collection       = db["notifications"]
+sla_configs_collection         = db["sla_configs"]
+routing_rules_collection       = db["routing_rules"]
+
+
+async def ensure_indexes():
+    """Create indexes for performance and security queries."""
+    try:
+        # User indexes
+        await users_collection.create_index("id", unique=True)
+        await users_collection.create_index("firebase_uid")
+        await users_collection.create_index("email")
+        await users_collection.create_index("role")
+        await users_collection.create_index("jurisdiction_id")
+        
+        # Governance Problem indexes
+        await governance_problems_collection.create_index("problem_id", unique=True)
+        await governance_problems_collection.create_index("status")
+        await governance_problems_collection.create_index("priority")
+        await governance_problems_collection.create_index("department_id")
+        await governance_problems_collection.create_index("organization_id")
+        await governance_problems_collection.create_index("jurisdiction_id")
+        await governance_problems_collection.create_index("current_owner_user_id")
+        await governance_problems_collection.create_index("created_at")
+        await governance_problems_collection.create_index("due_at")
+        
+        # History & Assignments
+        await problem_assignments_collection.create_index("assignment_id", unique=True)
+        await problem_assignments_collection.create_index("problem_id")
+        await problem_history_collection.create_index("history_id", unique=True)
+        await problem_history_collection.create_index("problem_id")
+        
+        # Organizations & Jurisdictions
+        await organizations_collection.create_index("id", unique=True)
+        await jurisdictions_collection.create_index("id", unique=True)
+        await jurisdictions_collection.create_index("parent_id")
+        
+        # Notifications
+        await notifications_collection.create_index("user_id")
+        await notifications_collection.create_index("is_read")
+        
+        logger.info("✅ Database indexes verified and created.")
+    except Exception as e:
+        logger.error(f"❌ Failed to ensure indexes: {e}")
+
+
 

@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException, Depends, Query
 from pydantic import BaseModel, EmailStr
 
 from ..mongodb import users_collection
@@ -691,3 +691,24 @@ async def create_user_profile(req: CreateUserRequest):
         "token": token,
         "user": _format_user_response(user),
     }
+
+
+# ==========================================
+# 9. AUTHORIZED USER SEARCH
+# ==========================================
+@router.get("/users/search")
+async def get_users_search(
+    q: Optional[str] = Query(""),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Search for eligible assignees based on jurisdiction permission rules.
+    """
+    # Enforce basic authorization check
+    user_role = (current_user.get("role") or "").upper()
+    if user_role == "CITIZEN":
+        raise HTTPException(status_code=403, detail="Citizens cannot search users.")
+        
+    from ..services.assignment_service import search_eligible_assignees
+    users = await search_eligible_assignees(current_user, q)
+    return users

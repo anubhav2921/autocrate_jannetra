@@ -103,7 +103,7 @@ class UserSchema(BaseModel):
     name: str
     email: Optional[str] = None
     password_hash: Optional[str] = None
-    role: str = "LEADER"  # LEADER | ADMIN | ANALYST
+    role: str = "LEADER"  # LEADER | ADMIN | ANALYST | CITIZEN | LOCAL_LEADER | PANCHAYAT_OFFICER | MUNICIPAL_OFFICER | DEPARTMENT_OFFICER | BLOCK_OFFICER | DISTRICT_OFFICER | STATE_OFFICER
     department: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
@@ -111,7 +111,11 @@ class UserSchema(BaseModel):
     firebase_uid: Optional[str] = None
     phone_number: Optional[str] = None
     picture: Optional[str] = None
-    auth_provider: str = "email"  # email | google | phone
+    auth_provider: str = "email"  # email | google | phone | firebase
+    username: Optional[str] = None
+    phone: Optional[str] = None
+    organization_id: Optional[str] = None
+    jurisdiction_id: Optional[str] = None
 
 
 # ─────────────────────────────────────────────
@@ -226,3 +230,160 @@ class NewsArticleSchema(BaseModel):
     ward: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+
+
+# ─────────────────────────────────────────────
+#  Jurisdiction
+# ─────────────────────────────────────────────
+class JurisdictionSchema(BaseModel):
+    id: str = Field(default_factory=gen_uuid)
+    name: str
+    level: str  # STATE | DISTRICT | BLOCK | MUNICIPALITY | PANCHAYAT | WARD | VILLAGE
+    parent_id: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────
+#  Organization
+# ─────────────────────────────────────────────
+class OrganizationSchema(BaseModel):
+    id: str = Field(default_factory=gen_uuid)
+    name: str
+    parent_id: Optional[str] = None
+    jurisdiction_id: Optional[str] = None
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────
+#  GovernanceProblemLocation
+# ─────────────────────────────────────────────
+class GovernanceProblemLocation(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    address: Optional[str] = None
+    village: Optional[str] = None
+    ward: Optional[str] = None
+    panchayat: Optional[str] = None
+    block: Optional[str] = None
+    municipality: Optional[str] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
+
+
+# ─────────────────────────────────────────────
+#  GovernanceProblem
+# ─────────────────────────────────────────────
+class GovernanceProblemSchema(BaseModel):
+    problem_id: str = Field(default_factory=gen_uuid)
+    source_signal_id: Optional[str] = None
+    source_citizen_report_id: Optional[str] = None
+    title: str
+    description: str
+    category: str
+    subcategory: Optional[str] = None
+    priority: str = "MEDIUM"  # LOW | MEDIUM | HIGH | CRITICAL
+    severity: str = "MEDIUM"  # LOW | MEDIUM | HIGH | CRITICAL
+    status: str = "DETECTED"  # DETECTED | PENDING_VERIFICATION | VERIFIED | ROUTED | ASSIGNED | ACCEPTED | IN_PROGRESS | RESOLUTION_SUBMITTED | UNDER_VERIFICATION | RESOLVED | REJECTED | ESCALATED | REASSIGNED | CANCELLED
+    location: GovernanceProblemLocation
+    department_id: Optional[str] = None
+    organization_id: Optional[str] = None
+    jurisdiction_id: Optional[str] = None
+    created_by: Optional[str] = None
+    verified_by: Optional[str] = None
+    current_owner_user_id: Optional[str] = None
+    current_owner_organization_id: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    assigned_at: Optional[datetime] = None
+    accepted_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    verified_at: Optional[datetime] = None
+    resolution_summary: Optional[str] = None
+
+
+# ─────────────────────────────────────────────
+#  ProblemAssignment
+# ─────────────────────────────────────────────
+class ProblemAssignmentSchema(BaseModel):
+    assignment_id: str = Field(default_factory=gen_uuid)
+    problem_id: str
+    assigned_by: str
+    assigned_to_user_id: Optional[str] = None
+    assigned_to_organization_id: Optional[str] = None
+    assigned_to_jurisdiction_id: Optional[str] = None
+    assignment_type: str  # USER | ORGANIZATION | DEPARTMENT | JURISDICTION
+    reason: Optional[str] = None
+    assigned_at: datetime = Field(default_factory=datetime.utcnow)
+    accepted_at: Optional[datetime] = None
+    due_at: Optional[datetime] = None
+    status: str = "PENDING"  # PENDING | ACCEPTED | REJECTED
+
+
+# ─────────────────────────────────────────────
+#  ProblemHistory
+# ─────────────────────────────────────────────
+class ProblemHistorySchema(BaseModel):
+    history_id: str = Field(default_factory=gen_uuid)
+    problem_id: str
+    actor_id: str
+    actor_role: str
+    action: str
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    previous_owner: Optional[str] = None
+    new_owner: Optional[str] = None
+    remarks: Optional[str] = None
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Dict[str, Any] = {}
+
+
+# ─────────────────────────────────────────────
+#  Escalation
+# ─────────────────────────────────────────────
+class EscalationSchema(BaseModel):
+    escalation_id: str = Field(default_factory=gen_uuid)
+    problem_id: str
+    escalated_by: str  # SYSTEM or user_id
+    escalated_from_user_id: Optional[str] = None
+    escalated_to_user_id: Optional[str] = None
+    escalated_to_organization_id: Optional[str] = None
+    level: int = 1
+    reason: str
+    escalated_at: datetime = Field(default_factory=datetime.utcnow)
+    resolved_at: Optional[datetime] = None
+    status: str = "PENDING"  # PENDING | RESOLVED
+
+
+# ─────────────────────────────────────────────
+#  InternalNotification
+# ─────────────────────────────────────────────
+class InternalNotificationSchema(BaseModel):
+    id: str = Field(default_factory=gen_uuid)
+    user_id: str
+    title: str
+    message: str
+    problem_id: Optional[str] = None
+    is_read: bool = False
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ─────────────────────────────────────────────
+#  SlaConfig
+# ─────────────────────────────────────────────
+class SlaConfigSchema(BaseModel):
+    priority: str  # LOW | MEDIUM | HIGH | CRITICAL
+    duration_hours: int
+
+
+# ─────────────────────────────────────────────
+#  RoutingRule
+# ─────────────────────────────────────────────
+class RoutingRuleSchema(BaseModel):
+    category: str
+    subcategory: Optional[str] = None
+    department_id: str
+    default_organization_id: Optional[str] = None
