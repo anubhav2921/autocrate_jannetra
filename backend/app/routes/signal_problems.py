@@ -7,7 +7,7 @@ from ..database import (
     news_articles_collection, signal_problems_collection
 )
 from ..services.ai_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
-from ..utils import get_current_user
+from ..utils import get_current_user, get_current_user_optional
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
 
@@ -24,12 +24,12 @@ async def list_signal_problems(
     ward: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user_optional)
 ):
     """Return signal problems, filtered by location, department, status, and/or user."""
     
-    user_dept = current_user.get("department")
-    user_role = current_user.get("role")
+    user_dept = current_user.get("department") if current_user else None
+    user_role = current_user.get("role") if current_user else None
 
     from .location import _build_location_match
     match = _build_location_match(state, district, city, ward)
