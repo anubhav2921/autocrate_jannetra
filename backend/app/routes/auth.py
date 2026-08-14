@@ -44,31 +44,45 @@ def _hash_password(password: str) -> str:
 
 @router.post("/signup")
 async def signup(req: SignupRequest):
-    """Step 1: Validate info and send OTP."""
-    existing = await users_collection.find_one({"email": req.email})
+    """Direct account creation with Email & Password (no OTP needed)."""
+    if not req.email or not req.password:
+        return {"success": False, "error": "Email and password are required"}
+
+    email_clean = req.email.strip().lower()
+    existing = await users_collection.find_one({"email": email_clean})
+    if not existing:
+        existing = await users_collection.find_one({"email": req.email})
     if existing:
         return {"success": False, "error": "Email already registered"}
 
-    otp = str(random.randint(100000, 999999))
-    _otp_store[req.email] = {
-        "otp": otp,
-        "expires": time.time() + 300,
-        "signup_data": {
-            "name": req.name,
-            "email": req.email,
-            "password": req.password,
-            "role": req.role,
-            "department": req.department,
-        },
+    user_doc = {
+        "id": gen_uuid(),
+        "name": str(req.name or req.email.split("@")[0]),
+        "email": email_clean,
+        "password_hash": _hash_password(str(req.password)),
+        "role": str(req.role or "LEADER"),
+        "department": str(req.department or ""),
+        "is_active": True,
+        "auth_provider": "email",
+        "created_at": datetime.utcnow(),
     }
+    await users_collection.insert_one(user_doc)
 
-    send_email_otp(req.email, otp)
+    # Create JWT token
+    token = create_access_token(data={"user_id": user_doc["id"], "department": user_doc["department"]})
 
     return {
         "success": True,
-        "otp_sent": True,
-        "message": "OTP sent to your email",
-        "demo_otp": otp,
+        "token": token,
+        "user": {
+            "id": user_doc["id"],
+            "name": user_doc["name"],
+            "email": user_doc["email"],
+            "role": user_doc["role"],
+            "department": user_doc["department"],
+            "picture": user_doc.get("picture"),
+            "auth_provider": user_doc["auth_provider"],
+        },
     }
 
 
@@ -122,7 +136,10 @@ async def verify_otp(req: OTPVerifyRequest):
 
 @router.post("/login")
 async def login(req: LoginRequest):
-    user = await users_collection.find_one({"email": req.email})
+    email_clean = req.email.strip().lower()
+    user = await users_collection.find_one({"email": email_clean})
+    if not user:
+        user = await users_collection.find_one({"email": req.email})
     if not user:
         return {"success": False, "error": "Invalid email or password"}
 
