@@ -2,34 +2,32 @@ import { NavLink, useLocation as useRouterLocation } from 'react-router-dom';
 import {
     LayoutDashboard, FileText, Users, AlertTriangle, ShieldAlert,
     BarChart3, FileSpreadsheet, Bot, Map, Activity, Globe, Scan,
-    Shield, ChevronRight, Moon, Sun
+    Shield, ChevronRight, Award, User, Download
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import ExportReportModal from './ExportReportModal';
 
-const mainNavLinks = [
-    { path: '/', label: 'Home', icon: LayoutDashboard },
-    { path: '/signal-monitor', label: 'Signals Monitor', icon: FileText },
+const navLinks = [
+    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/signal-monitor', label: 'Signal Monitor', icon: FileText },
     { path: '/citizen-reports', label: 'Citizen Reports', icon: Users },
+    { path: '/working', label: 'Working Problems', icon: ShieldAlert },
     { path: '/alerts', label: 'Alerts & Actions', icon: AlertTriangle },
-    { path: '/working', label: 'Escalation Center', icon: ShieldAlert },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/resolutions', label: 'Reports', icon: FileSpreadsheet },
-    { path: '/chatbot', label: 'AI Assistant', icon: Bot },
-];
-
-const utilityNavLinks = [
     { path: '/map', label: 'Problem Map', icon: Map },
-    { path: '/system-monitoring', label: 'System Health', icon: Activity },
-    { path: '/sources', label: 'Source Registry', icon: Globe },
     { path: '/scanner', label: 'Social Scanner', icon: Scan },
+    { path: '/system-monitoring', label: 'System Health', icon: Activity },
+    { path: '/chatbot', label: 'AI Assistant', icon: Bot },
+    { path: '/sources', label: 'Source Registry', icon: Globe },
+    { path: '/resolutions', label: 'Resolved Issues', icon: FileSpreadsheet },
+    { path: '/leaderboard', label: 'Leaderboard', icon: Award },
+    { path: '/account', label: 'My Account', icon: User },
 ];
 
 export default function Sidebar({ user, onLogout, isOpen, onClose }) {
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const { theme, toggleTheme } = useTheme();
-    const routerLocation = useRouterLocation();
 
     const handleNavClick = () => {
         if (onClose) onClose();
@@ -55,7 +53,7 @@ export default function Sidebar({ user, onLogout, isOpen, onClose }) {
             {/* Navigation Section */}
             <nav className="sidebar-nav">
                 <div className="sidebar-nav-group">
-                    {mainNavLinks.map(({ path, label, icon: Icon }) => (
+                    {navLinks.map(({ path, label, icon: Icon }) => (
                         <NavLink
                             key={path}
                             to={path}
@@ -68,23 +66,15 @@ export default function Sidebar({ user, onLogout, isOpen, onClose }) {
                             <span>{label}</span>
                         </NavLink>
                     ))}
-                </div>
 
-                <div className="sidebar-category-header">Utilities</div>
-
-                <div className="sidebar-nav-group">
-                    {utilityNavLinks.map(({ path, label, icon: Icon }) => (
-                        <NavLink
-                            key={path}
-                            to={path}
-                            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
-                            onClick={handleNavClick}
-                            aria-label={label}
-                        >
-                            <Icon size={18} className="sidebar-nav-icon" aria-hidden="true" />
-                            <span>{label}</span>
-                        </NavLink>
-                    ))}
+                    <button
+                        className="sidebar-nav-item"
+                        onClick={() => { setIsExportModalOpen(true); handleNavClick(); }}
+                        style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                        <Download size={18} className="sidebar-nav-icon" />
+                        <span>Export Report</span>
+                    </button>
                 </div>
             </nav>
 
