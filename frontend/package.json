@@ -9,9 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
     "@types/maplibre-gl": "^1.13.2",
     "axios": "^1.6.2",
-    "@supabase/supabase-js": "^2.39.0",
     "framer-motion": "^12.34.3",
     "gsap": "^3.14.2",
     "leaflet": "^1.9.4",
