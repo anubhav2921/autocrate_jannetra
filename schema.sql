@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Users Table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     email TEXT UNIQUE,
@@ -21,7 +21,7 @@ CREATE TABLE users (
 );
 
 -- 2. Sources Table
-CREATE TABLE sources (
+CREATE TABLE IF NOT EXISTS sources (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     source_type TEXT NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE sources (
 );
 
 -- 3. Articles Table (Legacy seeded demo data)
-CREATE TABLE articles (
+CREATE TABLE IF NOT EXISTS articles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     source_id UUID REFERENCES sources(id),
     title TEXT NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE articles (
 );
 
 -- 4. News Articles Table (For the live scraping pipeline)
-CREATE TABLE news_articles (
+CREATE TABLE IF NOT EXISTS news_articles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE news_articles (
 );
 
 -- 5. Detection Results
-CREATE TABLE detection_results (
+CREATE TABLE IF NOT EXISTS detection_results (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     article_id UUID,
     confidence_score FLOAT DEFAULT 0.0,
@@ -87,7 +87,7 @@ CREATE TABLE detection_results (
 );
 
 -- 6. Governance Risk Scores
-CREATE TABLE governance_risk_scores (
+CREATE TABLE IF NOT EXISTS governance_risk_scores (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     article_id UUID,
     gri_score FLOAT DEFAULT 0.0,
@@ -97,7 +97,7 @@ CREATE TABLE governance_risk_scores (
 );
 
 -- 7. Sentiment Records
-CREATE TABLE sentiment_records (
+CREATE TABLE IF NOT EXISTS sentiment_records (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     article_id UUID,
     polarity FLOAT DEFAULT 0.0,
@@ -108,7 +108,7 @@ CREATE TABLE sentiment_records (
 );
 
 -- 8. Signal Problems (Aggregated problem clusters and citizen reports)
-CREATE TABLE signal_problems (
+CREATE TABLE IF NOT EXISTS signal_problems (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     severity TEXT DEFAULT 'Medium',
@@ -152,7 +152,7 @@ CREATE TABLE signal_problems (
 );
 
 -- 9. Alerts
-CREATE TABLE alerts (
+CREATE TABLE IF NOT EXISTS alerts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     article_id UUID REFERENCES news_articles(id),
     severity TEXT DEFAULT 'MEDIUM',
@@ -164,7 +164,7 @@ CREATE TABLE alerts (
 );
 
 -- 10. Resolutions
-CREATE TABLE resolutions (
+CREATE TABLE IF NOT EXISTS resolutions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     alert_id UUID REFERENCES alerts(id),
     resolved_by TEXT,
@@ -179,7 +179,7 @@ CREATE TABLE resolutions (
 );
 
 -- 11. System Metrics
-CREATE TABLE system_metrics (
+CREATE TABLE IF NOT EXISTS system_metrics (
     id TEXT PRIMARY KEY,
     subsystem_name TEXT NOT NULL,
     metric_type TEXT,
@@ -194,7 +194,7 @@ CREATE TABLE system_metrics (
 );
 
 -- 12. Community Reviews
-CREATE TABLE community_reviews (
+CREATE TABLE IF NOT EXISTS community_reviews (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     article_id UUID,
     user_id UUID REFERENCES users(id),
@@ -204,7 +204,7 @@ CREATE TABLE community_reviews (
 );
 
 -- 13. Activity Logs
-CREATE TABLE activity_logs (
+CREATE TABLE IF NOT EXISTS activity_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id),
     problem_id TEXT,
@@ -216,14 +216,14 @@ CREATE TABLE activity_logs (
 );
 
 -- 14. Scraper Config Table
-CREATE TABLE scraper_config (
+CREATE TABLE IF NOT EXISTS scraper_config (
     id TEXT PRIMARY KEY,
     city TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 15. Citizen Reports Table (Direct citizen grievance filings)
-CREATE TABLE citizen_reports (
+CREATE TABLE IF NOT EXISTS citizen_reports (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     category TEXT DEFAULT 'Citizen Report',
@@ -260,4 +260,3 @@ CREATE INDEX IF NOT EXISTS idx_signal_problems_status ON signal_problems(status)
 CREATE INDEX IF NOT EXISTS idx_signal_problems_created_at ON signal_problems(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_citizen_reports_status ON citizen_reports(status);
 CREATE INDEX IF NOT EXISTS idx_citizen_reports_created_at ON citizen_reports(created_at DESC);
-

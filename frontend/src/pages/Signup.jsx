@@ -4,6 +4,7 @@ import {
     Shield, Mail, Lock, User, Phone, Building2, ArrowLeft, RefreshCw,
 } from 'lucide-react';
 import api from '../services/apiClient';
+import { signUpWithEmail } from '../services/authService';
 
 const DEPARTMENTS = [
     'health', 'police', 'municipal', 'electricity', 'water', 'education', 'transport'
@@ -85,24 +86,10 @@ export default function Signup({ onLogin }) {
         if (activeTab === 'email') {
             setLoading(true);
             try {
-                const payload = {
-                    name: form.name,
-                    email: form.email,
-                    password: form.password,
-                    department: form.department,
-                    role: 'LEADER'
-                };
-                const data = await api.post('/auth/signup', payload);
-                if (data.success) {
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('token', data.token);
-                    onLogin(data.user);
-                    navigate('/');
-                } else {
-                    setError(data.error || 'Signup failed. Please try again.');
-                }
+                await signUpWithEmail(form.email.trim(), form.password);
+                // AuthContext automatically picks up the session and updates the UI
             } catch (err) {
-                setError(err?.response?.data?.error || 'Server connection error. Please try again.');
+                setError(err?.message || 'Server connection error. Please try again.');
             } finally {
                 setLoading(false);
             }

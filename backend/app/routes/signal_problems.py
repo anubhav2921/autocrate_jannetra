@@ -8,6 +8,7 @@ from ..database import (
 )
 from ..services.ai_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
 from ..utils import get_current_user, get_current_user_optional
+from ..middleware.auth_middleware import require_role
 
 router = APIRouter(prefix="/api", tags=["Signal Problems"])
 
@@ -24,7 +25,7 @@ async def list_signal_problems(
     ward: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user_optional)
+    current_user = Depends(require_role(["low_level_officer", "sector_officer", "district_admin", "ADMIN"]))
 ):
     """Return signal problems, filtered by location, department, status, and/or user."""
     

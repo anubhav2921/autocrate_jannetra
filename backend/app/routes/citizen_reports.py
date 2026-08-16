@@ -22,6 +22,7 @@ from ..database import (
     citizen_reports_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
+from ..middleware.auth_middleware import require_role, require_auth
 import random
 
 router = APIRouter(prefix="/api", tags=["Citizen Reports"])
@@ -251,7 +252,7 @@ class FinalReportSubmit(BaseModel):
 
 
 @router.post("/report-issue/submit")
-async def submit_final_report(req: FinalReportSubmit, current_user: Optional[dict] = Depends(get_current_user_optional)):
+async def submit_final_report(req: FinalReportSubmit, current_user = Depends(require_role(["citizen"]))):
     """
     Persists the final issue report into the database with a unique ID.
     Stores in both dedicated citizen_reports table and signal_problems for immediate action.

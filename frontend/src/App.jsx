@@ -31,17 +31,19 @@ import ReportIssue from './pages/ReportIssue';
 import { LocationProvider } from './context/LocationContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-export default function App() {
-    const [user, setUser] = useState(null);
+// New RBAC imports
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import CitizenDashboard from './pages/citizen/CitizenDashboard';
+import ActionDesk from './pages/official/ActionDesk';
+import Supervisor from './pages/official/Supervisor';
+import CommandCenter from './pages/official/CommandCenter';
+import Unauthorized from './pages/Unauthorized';
+
+function AppContent() {
+    const { user, role, loading, signOut } = useAuth();
     const [showSplash, setShowSplash] = useState(true);
     const [sidebarOpen, setSidebarOpen] = useState(false);
-
-    useEffect(() => {
-        const saved = localStorage.getItem('user');
-        if (saved) {
-            try { setUser(JSON.parse(saved)); } catch { localStorage.removeItem('user'); }
-        }
-    }, []);
 
     // Close sidebar on Escape key
     useEffect(() => {
@@ -62,11 +64,6 @@ export default function App() {
         return () => { document.body.style.overflow = ''; };
     }, [sidebarOpen]);
 
-    const handleLogin = (userData) => setUser(userData);
-    const handleLogout = () => {
-        localStorage.removeItem('user');
-        setUser(null);
-    };
     const toggleSidebar = useCallback(() => setSidebarOpen(prev => !prev), []);
     const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
@@ -74,15 +71,19 @@ export default function App() {
         return <SplashScreen onComplete={() => setShowSplash(false)} />;
     }
 
+    if (loading) {
+        return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    }
+
     if (!user) {
         return (
             <ThemeProvider>
                 <BrowserRouter>
                     <Routes>
-                        <Route path="/login" element={<Login onLogin={handleLogin} />} />
-                        <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/signup" element={<Signup />} />
                         <Route path="/forgot-password" element={<ForgotPassword />} />
-                        <Route path="/phone-auth" element={<PhoneAuth onLogin={handleLogin} />} />
+                        <Route path="/phone-auth" element={<PhoneAuth />} />
                         <Route path="/pulse" element={<PulseDashboard />} />
                         <Route path="/legal/privacy" element={<Legal />} />
                         <Route path="/legal/terms" element={<Legal />} />
@@ -109,7 +110,7 @@ export default function App() {
 
                         <Sidebar
                             user={user}
-                            onLogout={handleLogout}
+                            onLogout={signOut}
                             isOpen={sidebarOpen}
                             onClose={closeSidebar}
                         />
@@ -121,6 +122,26 @@ export default function App() {
                                 isSidebarOpen={sidebarOpen}
                             />
                             <Routes>
+                                {/* RBAC Protected Routes */}
+                                <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
+                                    <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+                                </Route>
+                                
+                                <Route element={<ProtectedRoute allowedRoles={['low_level_officer']} />}>
+                                    <Route path="/official/action-desk" element={<ActionDesk />} />
+                                </Route>
+                                
+                                <Route element={<ProtectedRoute allowedRoles={['sector_officer']} />}>
+                                    <Route path="/official/supervisor" element={<Supervisor />} />
+                                </Route>
+                                
+                                <Route element={<ProtectedRoute allowedRoles={['district_admin']} />}>
+                                    <Route path="/official/command-center" element={<CommandCenter />} />
+                                </Route>
+                                
+                                <Route path="/unauthorized" element={<Unauthorized />} />
+
+                                {/* Legacy routes - temporarily open to any authenticated user or specific roles if needed */}
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/articles" element={<Articles />} />
                                 <Route path="/alerts" element={<Alerts />} />
@@ -138,14 +159,30 @@ export default function App() {
                                 <Route path="/signal-monitor/:id" element={<ProblemDetail />} />
                                 <Route path="/system-monitoring" element={<SystemMonitoring />} />
                                 <Route path="/system-monitoring/:id" element={<SystemMetricDetail />} />
-                                <Route path="/account" element={<Account user={user} onLogin={handleLogin} onLogout={handleLogout} />} />
+                                <Route path="/account" element={<Account user={user} onLogout={signOut} />} />
                                 <Route path="/pulse" element={<PulseDashboard />} />
-                                <Route path="*" element={<Navigate to="/" />} />
+                                
+                                {/* Fallback route based on role */}
+                                <Route path="*" element={
+                                    role === 'citizen' ? <Navigate to="/citizen/dashboard" /> :
+                                    role === 'low_level_officer' ? <Navigate to="/official/action-desk" /> :
+                                    role === 'sector_officer' ? <Navigate to="/official/supervisor" /> :
+                                    role === 'district_admin' ? <Navigate to="/official/command-center" /> :
+                                    <Navigate to="/" />
+                                } />
                             </Routes>
                         </div>
                     </div>
                 </BrowserRouter>
             </LocationProvider>
         </ThemeProvider>
+    );
+}
+
+export default function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 }

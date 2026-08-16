@@ -42,41 +42,14 @@ export default function Login({ onLogin }) {
     const otpRefs = useRef([]);
     const timerRef = useRef(null);
 
-    // Handle Supabase Auth State Change (Google Redirect & Phone Auth auto-login)
+    // AuthContext handles global session listening now.
+    // If user successfully logs in via Supabase, AuthContext will update
+    // and App.jsx will automatically redirect them out of the Login page.
     useEffect(() => {
-        const handleSession = async (session) => {
-            if (!session?.access_token) return;
-            setGLoading(true);
-            try {
-                const response = await verifySupabaseToken(session.access_token);
-                const { user, token } = response;
-                localStorage.setItem('user', JSON.stringify(user));
-                localStorage.setItem('token', token);
-                onLogin(user);
-                navigate('/');
-            } catch (err) {
-                console.error('[Supabase Session] Backend error:', err);
-                // setError('Sign-in succeeded but backend verification failed.');
-            } finally {
-                setGLoading(false);
-            }
-        };
-
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session) handleSession(session);
-        });
-
-        const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN' && session) {
-                handleSession(session);
-            }
-        });
-
         return () => {
-            authListener?.subscription?.unsubscribe();
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [navigate, onLogin]);
+    }, []);
 
     // Resend countdown
     const startResendTimer = () => {
@@ -95,55 +68,15 @@ export default function Login({ onLogin }) {
         setError('');
         setLoading(true);
 
-        // --- MOCK ADMIN LOGIN ---
-        if (email === 'admin@email.com' && password === 'admin') {
-            const adminUser = {
-                id: 'mock-admin-123',
-                email: 'admin@email.com',
-                role: 'ADMIN',
-                name: 'Administrator',
-            };
-            localStorage.setItem('user', JSON.stringify(adminUser));
-            localStorage.setItem('token', 'mock-admin-token');
-            onLogin(adminUser);
-            navigate('/');
-            setLoading(false);
-            return;
-        }
-        // -------------------------
+
 
         try {
-            // Try Supabase Auth first
-            const { idToken } = await loginWithEmail(email, password);
-
-            if (idToken) {
-                const response = await verifySupabaseToken(idToken);
-                const { user, token } = response;
-                localStorage.setItem('user', JSON.stringify(user));
-                localStorage.setItem('token', token);
-                onLogin(user);
-                navigate('/');
-            }
+            // Supabase Auth
+            await loginWithEmail(email.trim(), password);
+            // AuthContext will automatically update and redirect the user
         } catch (err) {
             console.error('[Email Login] Error:', err?.message);
-
-            // Fallback to backend-only auth
-            try {
-                const data = await api.post('/auth/login', { email, password });
-                if (data.success) {
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    localStorage.setItem('token', data.token);
-                    onLogin(data.user);
-                    navigate('/');
-                    return;
-                } else {
-                    setError(data.error || 'Invalid email or password');
-                    return;
-                }
-            } catch {
-                setError('Invalid email or password');
-                return;
-            }
+            setError('Invalid email or password');
         } finally {
             setLoading(false);
         }

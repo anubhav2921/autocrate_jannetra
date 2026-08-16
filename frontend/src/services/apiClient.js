@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { supabase } from '../supabase';
 
 const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL;
 let BASE_URL = 'https://jannetra-web-production.up.railway.app';
@@ -19,11 +20,12 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use(
-    (config) => {
+    async (config) => {
         // Detailed Logging for Debugging
         console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '');
 
-        const token = localStorage.getItem('token');
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
