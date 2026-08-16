@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
     Briefcase, Clock, MapPin, Search, Filter, AlertTriangle, 
-    Flame, ArrowRight, UserCheck, Shield
+    Flame, ArrowRight, UserCheck, Shield, Globe, Users, CheckCircle2,
+    Layers, Sparkles
 } from 'lucide-react';
 import api from '../services/api';
 import safe from '../utils/safeRender';
+import ProblemActionMenu from '../components/ProblemActionMenu';
 
 export default function WorkingProblems() {
+    const { location, hasLocation, locationLabel } = { location: {}, hasLocation: false, locationLabel: () => 'All India' };
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('my-problems');
     const navigate = useNavigate();
 
-    // Safely retrieve current user ID from session to accurately map ownership/collaborations
     const currentUser = JSON.parse(localStorage.getItem('user')) || { uid: 'u-1', name: 'Leader' };
     const currentUserId = currentUser.uid || currentUser.id;
 
@@ -33,11 +35,11 @@ export default function WorkingProblems() {
     }, []);
 
     const searched = problems.filter(p => 
-        (p.title || p.id).toLowerCase().includes(search.toLowerCase())
+        (p.title || p.id || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const myProblems = searched.filter(p => 
-        p.assignedTo === currentUserId || p.ownerId === currentUserId
+        p.assignedTo === currentUserId || p.ownerId === currentUserId || !p.assignedTo
     );
 
     const collaborations = searched.filter(p => 
@@ -47,155 +49,176 @@ export default function WorkingProblems() {
     const displayedProblems = activeTab === 'my-problems' ? myProblems : collaborations;
 
     return (
-        <div className="page-container" style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px' }}>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Header Banner */}
+            <div className="hero-banner-card" style={{ marginBottom: '20px' }}>
                 <div>
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                        <Briefcase size={28} /> Working Problems
-                    </h1>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                        Manage and track progress on issues currently logged under your custody.
-                    </p>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Working Problems & Escalations</h1>
+                    <p className="hero-subtext">Manage, track, and resolve governance issues currently assigned under active custody</p>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-muted)' }} />
+                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                    <Globe size={14} className="location-icon" />
+                    <span>All India</span>
+                </div>
+            </div>
+
+            {/* Stat Cards */}
+            <div className="at-a-glance-stats-grid" style={{ marginBottom: '20px' }}>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper purple">
+                        <Briefcase size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">{myProblems.length}</div>
+                        <div className="stat-name">Active Custody</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper blue">
+                        <Shield size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">{collaborations.length}</div>
+                        <div className="stat-name">Collaborations</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper red">
+                        <AlertTriangle size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#f87171' }}>
+                            {problems.filter(p => p.severity === 'Critical' || p.severity === 'High').length}
+                        </div>
+                        <div className="stat-name">High Priority</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper green">
+                        <CheckCircle2 size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#4ade80' }}>
+                            {problems.filter(p => p.status === 'Problem Resolved').length}
+                        </div>
+                        <div className="stat-name">Resolved Items</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Search & Custom Tabs Bar */}
+            <div className="panel-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                    
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={() => setActiveTab('my-problems')}
+                            style={{
+                                background: activeTab === 'my-problems' ? '#6366f1' : '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                color: '#ffffff',
+                                borderRadius: '10px',
+                                padding: '8px 16px',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <Briefcase size={15} /> My Custody ({myProblems.length})
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('collaborations')}
+                            style={{
+                                background: activeTab === 'collaborations' ? '#8b5cf6' : '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                color: '#ffffff',
+                                borderRadius: '10px',
+                                padding: '8px 16px',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <Shield size={15} /> Collaborations ({collaborations.length})
+                        </button>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className="navbar-search-wrapper" style={{ width: '280px' }}>
+                        <Search size={16} className="search-icon" />
                         <input
                             type="text"
+                            className="navbar-search-input"
                             placeholder="Search active issues..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            style={{
-                                padding: '8px 16px 8px 36px', borderRadius: '8px', 
-                                border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.03)',
-                                color: 'var(--text-primary)', fontSize: '0.85rem', width: '250px'
-                            }}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Custom Tab UI Segment */}
-            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
-                <button 
-                    onClick={() => setActiveTab('my-problems')}
-                    style={{ 
-                        background: 'none', border: 'none', padding: '10px 16px', fontSize: '1rem', fontWeight: 600,
-                        color: activeTab === 'my-problems' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                        borderBottom: activeTab === 'my-problems' ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                        cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px'
+            {/* Content Cards Container */}
+            {displayedProblems.length === 0 ? (
+                <div className="panel-card" style={{ padding: '54px 24px', textAlign: 'center' }}>
+                    <div style={{
+                        width: '64px', height: '64px', borderRadius: '18px',
+                        background: 'rgba(99,102,241,0.12)', color: '#8b5cf6',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px'
                     }}>
-                    <Briefcase size={16} /> My Problems ({myProblems.length})
-                </button>
-                <button 
-                    onClick={() => setActiveTab('collaborations')}
-                    style={{ 
-                        background: 'none', border: 'none', padding: '10px 16px', fontSize: '1rem', fontWeight: 600,
-                        color: activeTab === 'collaborations' ? 'var(--accent-purple)' : 'var(--text-muted)',
-                        borderBottom: activeTab === 'collaborations' ? '2px solid var(--accent-purple)' : '2px solid transparent',
-                        cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px'
-                    }}>
-                    <Shield size={16} /> Collaborations ({collaborations.length})
-                </button>
-            </div>
-
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Loading workflows...</div>
-            ) : displayedProblems.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                    {activeTab === 'my-problems' ? <Briefcase size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} /> : <Shield size={48} style={{ color: 'rgba(255,255,255,0.1)', marginBottom: '16px' }} />}
-                    <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '8px' }}>No Active Problems</h3>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{activeTab === 'my-problems' ? "You haven't assigned any problems to your workspace yet." : "You haven't been invited to collaborate on any problems yet."}</p>
+                        <Briefcase size={32} />
+                    </div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc', marginBottom: '6px' }}>
+                        No Active Problems Under Custody
+                    </h3>
+                    <p style={{ fontSize: '0.88rem', color: '#94a3b8', maxWidth: '460px', margin: '0 auto 24px', lineHeight: 1.5 }}>
+                        You haven't assigned any active governance problems to your workspace yet. Assign issues from Signal Monitor to track them here.
+                    </p>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                        <button className="ai-assistant-btn" onClick={() => navigate('/signal-monitor')}>
+                            <Layers size={16} /> Explore Signal Monitor
+                        </button>
+                        <button className="btn btn-ghost" style={{ borderRadius: '12px', padding: '10px 18px', fontSize: '0.85rem' }} onClick={() => navigate('/alerts')}>
+                            <AlertTriangle size={16} /> Review Alerts
+                        </button>
+                    </div>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-                    {displayedProblems.map((p, idx) => (
-                        <div 
-                            key={p.id} 
-                            className="glass-card animate-in"
-                            style={{
-                                padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '16px',
-                                border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden',
-                                animationDelay: `${idx * 0.05}s`
-                            }}
-                        >
-                            <div style={{
-                                position: 'absolute', top: 0, left: 0, width: '4px', height: '100%',
-                                background: p.priorityScore >= 80 ? '#ef4444' : p.priorityScore >= 50 ? '#f59e0b' : '#3b82f6'
-                            }} />
-                            
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div>
-                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--accent-blue)', marginBottom: '4px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <span>{safe(p.id)}</span>
-                                        {p.source_type && p.source_type !== 'unknown' && (
-                                            <span style={{ background: 'rgba(59,130,246,0.15)', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
-                                                [{safe(p.source_type)}]
-                                            </span>
-                                        )}
-                                        <span>• {safe(p.source)}</span>
-                                    </div>
-                                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                                        {p.source_url ? (
-                                            <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline" onClick={(e) => e.stopPropagation()}>
-                                                {safe(p.title).length > 50 ? safe(p.title).substring(0, 50) + '...' : safe(p.title)}
-                                            </a>
-                                        ) : (
-                                            <span>{safe(p.title).length > 50 ? safe(p.title).substring(0, 50) + '...' : safe(p.title)}</span>
-                                        )}
-                                    </h3>
-                                </div>
-                                <div style={{ 
-                                    background: 'rgba(255,255,255,0.06)', padding: '6px 12px', borderRadius: '20px', 
-                                    fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px',
-                                    whiteSpace: 'nowrap'
-                                }}>
-                                    {activeTab === 'my-problems' ? (
-                                        <><UserCheck size={12} /> Under Custody</>
-                                    ) : (
-                                        <><Shield size={12} style={{ color: 'var(--accent-purple)' }}/> Collaborator</>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <MapPin size={13} style={{ color: 'var(--text-muted)' }} />
-                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {safe(p.location)}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '16px' }}>
+                    {displayedProblems.map((p) => (
+                        <div key={p.id} className="panel-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6' }}>{p.id}</span>
+                                    <span className={`severity-badge ${p.severity?.toLowerCase() || 'medium'}`}>
+                                        {p.severity || 'Medium'}
                                     </span>
                                 </div>
-                                {activeTab === 'my-problems' ? (
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <Clock size={13} style={{ color: 'var(--text-muted)' }} />
-                                        Assigned recently
-                                    </div>
-                                ) : (
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}><UserCheck size={12}/> {safe(p.assignedName)}</div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Invited by {safe(p.invitedBy)}</div>
-                                    </div>
-                                )}
+                                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#f8fafc', marginBottom: '8px', lineHeight: 1.4 }}>
+                                    {p.title}
+                                </h3>
+                                <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '14px' }}>
+                                    {p.description || p.category || 'Active governance issue requiring departmental resolution.'}
+                                </p>
                             </div>
 
-                            <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '8px', padding: '12px', marginTop: 'auto' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 600 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Workflow Progress</span>
-                                    <span style={{ color: 'var(--accent-purple)' }}>{p.progress}%</span>
-                                </div>
-                                <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${p.progress}%`, height: '100%', background: 'var(--accent-purple)', borderRadius: '3px', transition: 'width 0.4s ease' }} />
-                                </div>
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <MapPin size={12} style={{ color: '#8b5cf6' }} /> {p.location || 'All India'}
+                                </span>
+                                <ProblemActionMenu problem={p} onUpdate={(updated) => {
+                                    setProblems(prev => prev.map(item => item.id === updated.id ? updated : item));
+                                }} />
                             </div>
-
-                            <button 
-                                onClick={() => navigate(`/signal-monitor/${p.id}`)}
-                                className="btn btn-primary" 
-                                style={{ width: '100%', padding: '10px', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', gap: '8px' }}
-                            >
-                                Open Workspace <ArrowRight size={14} />
-                            </button>
                         </div>
                     ))}
                 </div>

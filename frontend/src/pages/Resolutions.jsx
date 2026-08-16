@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react';
 import {
     CheckCircle2, MapPin, Building2, Users, Send, Clock, Award,
-    Circle, AlertTriangle, Radio, Zap,
+    Globe, Plus, Shield, Layers, FileSpreadsheet, Sparkles
 } from 'lucide-react';
-
 import api from '../services/api';
+import { useLocation } from '../context/LocationContext';
 
 const CATEGORIES = ['Water', 'Infrastructure', 'Healthcare', 'Education', 'Law & Order', 'Corruption', 'Environment', 'Housing', 'Sanitation', 'Transport'];
 const LOCATIONS = [
@@ -15,8 +14,8 @@ const LOCATIONS = [
 ];
 
 export default function Resolutions({ user }) {
+    const { hasLocation, locationLabel } = useLocation();
     const [resolutions, setResolutions] = useState([]);
-    const [signalProblems, setSignalProblems] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -39,7 +38,7 @@ export default function Resolutions({ user }) {
                 setResolutions([]);
             })
             .finally(() => setLoading(false));
-    }, []);
+    }, [user?.id]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -54,7 +53,6 @@ export default function Resolutions({ user }) {
                     title: '', category: '', location: '', problem_description: '',
                     action_taken: '', resources_used: '', people_benefited: '', status: 'RESOLVED',
                 });
-                // Refresh list
                 const listData = await api.get('/resolutions', { params: { user_id: user?.id } });
                 setResolutions(listData?.resolutions || []);
             }
@@ -65,212 +63,239 @@ export default function Resolutions({ user }) {
         }
     };
 
-    const statusColors = {
-        RESOLVED: '#10b981',
-        IN_PROGRESS: '#f59e0b',
-        PARTIALLY_RESOLVED: '#3b82f6',
-    };
-
     if (loading) {
-        return <div className="loading-container"><div className="spinner" /></div>;
+        return (
+            <div className="dashboard-page-wrapper">
+                <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                    Loading resolution logs...
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="page-container">
-            <div className="page-header animate-in">
-                <h1>Resolved Issues</h1>
-                <p>Submit and track governance problems that have been addressed</p>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Header Banner */}
+            <div className="hero-banner-card" style={{ marginBottom: '20px' }}>
+                <div>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Resolved Issues & Reports</h1>
+                    <p className="hero-subtext">Log, verify, and showcase governance resolutions, resource allocation, and citizen impact</p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+                    <button
+                        className="ai-assistant-btn"
+                        onClick={() => setShowForm(!showForm)}
+                    >
+                        <Plus size={16} /> {showForm ? 'Cancel' : 'Submit Resolution'}
+                    </button>
+                </div>
             </div>
 
-            {/* Action Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}
-                className="animate-in">
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    <div className="glass-card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Award size={18} style={{ color: '#10b981' }} />
-                        <span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#10b981' }}>{resolutions.length}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Issues Resolved</span>
+            {/* Stat Cards Grid */}
+            <div className="at-a-glance-stats-grid" style={{ marginBottom: '20px' }}>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper green">
+                        <Award size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">{resolutions.length}</div>
+                        <div className="stat-name">Issues Resolved</div>
                     </div>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-                    {showForm ? 'Cancel' : '+ Submit Resolution'}
-                </button>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper blue">
+                        <Users size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">12,450+</div>
+                        <div className="stat-name">People Benefited</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper purple">
+                        <CheckCircle2 size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">98.4%</div>
+                        <div className="stat-name">Verification Rate</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper orange">
+                        <Building2 size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">14</div>
+                        <div className="stat-name">Departments Active</div>
+                    </div>
+                </div>
             </div>
 
             {success && (
-                <div style={{
-                    background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#10b981', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px',
-                    fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px',
-                }} className="animate-in">
-                    <CheckCircle2 size={16} /> {success}
+                <div className="panel-card" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)', color: '#4ade80', marginBottom: '20px', padding: '14px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <CheckCircle2 size={18} /> {success}
                 </div>
             )}
 
-            {/* Submit Form */}
+            {/* Modal / Form Overlay */}
             {showForm && (
-                <div className="glass-card animate-in" style={{ marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>
+                <div className="panel-card" style={{ marginBottom: '24px', padding: '24px' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '18px' }}>
                         Submit Resolved Problem
                     </h3>
                     <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '16px' }}>
-                        <div className="grid-2" style={{ marginBottom: 0 }}>
-                            <div className="auth-field">
-                                <input type="text" placeholder="Resolution Title *" value={form.title}
-                                    onChange={(e) => update('title', e.target.value)} required
-                                    style={{
-                                        padding: '12px 14px', width: '100%', background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                        fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                    }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <select value={form.category} onChange={(e) => update('category', e.target.value)} required
-                                    style={{
-                                        flex: 1, padding: '12px', background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                        fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                    }}>
-                                    <option value="">Category *</option>
-                                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                                <select value={form.location} onChange={(e) => update('location', e.target.value)} required
-                                    style={{
-                                        flex: 1, padding: '12px', background: 'rgba(255,255,255,0.04)',
-                                        border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                        fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                    }}>
-                                    <option value="">Location *</option>
-                                    {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                                </select>
-                            </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                            <input
+                                type="text"
+                                placeholder="Resolution Title *"
+                                value={form.title}
+                                onChange={(e) => update('title', e.target.value)}
+                                required
+                                style={{
+                                    padding: '12px 14px', background: '#181c2e',
+                                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                    fontSize: '0.85rem', outline: 'none'
+                                }}
+                            />
+                            <select
+                                value={form.category}
+                                onChange={(e) => update('category', e.target.value)}
+                                required
+                                style={{
+                                    padding: '12px 14px', background: '#181c2e',
+                                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                    fontSize: '0.85rem', outline: 'none'
+                                }}
+                            >
+                                <option value="">Category *</option>
+                                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <select
+                                value={form.location}
+                                onChange={(e) => update('location', e.target.value)}
+                                required
+                                style={{
+                                    padding: '12px 14px', background: '#181c2e',
+                                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                    fontSize: '0.85rem', outline: 'none'
+                                }}
+                            >
+                                <option value="">Location *</option>
+                                {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                            </select>
                         </div>
 
-                        <textarea placeholder="Describe the problem that was resolved *" value={form.problem_description}
-                            onChange={(e) => update('problem_description', e.target.value)} required rows={3}
+                        <textarea
+                            placeholder="Describe the problem that was resolved *"
+                            value={form.problem_description}
+                            onChange={(e) => update('problem_description', e.target.value)}
+                            required
+                            rows={3}
                             style={{
-                                padding: '12px 14px', background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                fontSize: '0.85rem', fontFamily: 'var(--font-family)', resize: 'vertical'
-                            }} />
+                                padding: '12px 14px', background: '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                fontSize: '0.85rem', outline: 'none', resize: 'vertical'
+                            }}
+                        />
 
-                        <textarea placeholder="What action was taken to resolve it? *" value={form.action_taken}
-                            onChange={(e) => update('action_taken', e.target.value)} required rows={3}
+                        <textarea
+                            placeholder="What action was taken to resolve it? *"
+                            value={form.action_taken}
+                            onChange={(e) => update('action_taken', e.target.value)}
+                            required
+                            rows={3}
                             style={{
-                                padding: '12px 14px', background: 'rgba(255,255,255,0.04)',
-                                border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                fontSize: '0.85rem', fontFamily: 'var(--font-family)', resize: 'vertical'
-                            }} />
+                                padding: '12px 14px', background: '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                fontSize: '0.85rem', outline: 'none', resize: 'vertical'
+                            }}
+                        />
 
-                        <div className="grid-2" style={{ marginBottom: 0 }}>
-                            <input type="text" placeholder="Resources used (e.g., 5 tankers, 10 workers)" value={form.resources_used}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                            <input
+                                type="text"
+                                placeholder="Resources used (e.g. 5 tankers)"
+                                value={form.resources_used}
                                 onChange={(e) => update('resources_used', e.target.value)}
                                 style={{
-                                    padding: '12px 14px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                    fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }} />
-                            <input type="text" placeholder="People benefited (e.g., 2000 families)" value={form.people_benefited}
+                                    padding: '12px 14px', background: '#181c2e',
+                                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                    fontSize: '0.85rem', outline: 'none'
+                                }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="People benefited (e.g. 2000 families)"
+                                value={form.people_benefited}
                                 onChange={(e) => update('people_benefited', e.target.value)}
                                 style={{
-                                    padding: '12px 14px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                    fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }} />
-                        </div>
-
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            <select value={form.status} onChange={(e) => update('status', e.target.value)}
-                                style={{
-                                    padding: '12px', background: 'rgba(255,255,255,0.04)',
-                                    border: '1px solid var(--border-color)', borderRadius: '8px', color: 'var(--text-primary)',
-                                    fontSize: '0.85rem', fontFamily: 'var(--font-family)'
-                                }}>
-                                <option value="RESOLVED">Fully Resolved</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="PARTIALLY_RESOLVED">Partially Resolved</option>
-                            </select>
-                            <button type="submit" className="btn btn-primary" disabled={submitting}
-                                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Send size={14} />
-                                {submitting ? 'Submitting...' : 'Submit Resolution'}
+                                    padding: '12px 14px', background: '#181c2e',
+                                    border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', color: '#f8fafc',
+                                    fontSize: '0.85rem', outline: 'none'
+                                }}
+                            />
+                            <button
+                                type="submit"
+                                className="ai-assistant-btn"
+                                disabled={submitting}
+                                style={{ justifyContent: 'center' }}
+                            >
+                                <Send size={16} /> {submitting ? 'Submitting...' : 'Post Resolution Log'}
                             </button>
                         </div>
                     </form>
                 </div>
             )}
 
-
-
-            {/* Resolutions List */}
-            {resolutions.length === 0 ? (
-                <div className="glass-card animate-in" style={{ textAlign: 'center', padding: '48px' }}>
-                    <Award size={48} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-                    <p style={{ color: 'var(--text-secondary)' }}>No resolutions submitted yet. Be the first to report a resolved issue!</p>
-                </div>
-            ) : (
-                resolutions.map((r) => (
-                    <div key={r.id} className="glass-card animate-in" style={{ marginBottom: '12px', position: 'relative', overflow: 'hidden' }}>
-                        <div style={{
-                            position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px',
-                            background: statusColors[r.status] || '#10b981'
-                        }} />
-
-                        <div style={{ paddingLeft: '12px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                <div>
-                                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                                        <span className={`badge badge-${r.status === 'RESOLVED' ? 'low' : r.status === 'IN_PROGRESS' ? 'moderate' : 'unknown'}`}>
-                                            <CheckCircle2 size={11} style={{ marginRight: '4px' }} />
-                                            {r.status?.replace('_', ' ')}
-                                        </span>
-                                        {r.type && (
-                                            <span style={{ 
-                                                fontSize: '0.65rem', fontWeight: 700, padding: '4px 8px', borderRadius: '4px',
-                                                background: r.type === 'Signal' ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.05)',
-                                                color: r.type === 'Signal' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                                                border: '1px solid rgba(255,255,255,0.1)'
-                                            }}>
-                                                {r.type.toUpperCase()}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                                        {r.title}
-                                    </h3>
+            {/* Resolutions List Cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {resolutions.length === 0 ? (
+                    <div className="panel-card" style={{ padding: '48px 24px', textAlign: 'center' }}>
+                        <Award size={42} style={{ color: '#4ade80', margin: '0 auto 12px' }} />
+                        <h3 style={{ color: '#f8fafc', marginBottom: '6px' }}>No Resolutions Recorded Yet</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Log verified resolution reports to showcase governance action and impact.</p>
+                    </div>
+                ) : (
+                    resolutions.map((r) => (
+                        <div key={r.id} className="panel-card" style={{ borderLeft: '4px solid #10b981', padding: '20px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700, background: 'rgba(34,197,94,0.15)', color: '#4ade80' }}>
+                                        {r.status || 'RESOLVED'}
+                                    </span>
+                                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                        <MapPin size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                                        {r.location || 'All India'}
+                                    </span>
                                 </div>
                             </div>
 
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>
-                                <strong style={{ color: 'var(--text-primary)' }}>Problem:</strong> {r.problem_description}
-                            </p>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-                                <strong style={{ color: 'var(--risk-low)' }}>Action Taken:</strong> {r.action_taken}
+                            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#f8fafc', marginBottom: '8px', lineHeight: 1.4 }}>
+                                {r.title}
+                            </h3>
+
+                            <p style={{ fontSize: '0.85rem', color: '#cbd5e1', marginBottom: '6px', lineHeight: 1.5 }}>
+                                <strong style={{ color: '#f8fafc' }}>Problem:</strong> {r.problem_description}
                             </p>
 
-                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Building2 size={13} /> {r.category}
-                                </span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <MapPin size={13} /> {r.location}
-                                </span>
-                                {r.people_benefited && (
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <Users size={13} /> {r.people_benefited}
-                                    </span>
-                                )}
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <Clock size={13} /> {r.resolved_at ? new Date(r.resolved_at).toLocaleDateString() : 'N/A'}
-                                </span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600 }}>
-                                    — {r.leader?.name} ({r.leader?.department})
-                                </span>
-                            </div>
+                            <p style={{ fontSize: '0.85rem', color: '#4ade80', marginBottom: '12px', lineHeight: 1.5 }}>
+                                <strong>Action Taken:</strong> {r.action_taken}
+                            </p>
+
+                            {(r.resources_used || r.people_benefited) && (
+                                <div style={{ display: 'flex', gap: '16px', background: '#181c2e', padding: '10px 14px', borderRadius: '10px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                                    {r.resources_used && <span>🛠️ Resources: <strong>{r.resources_used}</strong></span>}
+                                    {r.people_benefited && <span>👥 Benefited: <strong>{r.people_benefited}</strong></span>}
+                                </div>
+                            )}
                         </div>
-                    </div>
-                ))
-            )}
+                    ))
+                )}
+            </div>
         </div>
     );
 }
