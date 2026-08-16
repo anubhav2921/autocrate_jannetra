@@ -29,23 +29,55 @@ export function AuthProvider({ children }) {
 
     const handleSession = (session) => {
         setSession(session);
-        if (session) {
+        if (session && session.user) {
             setUser(session.user);
-            // Decode role from JWT if using custom claims hook, otherwise fallback
-            // In a real implementation with the hook, we can parse it from session.access_token
-            // Here, we can read it from app_metadata if the hook puts it there,
-            // or from the JWT payload.
-            const userRole = session.user.app_metadata?.user_role || 'citizen';
-            setRole(userRole);
+            const userRole = 
+                session.user.app_metadata?.user_role || 
+                session.user.user_metadata?.role || 
+                session.user.user_metadata?.user_role || 
+                'citizen';
+            setRole(userRole.toLowerCase());
         } else {
-            setUser(null);
-            setRole(null);
+            // Check localStorage fallback for backend/phone login
+            const storedUser = localStorage.getItem('user');
+            const storedToken = localStorage.getItem('token');
+            if (storedUser && storedToken) {
+                try {
+                    const parsed = JSON.parse(storedUser);
+                    setUser(parsed);
+                    setRole((parsed.role || 'citizen').toLowerCase());
+                } catch {
+                    setUser(null);
+                    setRole(null);
+                }
+            } else {
+                setUser(null);
+                setRole(null);
+            }
         }
         setLoading(false);
     };
 
+    const loginWithLocalUser = (localUser, token) => {
+        if (localUser) {
+            localStorage.setItem('user', JSON.stringify(localUser));
+            if (token) localStorage.setItem('token', token);
+            setUser(localUser);
+            setRole((localUser.role || 'citizen').toLowerCase());
+        }
+    };
+
     const signOut = async () => {
-        await supabase.auth.signOut();
+        try {
+            await supabase.auth.signOut();
+        } catch (e) {
+            console.error('Sign out error:', e);
+        }
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setUser(null);
+        setRole(null);
+        setSession(null);
     };
 
     const value = {
@@ -54,6 +86,7 @@ export function AuthProvider({ children }) {
         session,
         loading,
         signOut,
+        loginWithLocalUser,
     };
 
     return (

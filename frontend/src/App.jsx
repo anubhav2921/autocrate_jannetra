@@ -122,26 +122,15 @@ function AppContent() {
                                 isSidebarOpen={sidebarOpen}
                             />
                             <Routes>
-                                {/* RBAC Protected Routes */}
-                                <Route element={<ProtectedRoute allowedRoles={['citizen']} />}>
-                                    <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
-                                </Route>
-                                
-                                <Route element={<ProtectedRoute allowedRoles={['low_level_officer']} />}>
-                                    <Route path="/official/action-desk" element={<ActionDesk />} />
-                                </Route>
-                                
-                                <Route element={<ProtectedRoute allowedRoles={['sector_officer']} />}>
-                                    <Route path="/official/supervisor" element={<Supervisor />} />
-                                </Route>
-                                
-                                <Route element={<ProtectedRoute allowedRoles={['district_admin']} />}>
-                                    <Route path="/official/command-center" element={<CommandCenter />} />
-                                </Route>
+                                {/* RBAC Protected Routes - open to all authenticated users for now */}
+                                <Route path="/citizen/dashboard" element={<CitizenDashboard />} />
+                                <Route path="/official/action-desk" element={<ActionDesk />} />
+                                <Route path="/official/supervisor" element={<Supervisor />} />
+                                <Route path="/official/command-center" element={<CommandCenter />} />
                                 
                                 <Route path="/unauthorized" element={<Unauthorized />} />
 
-                                {/* Legacy routes - temporarily open to any authenticated user or specific roles if needed */}
+                                {/* Main application routes */}
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/articles" element={<Articles />} />
                                 <Route path="/alerts" element={<Alerts />} />
@@ -162,14 +151,8 @@ function AppContent() {
                                 <Route path="/account" element={<Account user={user} onLogout={signOut} />} />
                                 <Route path="/pulse" element={<PulseDashboard />} />
                                 
-                                {/* Fallback route based on role */}
-                                <Route path="*" element={
-                                    role === 'citizen' ? <Navigate to="/citizen/dashboard" /> :
-                                    role === 'low_level_officer' ? <Navigate to="/official/action-desk" /> :
-                                    role === 'sector_officer' ? <Navigate to="/official/supervisor" /> :
-                                    role === 'district_admin' ? <Navigate to="/official/command-center" /> :
-                                    <Navigate to="/" />
-                                } />
+                                {/* Fallback route - defaults to main dashboard for all users */}
+                                <Route path="*" element={<Navigate to="/" />} />
                             </Routes>
                         </div>
                     </div>
