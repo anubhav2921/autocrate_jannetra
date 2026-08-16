@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, BackgroundTasks
 from datetime import datetime
 from ..database import news_articles_collection
 
@@ -6,14 +6,18 @@ router = APIRouter(prefix="/api", tags=["Data Pipeline"])
 
 
 @router.post("/pipeline/run")
-def trigger_pipeline(city: str = Query(None)):
-    """Manually trigger the data ingestion pipeline."""
+def trigger_pipeline(background_tasks: BackgroundTasks, city: str = Query(None)):
+    """Manually trigger the data ingestion pipeline in the background."""
     from ..services.data_pipeline import run_pipeline
     try:
-        result = run_pipeline(city=city)
-        return {"success": True, **result}
+        background_tasks.add_task(run_pipeline, city=city)
+        return {
+            "success": True, 
+            "status": "started", 
+            "message": f"Data ingestion scraper started for {city or 'all locations'} in background."
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to schedule pipeline: {str(e)}")
 
 
 @router.get("/pipeline/status")
