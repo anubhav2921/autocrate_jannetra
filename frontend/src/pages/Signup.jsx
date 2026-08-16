@@ -4,7 +4,8 @@ import {
     Shield, Mail, Lock, User, Phone, Building2, ArrowLeft, RefreshCw,
 } from 'lucide-react';
 import api from '../services/apiClient';
-import { signUpWithEmail } from '../services/authService';
+import { signUpWithEmail, loginWithEmail } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 const DEPARTMENTS = [
     'health', 'police', 'municipal', 'electricity', 'water', 'education', 'transport'
@@ -23,6 +24,7 @@ const COUNTRY_CODES = [
 ];
 
 export default function Signup({ onLogin }) {
+    const { loginWithLocalUser } = useAuth();
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
     const [step, setStep] = useState('form'); // 'form' | 'otp'
     const [loading, setLoading] = useState(false);
@@ -82,14 +84,55 @@ export default function Signup({ onLogin }) {
             return;
         }
 
-        // Direct Email Signup without OTP
+        // Direct Email Signup
         if (activeTab === 'email') {
             setLoading(true);
+            const cleanEmail = form.email.trim();
             try {
-                await signUpWithEmail(form.email.trim(), form.password);
-                // AuthContext automatically picks up the session and updates the UI
+                // 1. Register with backend DB (which also auto-creates and confirms Supabase Auth user)
+                const backendRes = await api.post('/auth/signup', {
+                    name: form.name.trim(),
+                    email: cleanEmail,
+                    password: form.password,
+                    department: form.department || ''
+                });
+
+                if (backendRes && backendRes.success && backendRes.user) {
+                    // Try logging into Supabase session as well
+                    try {
+                        await loginWithEmail(cleanEmail, form.password);
+                    } catch (e) {
+                        console.log('[Supabase session sync notice]:', e?.message);
+                    }
+
+                    loginWithLocalUser(backendRes.user, backendRes.token);
+                    if (onLogin) onLogin(backendRes.user);
+                    setSuccess('Account created successfully! Redirecting...');
+                    setTimeout(() => {
+                        navigate('/');
+                    }, 600);
+                    return;
+                } else {
+                    setError(backendRes?.error || 'Registration failed.');
+                }
             } catch (err) {
-                setError(err?.message || 'Server connection error. Please try again.');
+                console.error('[Signup Backend Error]:', err);
+                // 2. Direct Supabase signup fallback
+                try {
+                    const sbRes = await signUpWithEmail(cleanEmail, form.password);
+                    if (sbRes?.user) {
+                        setSuccess('Account created! Please sign in with your credentials.');
+                        setTimeout(() => navigate('/login'), 1500);
+                        return;
+                    }
+                } catch (sbErr) {
+                    setError(
+                        err?.response?.data?.error || 
+                        err?.response?.data?.detail || 
+                        sbErr?.message || 
+                        'Registration failed. Please check your details.'
+                    );
+                }
             } finally {
                 setLoading(false);
             }
@@ -158,9 +201,8 @@ export default function Signup({ onLogin }) {
         try {
             const data = await api.post(endpoint, payload);
             if (data.success) {
-                localStorage.setItem('user', JSON.stringify(data.user));
-                localStorage.setItem('token', data.token);
-                onLogin(data.user);
+                loginWithLocalUser(data.user, data.token);
+                if (onLogin) onLogin(data.user);
                 navigate('/');
             } else {
                 setError(data.error || 'Verification failed.');

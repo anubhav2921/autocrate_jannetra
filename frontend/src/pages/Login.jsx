@@ -12,6 +12,7 @@ import {
     verifySupabaseToken,
 } from '../services/authService';
 import api from '../services/apiClient';
+import { useAuth } from '../context/AuthContext';
 
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
@@ -26,6 +27,7 @@ const COUNTRY_CODES = [
 ];
 
 export default function Login({ onLogin }) {
+    const { loginWithLocalUser } = useAuth();
     const [activeTab, setActiveTab] = useState('email'); // 'email' | 'phone'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -68,15 +70,45 @@ export default function Login({ onLogin }) {
         setError('');
         setLoading(true);
 
+        const cleanEmail = email.trim();
 
-
+        // 1. Try Supabase Auth
+        let supabaseFailed = false;
         try {
-            // Supabase Auth
-            await loginWithEmail(email.trim(), password);
-            // AuthContext will automatically update and redirect the user
+            const res = await loginWithEmail(cleanEmail, password);
+            if (res?.user) {
+                if (onLogin) onLogin(res.user);
+                return;
+            }
         } catch (err) {
-            console.error('[Email Login] Error:', err?.message);
-            setError('Invalid email or password');
+            console.warn('[Supabase Login Notice]:', err?.message);
+            supabaseFailed = true;
+            const msg = (err?.message || '').toLowerCase();
+            if (msg.includes('email not confirmed')) {
+                setError('Email not confirmed. Please verify your email inbox, or sign in using a verified account.');
+                setLoading(false);
+                return;
+            }
+        }
+
+        // 2. Fallback to Backend Database Login
+        try {
+            const data = await api.post('/auth/login', { email: cleanEmail, password });
+            if (data && data.success && data.user) {
+                loginWithLocalUser(data.user, data.token);
+                if (onLogin) onLogin(data.user);
+                navigate('/');
+                return;
+            } else {
+                setError(data?.error || 'Invalid email or password');
+            }
+        } catch (backendErr) {
+            console.error('[Backend Login Error]:', backendErr);
+            setError(
+                backendErr?.response?.data?.error || 
+                backendErr?.response?.data?.detail || 
+                'Invalid email or password'
+            );
         } finally {
             setLoading(false);
         }
@@ -170,9 +202,8 @@ export default function Login({ onLogin }) {
                 if (idToken) {
                     const response = await verifySupabaseToken(idToken);
                     const { user, token } = response;
-                    localStorage.setItem('user', JSON.stringify(user));
-                    localStorage.setItem('token', token);
-                    onLogin(user);
+                    loginWithLocalUser(user, token);
+                    if (onLogin) onLogin(user);
                     navigate('/');
                     return;
                 }
@@ -183,9 +214,8 @@ export default function Login({ onLogin }) {
             // Backend OTP verification fallback
             const data = await api.post('/auth/login-phone', { phone_number: finalPhone, otp: code });
             if (data.success) {
-                localStorage.setItem('user', JSON.stringify(data.user));
-                localStorage.setItem('token', data.token || '');
-                onLogin(data.user);
+                loginWithLocalUser(data.user, data.token || '');
+                if (onLogin) onLogin(data.user);
                 navigate('/');
             } else {
                 setError(data.error || 'Login failed');

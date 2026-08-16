@@ -68,6 +68,27 @@ async def signup(req: SignupRequest):
     }
     await users_collection.insert_one(user_doc)
 
+    # Sync with Supabase Auth (admin creation + auto-confirm)
+    try:
+        from ..supabase_client import supabase
+        if supabase and hasattr(supabase, "auth") and hasattr(supabase.auth, "admin"):
+            try:
+                supabase.auth.admin.create_user({
+                    "email": email_clean,
+                    "password": str(req.password),
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "name": user_doc["name"],
+                        "full_name": user_doc["name"],
+                        "role": user_doc["role"],
+                        "department": user_doc["department"]
+                    }
+                })
+            except Exception as sb_err:
+                print(f"[Supabase Auth Sync Notice]: {sb_err}")
+    except Exception as e:
+        print(f"[Supabase Client Import Error]: {e}")
+
     # Create JWT token
     token = create_access_token(data={"user_id": user_doc["id"], "department": user_doc["department"]})
 
