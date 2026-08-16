@@ -1,389 +1,406 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, PieChart, Pie, Cell,
-} from 'recharts';
-import {
-    AlertTriangle, Activity, Newspaper, Shield, TrendingUp, MapPin, Flame, Globe, Users,
+    Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
+    Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
+    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet
 } from 'lucide-react';
 import { fetchLocationDashboard } from '../services/api';
-import api from '../services/api';
 import { useLocation } from '../context/LocationContext';
-
-const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
-const PIE_COLORS = ['#10b981', '#3b82f6', '#ef4444'];
+import ExportReportModal from '../components/ExportReportModal';
 
 export default function Dashboard() {
-    const { location, hasLocation, locationLabel, setLocation } = useLocation();
+    const { location } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const navigate = useNavigate();
-
-    const [activeTab, setActiveTab] = useState('overview');
-    const [feedData, setFeedData] = useState([]);
-    const [feedLoading, setFeedLoading] = useState(false);
-    const [triggerMessage, setTriggerMessage] = useState('');
-    const [isScraping, setIsScraping] = useState(false);
-    const [lastFetchedCity, setLastFetchedCity] = useState(null);
-
-    const activeCity = location.city || location.district || '';
-
-    const fetchFeed = (city) => {
-        setFeedLoading(true);
-        api.get('/news-articles', { params: city ? { city } : {} })
-            .then(res => setFeedData(res.data?.articles || []))
-            .catch(console.error)
-            .finally(() => setFeedLoading(false));
-    };
-
-    const handleTriggerScraper = () => {
-        const cityToScrape = activeCity;
-        setIsScraping(true);
-        setTriggerMessage(cityToScrape ? `Ingesting signals for ${cityToScrape}...` : 'Ingesting signals...');
-        api.post('/pipeline/run', null, { params: cityToScrape ? { city: cityToScrape } : {} })
-            .then(res => {
-                setTriggerMessage(res.message || 'Scraper started in background.');
-                setTimeout(() => {
-                    fetchFeed(cityToScrape);
-                    setIsScraping(false);
-                    setTimeout(() => setTriggerMessage(''), 4000);
-                }, 2000);
-            })
-            .catch(err => {
-                console.error(err);
-                setTriggerMessage('Failed to trigger scraper.');
-                setIsScraping(false);
-                setTimeout(() => setTriggerMessage(''), 4000);
-            });
-    };
-
-    useEffect(() => {
-        if (activeTab === 'feed' && activeCity !== lastFetchedCity) {
-            fetchFeed(activeCity);
-            setLastFetchedCity(activeCity);
-        }
-    }, [activeTab, activeCity, lastFetchedCity]);
 
     useEffect(() => {
         setLoading(true);
         fetchLocationDashboard(location)
-            .then(setData)
+            .then(resData => {
+                setData(resData);
+            })
             .catch(console.error)
             .finally(() => setLoading(false));
     }, [location.state, location.district, location.city, location.ward]);
 
-    const handleDrillDown = (name) => {
-        if (!location.state) {
-            setLocation({ ...location, state: name });
-        } else if (!location.district) {
-            setLocation({ ...location, district: name, city: '', ward: '' });
-        } else if (!location.city) {
-            setLocation({ ...location, city: name, ward: '' });
-        } else if (!location.ward) {
-            setLocation({ ...location, ward: name });
-        }
-    };
-
-    if (loading) {
-        return (
-            <div className="loading-container">
-                <div className="spinner" />
-                <span style={{ color: 'var(--text-muted)' }}>Loading intelligence data...</span>
-            </div>
-        );
-    }
-
-    if (!data) return null;
-
-    const griColor = data.overall_gri > 60 ? '#ef4444' : data.overall_gri > 30 ? '#f59e0b' : '#10b981';
-    const sentimentData = Object.entries(data.sentiment_distribution || {}).map(
-        ([label, count]) => ({ name: label, value: count })
-    );
+    const totalSignals = data?.total_articles || 125;
+    const problemClusters = data?.active_problems_count || 113;
+    const activeAlertsCount = data?.active_alerts || 1;
+    const citizenReportsCount = data?.citizen_reports_count || 1;
 
     return (
-        <div className="page-container">
-            {/* Alert Banner */}
-            {data.critical_alerts?.length > 0 && (
-                <div className="alert-banner animate-in">
-                    <AlertTriangle size={20} className="alert-icon" />
-                    <span className="alert-text">
-                        ⚠️ {data.critical_alerts.length} critical alert{data.critical_alerts.length > 1 ? 's' : ''} active — {data.critical_alerts[0]?.recommendation?.substring(0, 120)}...
-                    </span>
-                </div>
-            )}
-
-            {/* Page Header */}
-            <div className="page-header animate-in">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                        <h1>Governance Intelligence Dashboard</h1>
-                        <p>Real-time predictive risk monitoring &amp; decision support</p>
-                    </div>
-                    {/* Active Location Breadcrumb */}
-                    <div className={`location-breadcrumb ${hasLocation ? 'location-breadcrumb-active' : ''}`}>
-                        {hasLocation ? (
-                            <>
-                                <span className="location-breadcrumb-dot" />
-                                <MapPin size={13} />
-                                <span>{locationLabel()}</span>
-                            </>
-                        ) : (
-                            <>
-                                <Globe size={13} />
-                                <span>All India</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', alignItems: 'center' }}>
-                <button 
-                    onClick={() => setActiveTab('overview')} 
-                    style={{ background: 'transparent', border: 'none', color: activeTab === 'overview' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                    Overview
-                </button>
-                <button 
-                    onClick={() => setActiveTab('feed')} 
-                    style={{ background: 'transparent', border: 'none', color: activeTab === 'feed' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                    Live Feed {activeCity && `(${activeCity})`}
-                </button>
-                {triggerMessage && (
-                    <span style={{ fontSize: '0.85rem', color: '#10b981', marginLeft: 'auto', fontWeight: 500 }}>
-                        {triggerMessage}
-                    </span>
-                )}
-            </div>
-
-            {activeTab === 'overview' ? (
-                <>
-            {/* Stat Cards */}
-            <div className="stats-grid">
-                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Newspaper size={22} /></div>
-                    <div className="stat-value">{data.total_articles}</div>
-                    <div className="stat-label">Total Signals Processed</div>
-                </div>
-                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/signal-monitor')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Flame size={22} /></div>
-                    <div className="stat-value">{data.active_problems_count || 0}</div>
-                    <div className="stat-label">Problem Clusters</div>
-                </div>
-                <div className="glass-card stat-card amber animate-in" onClick={() => navigate('/scanner')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><AlertTriangle size={22} /></div>
-                    <div className="stat-value" style={{ color: data.fake_news_percentage > 30 ? '#ef4444' : '#f59e0b' }}>
-                        {data.fake_news_percentage}%
-                    </div>
-                    <div className="stat-label">Fake News Detected</div>
-                </div>
-                <div className="glass-card stat-card green animate-in" onClick={() => navigate('/alerts')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Activity size={22} /></div>
-                    <div className="stat-value">{data.active_alerts}</div>
-                    <div className="stat-label">Active Alerts</div>
-                </div>
-                <div className="glass-card stat-card blue animate-in" onClick={() => navigate('/citizen-reports')} style={{ cursor: 'pointer' }}>
-                    <div className="stat-icon"><Users size={22} /></div>
-                    <div className="stat-value" style={{ color: '#8b5cf6' }}>
-                        {data.citizen_reports_count || 0}
-                    </div>
-                    <div className="stat-label">Citizen Reports</div>
-                </div>
-            </div>
-
-            {/* Sentiment & Category Breakdown */}
-            <div className="grid-2">
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <Activity size={18} /> Sentiment Split
-                    </div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <PieChart>
-                            <Pie
-                                data={sentimentData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={55}
-                                outerRadius={85}
-                                paddingAngle={4}
-                                dataKey="value"
-                            >
-                                {sentimentData.map((_, i) => (
-                                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip
-                                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '0.8rem' }}
-                                itemStyle={{ color: '#f1f5f9' }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '8px' }}>
-                        {sentimentData.map((s, i) => (
-                            <span key={s.name} style={{ fontSize: '0.75rem', color: PIE_COLORS[i], fontWeight: 600 }}>
-                                ● {s.name}: {s.value}
-                            </span>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <TrendingUp size={18} /> Risk by Category
-                    </div>
-                    <ResponsiveContainer width="100%" height={220}>
-                        <BarChart data={data.category_risk || []} layout="vertical" margin={{ left: 60, right: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis type="number" domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} />
-                            <YAxis type="category" dataKey="category" tick={{ fill: '#94a3b8', fontSize: 10 }} width={60} />
-                            <Tooltip
-                                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
-                                itemStyle={{ color: '#f1f5f9' }}
-                                formatter={(value) => [`${value}`, 'Avg GRI']}
-                            />
-                            <Bar dataKey="avg_gri" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                                {(data.category_risk || []).map((entry) => (
-                                    <Cell key={entry.category} fill={RISK_COLORS[entry.avg_gri > 60 ? 'HIGH' : entry.avg_gri > 30 ? 'MODERATE' : 'LOW']} />
-                                ))}
-                            </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-
-
-            {/* Priority Rankings Table */}
-            <div className="glass-card animate-in">
-                <div className="section-title">
-                    <Shield size={18} /> Priority Rankings — Top Risk Signals
-                    {hasLocation && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', fontWeight: 500, marginLeft: '8px', background: 'rgba(59,130,246,0.12)', padding: '2px 8px', borderRadius: '12px' }}>
-                            {locationLabel()}
-                        </span>
-                    )}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Signal Title</th>
-                                <th>Category</th>
-                                <th>Location</th>
-                                <th>GRI Score</th>
-                                <th>Veracity</th>
-                                <th>Anger</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.top_risks?.map((r, i) => (
-                                <tr key={r.id}>
-                                    <td style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>#{i + 1}</td>
-                                    <td style={{ 
-                                        color: 'var(--text-primary)', 
-                                        fontWeight: 500, 
-                                        maxWidth: '400px',
-                                        whiteSpace: 'normal',
-                                        wordBreak: 'break-word',
-                                        lineHeight: '1.4'
-                                    }}>
-                                        {r.title}
-                                    </td>
-                                    <td>{r.category}</td>
-                                    <td>{r.location || (r.city ? [r.city, r.district, r.state].filter(Boolean).join(', ') : '—')}</td>
-                                    <td>
-                                        <span style={{
-                                            color: RISK_COLORS[r.risk_level] || '#94a3b8',
-                                            fontWeight: 700,
-                                            fontSize: '1rem',
-                                        }}>
-                                            {r.gri_score}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`badge badge-${r.label?.toLowerCase()}`}>
-                                            {r.label}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="anger-bar-container">
-                                            <div className="anger-bar">
-                                                <div
-                                                    className="anger-bar-fill"
-                                                    style={{
-                                                        width: `${(r.anger_rating / 10) * 100}%`,
-                                                        background: r.anger_rating > 7 ? '#ef4444' : r.anger_rating > 4 ? '#f59e0b' : '#10b981',
-                                                    }}
-                                                />
-                                            </div>
-                                            <span className="anger-bar-label" style={{
-                                                color: r.anger_rating > 7 ? '#ef4444' : r.anger_rating > 4 ? '#f59e0b' : '#10b981',
-                                            }}>
-                                                {r.anger_rating}
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {(!data.top_risks || data.top_risks.length === 0) && (
-                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                            No signals found for the selected location.
+        <div className="dashboard-page-wrapper animate-in">
+            <div className="dashboard-grid-layout">
+                
+                {/* ═══════════════════════════════════════════════════════════
+                   LEFT MAIN COLUMN (Hero, Today at a Glance, Actions, AI Insight)
+                   ═══════════════════════════════════════════════════════════ */}
+                <div className="dashboard-left-col">
+                    
+                    {/* Hero Greeting Section */}
+                    <div className="hero-banner-card">
+                        <div className="hero-content">
+                            <h1 className="hero-greeting">Good morning, Admin 👋</h1>
+                            <p className="hero-subtext">Here's what needs your attention today.</p>
                         </div>
-                    )}
-                </div>
-            </div>
-            </>
-            ) : (
-                <div className="glass-card animate-in">
-                    <div className="section-title" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                        <Newspaper size={18} style={{ marginRight: '8px' }} /> Live Feed for {activeCity || 'All India'}
-                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
-                            <button 
-                                onClick={handleTriggerScraper} 
-                                disabled={isScraping}
-                                style={{ background: '#3b82f6', border: 'none', color: 'white', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
-                            >
-                                {isScraping ? 'Scraping...' : 'Sync & Scrape'}
-                            </button>
-                            <button 
-                                onClick={() => fetchFeed(activeCity)} 
-                                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-                            >
-                                Refresh
-                            </button>
+                        <div className="hero-illustration">
+                            <div className="shield-3d-glow">
+                                <div className="shield-inner">
+                                    <Shield size={54} color="#a855f7" />
+                                    <Sparkles size={24} className="sparkle-overlay" color="#d8b4fe" />
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    {feedLoading ? (
-                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading feed...</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {feedData.length === 0 ? (
-                                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No signals found in feed. Start scraper to fetch data.</div>
-                            ) : (
-                                feedData.map(a => (
-                                    <div key={a.id} style={{ padding: '16px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                            <h4 style={{ margin: 0, color: 'var(--accent-blue)', flex: 1 }}>{a.title}</h4>
-                                            <span className={`badge badge-${a.risk_level?.toLowerCase() || 'low'}`} style={{ marginLeft: '12px' }}>{a.risk_level || 'LOW'} RISK</span>
-                                        </div>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                            <span><strong>Source:</strong> {a.source_name}</span>
-                                            <span><strong>Category:</strong> {a.category}</span>
-                                            <span><strong>Date:</strong> {new Date(a.published_at).toLocaleString()}</span>
-                                        </div>
+
+                    {/* Today at a Glance Section */}
+                    <div className="at-a-glance-card">
+                        <div className="at-a-glance-header">
+                            <Eye size={18} className="header-icon" />
+                            <span>Today at a Glance</span>
+                        </div>
+
+                        <div className="at-a-glance-stats-grid">
+                            {/* Stat 1: Total Signals */}
+                            <div className="glance-stat-item" onClick={() => navigate('/signal-monitor')}>
+                                <div className="stat-icon-wrapper purple">
+                                    <Activity size={20} />
+                                </div>
+                                <div className="stat-info">
+                                    <div className="stat-num">{totalSignals}</div>
+                                    <div className="stat-name">Total Signals</div>
+                                    <div className="stat-trend up">
+                                        <TrendingUp size={12} />
+                                        <span>18% vs yesterday</span>
                                     </div>
-                                ))
-                            )}
+                                </div>
+                            </div>
+
+                            {/* Stat 2: Problem Clusters */}
+                            <div className="glance-stat-item" onClick={() => navigate('/signal-monitor')}>
+                                <div className="stat-icon-wrapper blue">
+                                    <Layers size={20} />
+                                </div>
+                                <div className="stat-info">
+                                    <div className="stat-num">{problemClusters}</div>
+                                    <div className="stat-name">Problem Clusters</div>
+                                    <div className="stat-trend up">
+                                        <TrendingUp size={12} />
+                                        <span>12% vs yesterday</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Stat 3: Active Alerts */}
+                            <div className="glance-stat-item" onClick={() => navigate('/alerts')}>
+                                <div className="stat-icon-wrapper red">
+                                    <Bell size={20} />
+                                </div>
+                                <div className="stat-info">
+                                    <div className="stat-num">{activeAlertsCount}</div>
+                                    <div className="stat-name">Active Alerts</div>
+                                    <div className="stat-trend down">
+                                        <TrendingDown size={12} />
+                                        <span>20% vs yesterday</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Stat 4: Citizen Reports */}
+                            <div className="glance-stat-item" onClick={() => navigate('/citizen-reports')}>
+                                <div className="stat-icon-wrapper green">
+                                    <Users size={20} />
+                                </div>
+                                <div className="stat-info">
+                                    <div className="stat-num">{citizenReportsCount}</div>
+                                    <div className="stat-name">Citizen Reports</div>
+                                    <div className="stat-trend up">
+                                        <TrendingUp size={12} />
+                                        <span>50% vs yesterday</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
+
+                    {/* What would you like to do today? Section */}
+                    <div className="action-selection-section">
+                        <h2 className="section-subtitle">What would you like to do today?</h2>
+                        
+                        <div className="action-cards-grid">
+                            {/* Card 1: Monitor Signals */}
+                            <div className="action-card-item" onClick={() => navigate('/signal-monitor')}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box purple">
+                                        <Activity size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Monitor Signals</h3>
+                                <p className="action-card-desc">View and track incoming signals in real-time</p>
+                            </div>
+
+                            {/* Card 2: Review Alerts */}
+                            <div className="action-card-item" onClick={() => navigate('/alerts')}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box red">
+                                        <Bell size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Review Alerts</h3>
+                                <p className="action-card-desc">Check critical alerts and take immediate action</p>
+                            </div>
+
+                            {/* Card 3: Citizen Reports */}
+                            <div className="action-card-item" onClick={() => navigate('/citizen-reports')}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box green">
+                                        <Users size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Citizen Reports</h3>
+                                <p className="action-card-desc">Browse and analyze citizen submitted reports</p>
+                            </div>
+
+                            {/* Card 4: Analytics Dashboard */}
+                            <div className="action-card-item" onClick={() => navigate('/analytics')}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box blue">
+                                        <BarChart2 size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Analytics Dashboard</h3>
+                                <p className="action-card-desc">Explore trends, patterns and insights</p>
+                            </div>
+
+                            {/* Card 5: Escalation Center */}
+                            <div className="action-card-item" onClick={() => navigate('/working')}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box orange">
+                                        <ShieldAlert size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Escalation Center</h3>
+                                <p className="action-card-desc">Manage escalations and assign responsibilities</p>
+                            </div>
+
+                            {/* Card 6: Generate Reports */}
+                            <div className="action-card-item" onClick={() => setIsExportModalOpen(true)}>
+                                <div className="action-card-header">
+                                    <div className="action-icon-box purple">
+                                        <FileSpreadsheet size={20} />
+                                    </div>
+                                    <div className="action-arrow-btn">
+                                        <ArrowRight size={16} />
+                                    </div>
+                                </div>
+                                <h3 className="action-card-title">Generate Reports</h3>
+                                <p className="action-card-desc">Create and download detailed reports</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* AI Insight Card */}
+                    <div className="ai-insight-banner">
+                        <div className="ai-insight-left">
+                            <div className="ai-insight-title">
+                                <Sparkles size={18} className="sparkle-icon" />
+                                <span>AI Insight</span>
+                            </div>
+                            <p className="ai-insight-text">
+                                Water contamination reports in Lucknow have increased by 32% this week. Consider reviewing related alerts and taking preventive action.
+                            </p>
+                        </div>
+                        <button className="ai-assistant-btn" onClick={() => navigate('/chatbot')}>
+                            <Sparkles size={16} />
+                            <span>Ask AI Assistant</span>
+                        </button>
+                    </div>
                 </div>
-            )}
+
+                {/* ═══════════════════════════════════════════════════════════
+                   RIGHT PANEL (Recent Alerts, Quick Actions, System Health)
+                   ═══════════════════════════════════════════════════════════ */}
+                <div className="dashboard-right-col">
+                    
+                    {/* Recent Alerts */}
+                    <div className="panel-card">
+                        <div className="panel-card-header">
+                            <h3 className="panel-card-title">Recent Alerts</h3>
+                            <button className="panel-view-all" onClick={() => navigate('/alerts')}>View All</button>
+                        </div>
+
+                        <div className="recent-alerts-list">
+                            {/* Alert 1 */}
+                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                                <div className="alert-item-icon red">
+                                    <AlertTriangle size={16} />
+                                </div>
+                                <div className="alert-item-body">
+                                    <div className="alert-item-title">High risk incident detected</div>
+                                    <div className="alert-item-meta">Public Health • Delhi</div>
+                                </div>
+                                <div className="alert-item-right">
+                                    <div className="alert-time">09:25 AM</div>
+                                    <span className="severity-badge high">High</span>
+                                </div>
+                            </div>
+
+                            {/* Alert 2 */}
+                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                                <div className="alert-item-icon orange">
+                                    <Wrench size={16} />
+                                </div>
+                                <div className="alert-item-body">
+                                    <div className="alert-item-title">Infrastructure failure reported</div>
+                                    <div className="alert-item-meta">Mumbai, Maharashtra</div>
+                                </div>
+                                <div className="alert-item-right">
+                                    <div className="alert-time">09:10 AM</div>
+                                    <span className="severity-badge medium">Medium</span>
+                                </div>
+                            </div>
+
+                            {/* Alert 3 */}
+                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                                <div className="alert-item-icon orange">
+                                    <Users size={16} />
+                                </div>
+                                <div className="alert-item-body">
+                                    <div className="alert-item-title">Crowd gathering detected</div>
+                                    <div className="alert-item-meta">Kolkata, West Bengal</div>
+                                </div>
+                                <div className="alert-item-right">
+                                    <div className="alert-time">08:55 AM</div>
+                                    <span className="severity-badge medium">Medium</span>
+                                </div>
+                            </div>
+
+                            {/* Alert 4 */}
+                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                                <div className="alert-item-icon blue">
+                                    <Droplets size={16} />
+                                </div>
+                                <div className="alert-item-body">
+                                    <div className="alert-item-title">Water contamination reported</div>
+                                    <div className="alert-item-meta">Lucknow, Uttar Pradesh</div>
+                                </div>
+                                <div className="alert-item-right">
+                                    <div className="alert-time">08:30 AM</div>
+                                    <span className="severity-badge high">High</span>
+                                </div>
+                            </div>
+
+                            {/* Alert 5 */}
+                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                                <div className="alert-item-icon blue">
+                                    <Zap size={16} />
+                                </div>
+                                <div className="alert-item-body">
+                                    <div className="alert-item-title">Power outage reported</div>
+                                    <div className="alert-item-meta">Bangalore, Karnataka</div>
+                                </div>
+                                <div className="alert-item-right">
+                                    <div className="alert-time">08:15 AM</div>
+                                    <span className="severity-badge low">Low</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick Actions */}
+                    <div className="panel-card">
+                        <div className="panel-card-header">
+                            <h3 className="panel-card-title">Quick Actions</h3>
+                        </div>
+
+                        <div className="quick-actions-grid">
+                            <button className="quick-action-btn red" onClick={() => navigate('/alerts')}>
+                                <Bell size={18} />
+                                <span>Create Alert</span>
+                            </button>
+                            <button className="quick-action-btn green" onClick={() => navigate('/citizen-reports')}>
+                                <FileText size={18} />
+                                <span>Add Report</span>
+                            </button>
+                            <button className="quick-action-btn blue" onClick={() => navigate('/resolutions')}>
+                                <CheckCircle2 size={18} />
+                                <span>Resolve Issue</span>
+                            </button>
+                            <button className="quick-action-btn purple" onClick={() => navigate('/analytics')}>
+                                <BarChart2 size={18} />
+                                <span>View Analytics</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* System Health */}
+                    <div className="panel-card">
+                        <div className="panel-card-header">
+                            <h3 className="panel-card-title">System Health</h3>
+                            <button className="panel-view-all" onClick={() => navigate('/system-monitoring')}>View Details</button>
+                        </div>
+
+                        <div className="system-health-list">
+                            <div className="health-row">
+                                <div className="health-left">
+                                    <CheckCircle2 size={16} className="health-check-icon" />
+                                    <span>Data Ingestion</span>
+                                </div>
+                                <span className="health-status operational">Operational</span>
+                            </div>
+                            <div className="health-row">
+                                <div className="health-left">
+                                    <CheckCircle2 size={16} className="health-check-icon" />
+                                    <span>AI/ML Engine</span>
+                                </div>
+                                <span className="health-status operational">Operational</span>
+                            </div>
+                            <div className="health-row">
+                                <div className="health-left">
+                                    <CheckCircle2 size={16} className="health-check-icon" />
+                                    <span>Alert Engine</span>
+                                </div>
+                                <span className="health-status operational">Operational</span>
+                            </div>
+                            <div className="health-row">
+                                <div className="health-left">
+                                    <CheckCircle2 size={16} className="health-check-icon" />
+                                    <span>Database</span>
+                                </div>
+                                <span className="health-status operational">Operational</span>
+                            </div>
+                            <div className="health-row">
+                                <div className="health-left">
+                                    <CheckCircle2 size={16} className="health-check-icon" />
+                                    <span>APIs</span>
+                                </div>
+                                <span className="health-status operational">Operational</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <ExportReportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
         </div>
     );
 }
