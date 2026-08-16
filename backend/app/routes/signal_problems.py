@@ -33,7 +33,20 @@ async def list_signal_problems(
     user_role = current_user.get("role") if current_user else None
 
     from .location import _build_location_match
-    match = _build_location_match(state, district, city, ward)
+    
+    # Use broader location matching similar to pipeline for Signal Monitor
+    match = {}
+    if city and city.strip() and city.lower() not in ["all", "all india", "all cities"]:
+        c_clean = city.strip()
+        match["$or"] = [
+            {"city": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"district": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"location": {"$regex": c_clean, "$options": "i"}},
+            {"title": {"$regex": c_clean, "$options": "i"}},
+            {"description": {"$regex": c_clean, "$options": "i"}}
+        ]
+    elif state or district or ward:
+        match = _build_location_match(state, district, city, ward)
 
     # Add Status Filter (default to pending/review unless overridden)
     if status:
@@ -96,7 +109,18 @@ async def list_signal_problems(
     existing_ids = {r["id"] for r in results}
 
     # Always fetch from news_articles_collection to supplement signal_problems_collection
-    article_match = _build_location_match(state, district, city, ward)
+    article_match = {}
+    if city and city.strip() and city.lower() not in ["all", "all india", "all cities"]:
+        c_clean = city.strip()
+        article_match["$or"] = [
+            {"city": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"district": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"title": {"$regex": c_clean, "$options": "i"}},
+            {"content": {"$regex": c_clean, "$options": "i"}}
+        ]
+    elif state or district or ward:
+        article_match = _build_location_match(state, district, city, ward)
+
     if user_role != "ADMIN" and user_dept and not user_id:
         article_match["department"] = user_dept
         
