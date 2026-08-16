@@ -2,7 +2,7 @@ import axios from 'axios';
 import { supabase } from '../supabase';
 
 const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL;
-let BASE_URL = 'https://jannetra-web-production.up.railway.app';
+let BASE_URL = 'http://localhost:8000';
 
 if (rawApiUrl) {
     BASE_URL = rawApiUrl.replace(/\/$/, '');
@@ -25,7 +25,7 @@ apiClient.interceptors.request.use(
         console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, config.params || '');
 
         const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        const token = session?.access_token || localStorage.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }

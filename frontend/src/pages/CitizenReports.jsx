@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation as useRouteLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-    AlertTriangle, Shield, MapPin, Clock, Zap,
-    CheckCircle2, Circle, Filter, Search, Flame, Image, Mic
+    AlertTriangle, MapPin, Clock, Zap,
+    CheckCircle2, Filter, Search, Globe, Users, Image, Mic
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
@@ -16,17 +16,15 @@ const SEVERITY_CONFIG = {
 };
 
 export default function CitizenReports() {
-    const { locationParams, location } = useLocation();
+    const { location, hasLocation, locationLabel } = useLocation();
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('ALL');
     const [filterStatus, setFilterStatus] = useState('ALL');
-    const navigate = useNavigate();
 
     useEffect(() => {
         setLoading(true);
-        // Using common API service instead of raw fetch for consistency
         api.get('/citizen-reports/list')
             .then((data) => {
                 const formatted = data.map((p) => ({
@@ -62,7 +60,6 @@ export default function CitizenReports() {
         return true;
     });
 
-
     const stats = {
         total: problems.length,
         critical: problems.filter((p) => p.severity === 'Critical').length,
@@ -71,214 +68,192 @@ export default function CitizenReports() {
     };
 
     if (loading) {
-        return <div className="loading-container"><div className="spinner" /></div>;
+        return (
+            <div className="dashboard-page-wrapper">
+                <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                    Loading citizen reports...
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div className="page-container">
-            <div className="page-header animate-in">
-                <h1>Citizen Reports</h1>
-                <p>Real-time governance signal tracking — identify, investigate, and resolve detected problems</p>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="stats-grid animate-in">
-                <div className="glass-card stat-card blue">
-                    <div className="stat-icon"><Zap size={22} /></div>
-                    <div className="stat-value">{stats.total}</div>
-                    <div className="stat-label">Problem Clusters</div>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Header Banner */}
+            <div className="hero-banner-card" style={{ marginBottom: '20px' }}>
+                <div>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Citizen Reports</h1>
+                    <p className="hero-subtext">Direct citizen grievance filings, media uploads, and community escalation tracking</p>
                 </div>
-                <div className="glass-card stat-card red">
-                    <div className="stat-icon"><AlertTriangle size={22} /></div>
-                    <div className="stat-value" style={{ color: '#ef4444' }}>{stats.critical}</div>
-                    <div className="stat-label">Critical Issues</div>
-                </div>
-                <div className="glass-card stat-card amber">
-                    <div className="stat-icon"><Clock size={22} /></div>
-                    <div className="stat-value" style={{ color: '#f59e0b' }}>{stats.pending}</div>
-                    <div className="stat-label">Actions Pending</div>
-                </div>
-                <div className="glass-card stat-card green">
-                    <div className="stat-icon"><CheckCircle2 size={22} /></div>
-                    <div className="stat-value" style={{ color: '#10b981' }}>{stats.resolved}</div>
-                    <div className="stat-label">Issues Resolved</div>
+                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                    <Globe size={14} className="location-icon" />
+                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="glass-card animate-in" style={{
-                display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap',
-                marginBottom: '20px', padding: '14px 20px',
-            }}>
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '200px',
-                    background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '8px 12px',
-                    border: '1px solid var(--border-color)',
-                }}>
-                    <Search size={16} style={{ color: 'var(--text-muted)' }} />
-                    <input type="text" placeholder="Search issues..." value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{
-                            background: 'transparent', border: 'none', color: 'var(--text-primary)',
-                            fontSize: '0.85rem', fontFamily: 'var(--font-family)', outline: 'none', width: '100%',
-                        }} />
+            {/* Stats Grid */}
+            <div className="at-a-glance-stats-grid" style={{ marginBottom: '20px' }}>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper green">
+                        <Users size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num">{stats.total}</div>
+                        <div className="stat-name">Total Filings</div>
+                    </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Filter size={14} style={{ color: 'var(--text-muted)' }} />
-                    <select value={filterSeverity} onChange={(e) => setFilterSeverity(e.target.value)}
-                        style={{
-                            padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid var(--border-color)', borderRadius: '8px',
-                            color: 'var(--text-primary)', fontSize: '0.82rem', fontFamily: 'var(--font-family)',
-                        }}>
-                        <option value="ALL">All Severity</option>
-                        <option value="Critical">Critical</option>
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                    </select>
-                    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}
-                        style={{
-                            padding: '8px 12px', background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid var(--border-color)', borderRadius: '8px',
-                            color: 'var(--text-primary)', fontSize: '0.82rem', fontFamily: 'var(--font-family)',
-                        }}>
-                        <option value="ALL">All Status</option>
-                        <option value="Pending">Pending</option>
-                        <option value="Resolved">Resolved</option>
-                    </select>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper red">
+                        <AlertTriangle size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#f87171' }}>{stats.critical}</div>
+                        <div className="stat-name">Critical Escalations</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper orange">
+                        <Clock size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#fbbf24' }}>{stats.pending}</div>
+                        <div className="stat-name">Review Pending</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper blue">
+                        <CheckCircle2 size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#60a5fa' }}>{stats.resolved}</div>
+                        <div className="stat-name">Resolved Filings</div>
+                    </div>
                 </div>
             </div>
 
-            {/* Problems Table */}
-            <div className="glass-card animate-in" style={{ overflow: 'auto' }}>
+            {/* Filter Bar */}
+            <div className="panel-card" style={{ marginBottom: '20px', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className="navbar-search-wrapper" style={{ flex: 1, minWidth: '220px', width: 'auto' }}>
+                        <Search size={16} className="search-icon" />
+                        <input
+                            type="text"
+                            className="navbar-search-input"
+                            placeholder="Search citizen reports by keyword, ID or department..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Filter size={14} style={{ color: '#64748b' }} />
+                        <select
+                            value={filterSeverity}
+                            onChange={(e) => setFilterSeverity(e.target.value)}
+                            style={{
+                                padding: '8px 14px', background: '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px',
+                                color: '#f8fafc', fontSize: '0.82rem', outline: 'none'
+                            }}
+                        >
+                            <option value="ALL">All Severity</option>
+                            <option value="Critical">Critical</option>
+                            <option value="High">High</option>
+                            <option value="Medium">Medium</option>
+                            <option value="Low">Low</option>
+                        </select>
+
+                        <select
+                            value={filterStatus}
+                            onChange={(e) => setFilterStatus(e.target.value)}
+                            style={{
+                                padding: '8px 14px', background: '#181c2e',
+                                border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px',
+                                color: '#f8fafc', fontSize: '0.82rem', outline: 'none'
+                            }}
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Reports Table */}
+            <div className="panel-card" style={{ padding: '20px', overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
                     <thead>
-                        <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            {['ID', 'Title', 'Frequency', 'Severity', 'Category', 'Location', 'Priority', 'Status', 'Action'].map((h) => (
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            {['ID', 'Title', 'Media', 'Severity', 'Category', 'Location', 'Priority', 'Status', 'Action'].map((h) => (
                                 <th key={h} style={{
-                                    padding: '14px 12px', textAlign: 'left', fontSize: '0.72rem',
-                                    fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
+                                    padding: '12px 14px', textAlign: 'left', fontSize: '0.72rem',
+                                    fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
+                                    letterSpacing: '0.05em'
                                 }}>{h}</th>
                             ))}
                         </tr>
                     </thead>
                     <tbody>
-                        {filtered.map((p, idx) => {
+                        {filtered.map((p) => {
                             const sev = SEVERITY_CONFIG[p.severity] || SEVERITY_CONFIG.Medium;
                             const isResolved = p.status === 'Problem Resolved';
                             return (
-                                <tr key={p.id} className="table-row-hover" style={{
-                                    borderBottom: '1px solid rgba(255,255,255,0.04)',
-                                    transition: 'background 0.2s ease',
-                                    animation: `fadeInUp 0.3s ease ${idx * 0.04}s both`,
-                                }}>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-blue)', whiteSpace: 'nowrap' }}>
+                                <tr key={p.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: '#8b5cf6', whiteSpace: 'nowrap' }}>
                                         <span title={p.id}>{p.id.length > 12 ? p.id.substring(0, 8) + '...' : p.id}</span>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            {p.source_url ? (
-                                                <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }} className="hover-underline" onClick={(e) => e.stopPropagation()}>
-                                                    {p.title}
-                                                </a>
-                                            ) : (
-                                                <span>{p.title}</span>
-                                            )}
-                                            {p.source_type && p.source_type !== 'unknown' && (
-                                                <span style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px', textTransform: 'capitalize' }}>
-                                                    [{p.source_type}]
-                                                </span>
-                                            )}
-                                            {p.frequency > 5 && <Zap size={14} style={{ color: '#ef4444' }} />}
-                                            {p.image_url && <Image size={14} style={{ color: '#8b5cf6' }} title="Photo Evidence Attached" />}
-                                            {p.audio_url && <Mic size={14} style={{ color: '#ec4899' }} title="Audio Voice Note Attached" />}
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4 }}>
+                                            {p.title}
                                         </div>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{p.frequency || 1}</span>
-                                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>signals</span>
-                                            {p.frequency > 2 && <Flame size={12} style={{ color: '#f97316' }} />}
+                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                            {p.image_url && <Image size={15} style={{ color: '#60a5fa' }} title="Image Attached" />}
+                                            {p.audio_url && <Mic size={15} style={{ color: '#c084fc' }} title="Voice Audio Attached" />}
+                                            {!p.image_url && !p.audio_url && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Text</span>}
                                         </div>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <span style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                            padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem',
-                                            fontWeight: 600, background: sev.bg, color: sev.color,
-                                            border: `1px solid ${sev.border}`,
+                                            padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
+                                            background: sev.bg, color: sev.color, border: `1px solid ${sev.border}`
                                         }}>
-                                            <AlertTriangle size={11} /> {p.severity}
+                                            {p.severity}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                                        {p.category}
+                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                                        {p.category || 'Citizen Report'}
                                     </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={12} /> {typeof p.location === 'object' && p.location !== null 
-                                                ? `${p.location.latitude?.toFixed(4)}, ${p.location.longitude?.toFixed(4)}` 
-                                                : p.location}
+                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#94a3b8' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <MapPin size={12} style={{ color: '#8b5cf6' }} />
+                                            {typeof p.location === 'string' ? p.location : 'Submitted Report'}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <div style={{
-                                                width: '40px', height: '6px', borderRadius: '3px',
-                                                background: 'rgba(255,255,255,0.06)', overflow: 'hidden',
-                                            }}>
-                                                <div style={{
-                                                    width: `${p.priorityScore || p.riskScore}%`, height: '100%', borderRadius: '3px',
-                                                    background: (p.priorityScore || p.riskScore) > 80 ? '#ef4444' : (p.priorityScore || p.riskScore) > 50 ? '#f59e0b' : '#10b981',
-                                                    transition: 'width 0.6s ease',
-                                                }} />
-                                            </div>
-                                            <span style={{
-                                                fontSize: '0.78rem', fontWeight: 700,
-                                                color: (p.priorityScore || p.riskScore) > 80 ? '#ef4444' : (p.priorityScore || p.riskScore) > 50 ? '#f59e0b' : '#10b981',
-                                            }}>{p.priorityScore || p.riskScore}</span>
-                                        </div>
+                                    <td style={{ padding: '14px 12px', fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
+                                        {Math.round(p.priority_score || p.riskScore || 50)}
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
                                         <span style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                            padding: '4px 12px', borderRadius: '20px', fontSize: '0.72rem',
-                                            fontWeight: 600,
-                                            background: isResolved ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                                            color: isResolved ? '#10b981' : '#f59e0b',
-                                            border: `1px solid ${isResolved ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'}`,
+                                            padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
+                                            background: isResolved ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                                            color: isResolved ? '#4ade80' : '#fbbf24'
                                         }}>
-                                            {isResolved ? <CheckCircle2 size={11} /> : <Circle size={11} />}
                                             {isResolved ? 'Resolved' : 'Pending'}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '14px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <button
-                                            onClick={() => navigate(`/citizen-reports/${p.id}`, { state: { readonly: true } })}
-                                            className="btn btn-primary"
-                                            style={{
-                                                padding: '6px 14px', fontSize: '0.75rem',
-                                                display: 'flex', alignItems: 'center', gap: '5px',
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                            View Details
-                                        </button>
-                                        <ProblemActionMenu problem={p} onUpdate={() => window.location.reload()} />
+                                    <td style={{ padding: '14px 12px' }}>
+                                        <ProblemActionMenu problem={p} onUpdate={(updated) => {
+                                            setProblems((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+                                        }} />
                                     </td>
                                 </tr>
                             );
                         })}
                     </tbody>
                 </table>
-
-                {filtered.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
-                        <Shield size={40} style={{ marginBottom: '12px', opacity: 0.4 }} />
-                        <p>No signals match your filters.</p>
-                    </div>
-                )}
             </div>
         </div>
     );

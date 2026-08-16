@@ -22,14 +22,14 @@ async def seed_users():
             "created_at": datetime.utcnow(),
         }
         await users_collection.insert_one(admin_doc)
-        print("✅ Created default user: admin@email.com (password: admin)")
+        print("[SEED] Created default user: admin@email.com (password: admin)")
     else:
         # Ensure password hash is updated to 'admin'
         await users_collection.update_one(
             {"email": "admin@email.com"},
             {"$set": {"password_hash": _hash_password("admin"), "is_active": True, "auth_provider": "email"}}
         )
-        print("✅ Updated admin@email.com credentials.")
+        print("[SEED] Updated admin@email.com credentials.")
 
 if __name__ == "__main__":
     asyncio.run(seed_users())

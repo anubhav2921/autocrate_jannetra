@@ -1,13 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { MapPin, Globe } from 'lucide-react';
+import { MapPin, Globe, Activity, ShieldAlert, Layers } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { fetchLocationMapMarkers } from '../services/api';
 import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 
-/** Helper component that flies the map to the new center whenever it changes */
 function MapRecenter({ center, zoom }) {
     const map = useMap();
     useEffect(() => {
@@ -35,156 +34,135 @@ export default function MapView() {
             .finally(() => setLoading(false));
     }, [location.state, location.district, location.city, location.ward]);
 
-    if (loading) {
-        return <div className="loading-container"><div className="spinner" /></div>;
-    }
+    const highRiskCount = markers.filter(m => m.risk_level === 'HIGH').length;
+    const modRiskCount = markers.filter(m => m.risk_level === 'MODERATE').length;
+    const lowRiskCount = markers.filter(m => m.risk_level === 'LOW').length;
 
     return (
-        <div className="page-container">
-            <div className="page-header animate-in">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                    <div>
-                        <h1>Problem Location Map</h1>
-                        <p>Interactive map showing governance issue hotspots across locations</p>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Dark Styled Page Header */}
+            <div className="hero-banner-card mb-4" style={{ marginBottom: '20px' }}>
+                <div>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Problem Location Map</h1>
+                    <p className="hero-subtext">Interactive geospatial map tracking governance issue hotspots and risk levels</p>
+                </div>
+                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                    <Globe size={14} className="location-icon" />
+                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                </div>
+            </div>
+
+            {/* Summary Stat Cards */}
+            <div className="at-a-glance-stats-grid mb-4" style={{ marginBottom: '20px' }}>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper purple">
+                        <Layers size={20} />
                     </div>
-                    <div className={`location-breadcrumb ${hasLocation ? 'location-breadcrumb-active' : ''}`}>
-                        {hasLocation ? (
-                            <>
-                                <span className="location-breadcrumb-dot" />
-                                <MapPin size={13} />
-                                <span>{locationLabel()}</span>
-                            </>
-                        ) : (
-                            <>
-                                <Globe size={13} />
-                                <span>All India</span>
-                            </>
-                        )}
+                    <div className="stat-info">
+                        <div className="stat-num">{markers.length}</div>
+                        <div className="stat-name">Active Hotspots</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper red">
+                        <ShieldAlert size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#f87171' }}>{highRiskCount}</div>
+                        <div className="stat-name">High Risk Zones</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper orange">
+                        <Activity size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#fbbf24' }}>{modRiskCount}</div>
+                        <div className="stat-name">Moderate Risk Zones</div>
+                    </div>
+                </div>
+                <div className="glance-stat-item">
+                    <div className="stat-icon-wrapper green">
+                        <MapPin size={20} />
+                    </div>
+                    <div className="stat-info">
+                        <div className="stat-num" style={{ color: '#4ade80' }}>{lowRiskCount}</div>
+                        <div className="stat-name">Stable Locations</div>
                     </div>
                 </div>
             </div>
 
-            {/* Legend */}
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '16px' }} className="animate-in">
-                {[
-                    { level: 'HIGH', color: '#ef4444', label: 'High Risk (GRI > 60)' },
-                    { level: 'MODERATE', color: '#f59e0b', label: 'Moderate Risk (31–60)' },
-                    { level: 'LOW', color: '#10b981', label: 'Low Risk (0–30)' },
-                ].map((l) => (
-                    <span key={l.level} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                        <span style={{ width: 12, height: 12, borderRadius: '50%', background: l.color, display: 'inline-block' }} />
-                        {l.label}
-                    </span>
-                ))}
-            </div>
-
-            {/* Map */}
-            <div className="glass-card animate-in" style={{ padding: '4px', overflow: 'hidden' }}>
-                <div style={{ height: '520px', borderRadius: '10px', overflow: 'hidden' }}>
-                    <MapContainer
-                        center={center}
-                        zoom={zoom}
-                        style={{ height: '100%', width: '100%' }}
-                        scrollWheelZoom={true}
-                    >
-                        <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                        />
-                        {/* Fly to new center when location changes */}
-                        <MapRecenter center={center} zoom={zoom} />
-                        {markers.map((m, idx) => (
-                            <CircleMarker
-                                key={`${m.location}-${idx}`}
-                                center={[m.lat, m.lng]}
-                                radius={Math.max(8, Math.min(m.signal_count * 4, 22))}
-                                fillColor={RISK_COLORS[m.risk_level]}
-                                fillOpacity={0.7}
-                                stroke={true}
-                                color={RISK_COLORS[m.risk_level]}
-                                weight={2}
-                                opacity={0.9}
-                            >
-                                <Popup>
-                                    <div style={{ fontFamily: 'Inter, sans-serif', minWidth: '200px' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '8px', color: '#1e293b' }}>
-                                            📍 {m.location}
-                                        </div>
-                                        {m.state && (
-                                            <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '6px' }}>
-                                                {[m.district, m.state].filter(Boolean).join(', ')}
-                                            </div>
-                                        )}
-                                        <div style={{ display: 'grid', gap: '4px', fontSize: '0.8rem' }}>
-                                            <div><strong>Avg GRI:</strong> <span style={{ color: RISK_COLORS[m.risk_level], fontWeight: 700 }}>{m.avg_gri}</span> / 100</div>
-                                            <div><strong>Max GRI:</strong> {m.max_gri}</div>
-                                            <div><strong>Signals:</strong> {m.signal_count}</div>
-                                            <div><strong>Avg Anger:</strong> {m.avg_anger}/10</div>
-                                            <div><strong>Risk:</strong> <span style={{ color: RISK_COLORS[m.risk_level], fontWeight: 600 }}>{m.risk_level}</span></div>
-                                        </div>
-                                        {m.top_problem && (
-                                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', fontSize: '0.78rem' }}>
-                                                <div style={{ fontWeight: 600, color: '#475569' }}>Top Problem:</div>
-                                                <div style={{ color: '#64748b' }}>{m.top_problem.title}</div>
-                                                <div style={{ marginTop: '2px' }}>
-                                                    <span style={{ fontWeight: 600 }}>{m.top_problem.category}</span>
-                                                    {' · '}
-                                                    <span style={{ color: m.top_problem.label === 'FAKE' ? '#ef4444' : '#10b981', fontWeight: 600 }}>
-                                                        {m.top_problem.label}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </Popup>
-                            </CircleMarker>
+            {/* Legend Bar & Map Container */}
+            <div className="panel-card" style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.95rem', color: '#f8fafc' }}>Live Geospatial Heatmap</span>
+                    
+                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        {[
+                            { level: 'HIGH', color: '#ef4444', label: 'High Risk (GRI > 60)' },
+                            { level: 'MODERATE', color: '#f59e0b', label: 'Moderate Risk (31–60)' },
+                            { level: 'LOW', color: '#10b981', label: 'Low Risk (0–30)' },
+                        ].map((l) => (
+                            <span key={l.level} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#94a3b8' }}>
+                                <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, display: 'inline-block' }} />
+                                {l.label}
+                            </span>
                         ))}
-                    </MapContainer>
+                    </div>
                 </div>
-            </div>
 
-            {/* Location Summary Table */}
-            <div className="glass-card animate-in" style={{ marginTop: '20px' }}>
-                <div className="section-title">
-                    <MapPin size={18} /> Location Summary
-                    {hasLocation && (
-                        <span style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', fontWeight: 500, marginLeft: '8px', background: 'rgba(59,130,246,0.12)', padding: '2px 8px', borderRadius: '12px' }}>
-                            {locationLabel()}
-                        </span>
+                <div style={{ height: '540px', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    {loading ? (
+                        <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                            Loading map layers...
+                        </div>
+                    ) : (
+                        <MapContainer
+                            center={center}
+                            zoom={zoom}
+                            style={{ height: '100%', width: '100%' }}
+                            scrollWheelZoom={true}
+                        >
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                            />
+                            <MapRecenter center={center} zoom={zoom} />
+                            {markers.map((m, idx) => (
+                                <CircleMarker
+                                    key={`${m.location}-${idx}`}
+                                    center={[m.lat, m.lng]}
+                                    radius={Math.max(8, Math.min(m.signal_count * 4, 22))}
+                                    pathOptions={{
+                                        color: RISK_COLORS[m.risk_level] || '#3b82f6',
+                                        fillColor: RISK_COLORS[m.risk_level] || '#3b82f6',
+                                        fillOpacity: 0.5,
+                                        weight: 2,
+                                    }}
+                                >
+                                    <Popup>
+                                        <div style={{ padding: '4px', color: '#09090b', minWidth: '160px' }}>
+                                            <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '4px' }}>
+                                                {m.location}
+                                            </div>
+                                            <div style={{ fontSize: '0.78rem', color: '#334155' }}>
+                                                Signals: <strong>{m.signal_count}</strong>
+                                            </div>
+                                            <div style={{ fontSize: '0.78rem', color: '#334155' }}>
+                                                Risk Level: <strong style={{ color: RISK_COLORS[m.risk_level] }}>{m.risk_level}</strong>
+                                            </div>
+                                            {m.top_category && (
+                                                <div style={{ fontSize: '0.78rem', color: '#334155' }}>
+                                                    Top Sector: <strong>{m.top_category}</strong>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </Popup>
+                                </CircleMarker>
+                            ))}
+                        </MapContainer>
                     )}
                 </div>
-                {markers.length === 0 ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        <MapPin size={32} style={{ opacity: 0.3, marginBottom: '10px' }} />
-                        <div>No map data available for the selected location.</div>
-                        <div style={{ fontSize: '0.78rem', marginTop: '4px' }}>Try selecting a different area or clear the filter.</div>
-                    </div>
-                ) : (
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Location</th>
-                                <th>Avg GRI</th>
-                                <th>Signals</th>
-                                <th>Anger</th>
-                                <th>Risk</th>
-                                <th>Top Problem</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {markers.sort((a, b) => b.avg_gri - a.avg_gri).map((m, idx) => (
-                                <tr key={`${m.location}-${idx}`}>
-                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>📍 {m.location}</td>
-                                    <td style={{ fontWeight: 700, color: RISK_COLORS[m.risk_level] }}>{m.avg_gri}</td>
-                                    <td>{m.signal_count}</td>
-                                    <td style={{ color: m.avg_anger > 5 ? '#ef4444' : '#f59e0b', fontWeight: 600 }}>{m.avg_anger}/10</td>
-                                    <td><span className={`badge badge-${m.risk_level?.toLowerCase()}`}>{m.risk_level}</span></td>
-                                    <td style={{ fontSize: '0.8rem', maxWidth: '250px' }}>{m.top_problem?.title || '—'}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
             </div>
         </div>
     );

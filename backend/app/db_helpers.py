@@ -19,8 +19,12 @@ async def run_aggregate(supabase_client, table_name: str, pipeline: List[Dict[st
     
     # We'll fetch all and filter in memory to support complex mongo queries ($in, $gte, etc)
     # Warning: For large tables this should be replaced with SQL GROUP BY
-    res = req.execute()
-    data = res.data or []
+    try:
+        res = req.execute()
+        data = res.data or []
+    except Exception as e:
+        logger.warning(f"Supabase aggregate error on table '{table_name}': {e}")
+        data = []
 
     # 2. Apply $match filters in python
     filtered_data = []

@@ -1,34 +1,37 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation as useRouterLocation } from 'react-router-dom';
 import {
-    LayoutDashboard, FileText, AlertTriangle, BarChart3, Globe,
-    LogOut, CheckSquare, Map, UserCircle, Trophy, Bot, Download, Scan, Activity, Users,
-    Briefcase
+    LayoutDashboard, FileText, Users, AlertTriangle, ShieldAlert,
+    BarChart3, FileSpreadsheet, Bot, Map, Activity, Globe, Scan,
+    Shield, ChevronRight, Moon, Sun
 } from 'lucide-react';
 import { useState } from 'react';
+import { useTheme } from '../context/ThemeContext';
 import ExportReportModal from './ExportReportModal';
 
-const navLinks = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/signal-monitor', label: 'Signal Monitor', icon: FileText },
+const mainNavLinks = [
+    { path: '/', label: 'Home', icon: LayoutDashboard },
+    { path: '/signal-monitor', label: 'Signals Monitor', icon: FileText },
     { path: '/citizen-reports', label: 'Citizen Reports', icon: Users },
-    { path: '/working', label: 'Working Problems', icon: Briefcase },
     { path: '/alerts', label: 'Alerts & Actions', icon: AlertTriangle },
+    { path: '/working', label: 'Escalation Center', icon: ShieldAlert },
     { path: '/analytics', label: 'Analytics', icon: BarChart3 },
-    { path: '/map', label: 'Problem Map', icon: Map },
-    { path: '/scanner', label: 'Social Scanner', icon: Scan },
-    { path: '/system-monitoring', label: 'System Health', icon: Activity },
+    { path: '/resolutions', label: 'Reports', icon: FileSpreadsheet },
     { path: '/chatbot', label: 'AI Assistant', icon: Bot },
+];
+
+const utilityNavLinks = [
+    { path: '/map', label: 'Problem Map', icon: Map },
+    { path: '/system-monitoring', label: 'System Health', icon: Activity },
     { path: '/sources', label: 'Source Registry', icon: Globe },
-    { path: '/resolutions', label: 'Resolved Issues', icon: CheckSquare },
-    { path: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-    { path: '/account', label: 'My Account', icon: UserCircle },
+    { path: '/scanner', label: 'Social Scanner', icon: Scan },
 ];
 
 export default function Sidebar({ user, onLogout, isOpen, onClose }) {
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const { theme, toggleTheme } = useTheme();
+    const routerLocation = useRouterLocation();
 
     const handleNavClick = () => {
-        // Close sidebar on mobile after navigation
         if (onClose) onClose();
     };
 
@@ -38,67 +41,79 @@ export default function Sidebar({ user, onLogout, isOpen, onClose }) {
             role="navigation"
             aria-label="Main navigation"
         >
+            {/* Sidebar Brand Header */}
             <div className="sidebar-brand">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                    <h2>Governance Intelligence</h2>
+                <div className="brand-logo-icon">
+                    <Shield size={20} color="#ffffff" />
                 </div>
-                <span>Decision Support System</span>
+                <div className="brand-text-container">
+                    <h2>Governance Intelligence</h2>
+                    <span>Decision Support System</span>
+                </div>
             </div>
 
+            {/* Navigation Section */}
             <nav className="sidebar-nav">
-                {navLinks.map(({ path, label, icon: Icon }) => (
-                    <NavLink
-                        key={path}
-                        to={path}
-                        end={path === '/'}
-                        className={({ isActive }) => isActive ? 'active' : ''}
-                        onClick={handleNavClick}
-                        aria-label={label}
-                    >
-                        <Icon size={18} aria-hidden="true" />
-                        {label}
-                    </NavLink>
-                ))}
+                <div className="sidebar-nav-group">
+                    {mainNavLinks.map(({ path, label, icon: Icon }) => (
+                        <NavLink
+                            key={path}
+                            to={path}
+                            end={path === '/'}
+                            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+                            onClick={handleNavClick}
+                            aria-label={label}
+                        >
+                            <Icon size={18} className="sidebar-nav-icon" aria-hidden="true" />
+                            <span>{label}</span>
+                        </NavLink>
+                    ))}
+                </div>
 
-                <button
-                    className="sidebar-link"
-                    style={{ background: 'none', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', outline: 'none' }}
-                    onClick={() => { setIsExportModalOpen(true); handleNavClick(); }}
-                    aria-label="Export Report"
-                >
-                    <Download size={18} aria-hidden="true" />
-                    Export Report
-                </button>
+                <div className="sidebar-category-header">Utilities</div>
+
+                <div className="sidebar-nav-group">
+                    {utilityNavLinks.map(({ path, label, icon: Icon }) => (
+                        <NavLink
+                            key={path}
+                            to={path}
+                            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+                            onClick={handleNavClick}
+                            aria-label={label}
+                        >
+                            <Icon size={18} className="sidebar-nav-icon" aria-hidden="true" />
+                            <span>{label}</span>
+                        </NavLink>
+                    ))}
+                </div>
             </nav>
 
-            <div className="sidebar-user">
-                <div className="sidebar-user-info">
-                    <div className="sidebar-user-avatar" aria-hidden="true">
-                        {user?.name?.charAt(0)?.toUpperCase() || 'L'}
+            {/* Footer Status & Settings */}
+            <div className="sidebar-footer">
+                <div className="sidebar-system-card" onClick={() => { window.location.href = '/system-monitoring'; handleNavClick(); }}>
+                    <div className="status-dot-wrapper">
+                        <span className="status-dot-active" />
                     </div>
-                    <div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
-                            {user?.name || 'Leader'}
-                        </div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                            {user?.role || 'LEADER'}
-                        </div>
+                    <div className="status-card-info">
+                        <span className="status-card-title">System Status</span>
+                        <span className="status-card-sub">All systems operational</span>
                     </div>
+                    <ChevronRight size={14} className="status-card-arrow" />
                 </div>
-                <button
-                    className="sidebar-logout-btn"
-                    onClick={onLogout}
-                    title="Sign out"
-                    aria-label="Sign out"
-                >
-                    <LogOut size={16} aria-hidden="true" />
-                </button>
+
+                <div className="sidebar-theme-toggle">
+                    <span className="theme-toggle-label">Dark Mode</span>
+                    <label className="toggle-switch">
+                        <input
+                            type="checkbox"
+                            checked={theme === 'dark'}
+                            onChange={toggleTheme}
+                        />
+                        <span className="toggle-slider" />
+                    </label>
+                </div>
             </div>
 
-            <div className="sidebar-status" aria-live="polite">
-                <span className="status-dot" aria-hidden="true" />
-                <span>System Online — All Services Active</span>
-            </div>
             <ExportReportModal isOpen={isExportModalOpen} onClose={() => setIsExportModalOpen(false)} />
         </aside>
     );

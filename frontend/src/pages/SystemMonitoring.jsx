@@ -155,23 +155,19 @@ export default function SystemMonitoring() {
     }
 
     return (
-        <div className="page-container">
-            <div className="page-header animate-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Header Banner */}
+            <div className="hero-banner-card" style={{ marginBottom: '20px' }}>
                 <div>
-                    <h1>System Monitoring</h1>
-                    <p>AI-powered infrastructure health monitoring — real-time control center</p>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>System Monitoring & Health</h1>
+                    <p className="hero-subtext">AI-powered infrastructure health monitoring — real-time control center</p>
                 </div>
                 {metrics.length > 0 && (
                     <button
                         onClick={fetchInsights}
-                        className="btn btn-primary"
-                        style={{
-                            background: 'linear-gradient(135deg, #ec4899, #8b5cf6)',
-                            border: 'none', boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)',
-                            display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px'
-                        }}
+                        className="ai-assistant-btn"
                     >
-                        <Binary size={18} /> Get AI Insights
+                        <Binary size={16} /> Get AI Insights
                     </button>
                 )}
             </div>

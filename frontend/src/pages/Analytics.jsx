@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import {
-    LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, Cell, AreaChart, Area,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+    ResponsiveContainer, AreaChart, Area,
 } from 'recharts';
-import { TrendingUp, MapPin, Layers, Flame } from 'lucide-react';
+import { TrendingUp, MapPin, Layers, Flame, Globe, BarChart2 } from 'lucide-react';
 import { fetchSentimentTrend, fetchRiskSummary, fetchCategoryBreakdown } from '../services/api';
 import { useLocation } from '../context/LocationContext';
 
 const RISK_COLORS = { LOW: '#10b981', MODERATE: '#f59e0b', HIGH: '#ef4444' };
 
 export default function Analytics() {
-    const { location } = useLocation();
+    const { location, hasLocation, locationLabel } = useLocation();
     const [sentiment, setSentiment] = useState([]);
     const [heatmap, setHeatmap] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -25,8 +25,6 @@ export default function Analytics() {
         ])
             .then(([sTrend, hMap, cBreak]) => {
                 let trendData = sTrend.trend || [];
-                // If only 1 data point, Recharts AreaChart draws a confusing flat line or doesn't render the area properly.
-                // We fake a previous day if there's exactly 1 day.
                 if (trendData.length === 1) {
                     const single = trendData[0];
                     const prevDate = new Date(new Date(single.date).getTime() - 86400000).toISOString().split('T')[0];
@@ -37,7 +35,6 @@ export default function Analytics() {
                 }
                 setSentiment(trendData);
                 setHeatmap(hMap.heatmap || []);
-                // Limit category breakdown to top 15 to prevent the bar chart from breaking/disappearing when there are too many (e.g. 50+)
                 setCategories((cBreak.categories || []).slice(0, 15));
             })
             .catch(console.error)
@@ -45,33 +42,50 @@ export default function Analytics() {
     }, [location.state, location.district, location.city, location.ward]);
 
     if (loading) {
-        return <div className="loading-container"><div className="spinner" /></div>;
+        return (
+            <div className="dashboard-page-wrapper">
+                <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                    Loading analytics engine...
+                </div>
+            </div>
+        );
     }
 
     const tooltipStyle = {
         contentStyle: {
-            background: '#1e293b',
+            background: '#131726',
             border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '8px',
+            borderRadius: '10px',
             fontSize: '0.8rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
         },
-        itemStyle: { color: '#f1f5f9' },
+        itemStyle: { color: '#f8fafc' },
     };
 
     return (
-        <div className="page-container">
-            <div className="page-header animate-in">
-                <h1>Analytics & Trends</h1>
-                <p>Deep-dive into sentiment trends, risk patterns, and category intelligence</p>
+        <div className="dashboard-page-wrapper animate-in">
+            {/* Header Banner */}
+            <div className="hero-banner-card" style={{ marginBottom: '20px' }}>
+                <div>
+                    <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Analytics & Intelligence</h1>
+                    <p className="hero-subtext">Deep-dive into sentiment trends, risk patterns, and category intelligence</p>
+                </div>
+                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                    <Globe size={14} className="location-icon" />
+                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                </div>
             </div>
 
-            {/* Sentiment Trend + Anger Trend */}
-            <div className="grid-2">
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <TrendingUp size={18} /> Sentiment Polarity Over Time
+            {/* Charts Row 1: Sentiment & Anger Trends */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                <div className="panel-card">
+                    <div className="panel-card-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: '#f8fafc' }}>
+                            <TrendingUp size={18} style={{ color: '#60a5fa' }} />
+                            <span>Sentiment Polarity Over Time</span>
+                        </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={260}>
                         <AreaChart data={sentiment}>
                             <defs>
                                 <linearGradient id="colorPolarity" x1="0" y1="0" x2="0" y2="1">
@@ -88,18 +102,22 @@ export default function Analytics() {
                                 dataKey="avg_polarity"
                                 stroke="#3b82f6"
                                 strokeWidth={2}
+                                fillOpacity={1}
                                 fill="url(#colorPolarity)"
-                                name="Avg Polarity"
+                                name="Polarity (-1 to +1)"
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
 
-                <div className="glass-card chart-card animate-in">
-                    <div className="section-title">
-                        <Flame size={18} /> Anger Rating Trend
+                <div className="panel-card">
+                    <div className="panel-card-header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: '#f8fafc' }}>
+                            <Flame size={18} style={{ color: '#f87171' }} />
+                            <span>Anger Rating Dynamics</span>
+                        </div>
                     </div>
-                    <ResponsiveContainer width="100%" height={280}>
+                    <ResponsiveContainer width="100%" height={260}>
                         <AreaChart data={sentiment}>
                             <defs>
                                 <linearGradient id="colorAnger" x1="0" y1="0" x2="0" y2="1">
@@ -116,102 +134,74 @@ export default function Analytics() {
                                 dataKey="avg_anger"
                                 stroke="#ef4444"
                                 strokeWidth={2}
+                                fillOpacity={1}
                                 fill="url(#colorAnger)"
-                                name="Avg Anger"
+                                name="Anger Rating (0-10)"
                             />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* Risk Heatmap Table */}
-            <div className="glass-card animate-in" style={{ marginBottom: '24px' }}>
-                <div className="section-title">
-                    <MapPin size={18} /> Location Risk Intelligence
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Location</th>
-                                <th>Avg GRI</th>
-                                <th>Max GRI</th>
-                                <th>Signals</th>
-                                <th>Avg Anger</th>
-                                <th>Risk Level</th>
-                                <th>Risk Meter</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {heatmap.map((h) => (
-                                <tr key={h.location}>
-                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                            <MapPin size={13} style={{ color: RISK_COLORS[h.risk_level] }} />
-                                            {h.location}
-                                        </div>
-                                    </td>
-                                    <td style={{ fontWeight: 700, color: RISK_COLORS[h.risk_level] }}>
-                                        {h.avg_gri}
-                                    </td>
-                                    <td>{h.max_gri}</td>
-                                    <td>{h.signal_count}</td>
-                                    <td>
-                                        <span style={{
-                                            color: h.avg_anger > 5 ? '#ef4444' : h.avg_anger > 3 ? '#f59e0b' : '#10b981',
-                                            fontWeight: 600,
-                                        }}>
-                                            {h.avg_anger}/10
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span className={`badge badge-${h.risk_level?.toLowerCase()}`}>
-                                            {h.risk_level}
-                                        </span>
-                                    </td>
-                                    <td style={{ minWidth: '120px' }}>
-                                        <div className="score-bar">
-                                            <div
-                                                className="score-bar-fill"
-                                                style={{
-                                                    width: `${h.avg_gri}%`,
-                                                    background: RISK_COLORS[h.risk_level],
-                                                }}
-                                            />
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Category Breakdown */}
-            <div className="glass-card chart-card animate-in">
-                <div className="section-title">
-                    <Layers size={18} /> Category Risk Breakdown
+            {/* Category Breakdown Bar Chart */}
+            <div className="panel-card" style={{ marginBottom: '20px' }}>
+                <div className="panel-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: '#f8fafc' }}>
+                        <BarChart2 size={18} style={{ color: '#c084fc' }} />
+                        <span>Average Risk Score by Category</span>
+                    </div>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={categories} margin={{ bottom: 20 }}>
+                    <BarChart data={categories}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                        <XAxis
-                            dataKey="category"
-                            tick={{ fill: '#94a3b8', fontSize: 11 }}
-                            angle={-15}
-                            textAnchor="end"
-                            height={50}
-                        />
-                        <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <XAxis dataKey="category" tick={{ fill: '#64748b', fontSize: 11 }} />
+                        <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 11 }} />
                         <Tooltip {...tooltipStyle} />
-                        <Bar dataKey="avg_gri" name="Avg GRI" radius={[6, 6, 0, 0]} maxBarSize={40}>
-                            {categories.map((entry) => (
-                                <Cell key={entry.category} fill={RISK_COLORS[entry.risk_level] || '#3b82f6'} />
-                            ))}
-                        </Bar>
-                        <Bar dataKey="fake_count" name="Fake News" fill="#8b5cf6" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                        <Bar dataKey="avg_gri" fill="#8b5cf6" radius={[6, 6, 0, 0]} name="Average Risk Score" />
                     </BarChart>
                 </ResponsiveContainer>
+            </div>
+
+            {/* Regional Heatmap Matrix */}
+            <div className="panel-card">
+                <div className="panel-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: '#f8fafc' }}>
+                        <MapPin size={18} style={{ color: '#fbbf24' }} />
+                        <span>Regional Risk Heatmap Matrix</span>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
+                    {heatmap.map((item) => {
+                        const isHigh = item.risk_level === 'HIGH';
+                        const isMod = item.risk_level === 'MODERATE';
+                        return (
+                            <div
+                                key={item.location}
+                                style={{
+                                    background: '#181c2e',
+                                    border: `1px solid ${isHigh ? 'rgba(239,68,68,0.3)' : isMod ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)'}`,
+                                    borderRadius: '12px',
+                                    padding: '16px',
+                                    textAlign: 'center'
+                                }}
+                            >
+                                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#f8fafc', marginBottom: '6px' }}>
+                                    {item.location}
+                                </div>
+                                <div style={{
+                                    fontSize: '1.4rem', fontWeight: 700,
+                                    color: isHigh ? '#f87171' : isMod ? '#fbbf24' : '#4ade80'
+                                }}>
+                                    {Math.round(item.avg_gri)}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
+                                    {item.signal_count} Signals Processed
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
