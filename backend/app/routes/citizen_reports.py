@@ -252,7 +252,7 @@ class FinalReportSubmit(BaseModel):
 
 
 @router.post("/report-issue/submit")
-async def submit_final_report(req: FinalReportSubmit, current_user = Depends(require_role(["citizen"]))):
+async def submit_final_report(req: FinalReportSubmit, current_user = Depends(get_current_user_optional)):
     """
     Persists the final issue report into the database with a unique ID.
     Stores in both dedicated citizen_reports table and signal_problems for immediate action.

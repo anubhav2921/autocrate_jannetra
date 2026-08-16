@@ -25,6 +25,7 @@ export default function Dashboard() {
     const [feedLoading, setFeedLoading] = useState(false);
     const [triggerMessage, setTriggerMessage] = useState('');
     const [isScraping, setIsScraping] = useState(false);
+    const [lastFetchedCity, setLastFetchedCity] = useState(null);
 
     const activeCity = location.city || location.district || '';
 
@@ -56,6 +57,13 @@ export default function Dashboard() {
                 setTimeout(() => setTriggerMessage(''), 4000);
             });
     };
+
+    useEffect(() => {
+        if (activeTab === 'feed' && activeCity !== lastFetchedCity) {
+            fetchFeed(activeCity);
+            setLastFetchedCity(activeCity);
+        }
+    }, [activeTab, activeCity, lastFetchedCity]);
 
     useEffect(() => {
         setLoading(true);
@@ -139,7 +147,7 @@ export default function Dashboard() {
                     Overview
                 </button>
                 <button 
-                    onClick={() => { setActiveTab('feed'); fetchFeed(activeCity); }} 
+                    onClick={() => setActiveTab('feed')} 
                     style={{ background: 'transparent', border: 'none', color: activeTab === 'feed' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                     Live Feed {activeCity && `(${activeCity})`}
