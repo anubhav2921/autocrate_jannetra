@@ -102,8 +102,14 @@ async def list_news_articles(
     limit: int = Query(20, ge=1, le=100),
 ):
     match = {}
-    if city:
-        match["city"] = city
+    if city and city.strip() and city.lower() not in ["all", "all india", "all cities"]:
+        c_clean = city.strip()
+        match["$or"] = [
+            {"city": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"district": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"title": {"$regex": c_clean, "$options": "i"}},
+            {"content": {"$regex": c_clean, "$options": "i"}},
+        ]
     if category:
         match["category"] = category
     if risk_level:
@@ -112,7 +118,14 @@ async def list_news_articles(
         match["fake_news_label"] = label
 
     total = await news_articles_collection.count_documents(match)
-    cursor = news_articles_collection.find(match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
+    
+    # Fallback to general articles if city-specific count is 0
+    if total == 0 and "$or" in match:
+        fallback_match = {k: v for k, v in match.items() if k != "$or"}
+        total = await news_articles_collection.count_documents(fallback_match)
+        cursor = news_articles_collection.find(fallback_match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
+    else:
+        cursor = news_articles_collection.find(match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
     results = await cursor.to_list(None)
 
     return {

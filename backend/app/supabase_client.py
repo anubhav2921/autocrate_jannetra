@@ -1,9 +1,12 @@
 import os
 import sys
 import logging
-from supabase import create_client, Client
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "backend", ".env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
 load_dotenv()
 
 logger = logging.getLogger("jannetra.supabase")
