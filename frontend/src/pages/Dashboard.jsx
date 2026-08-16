@@ -20,12 +20,13 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    // New States for City Scraping
     const [activeTab, setActiveTab] = useState('overview');
-    const [feedCity, setFeedCity] = useState('');
     const [feedData, setFeedData] = useState([]);
     const [feedLoading, setFeedLoading] = useState(false);
     const [triggerMessage, setTriggerMessage] = useState('');
+    const [isScraping, setIsScraping] = useState(false);
+
+    const activeCity = location.city || location.district || '';
 
     const fetchFeed = (city) => {
         setFeedLoading(true);
@@ -35,27 +36,25 @@ export default function Dashboard() {
             .finally(() => setFeedLoading(false));
     };
 
-    const handleTriggerScraper = (cityToScrape) => {
-        if (!cityToScrape || !cityToScrape.trim()) return;
-        setTriggerMessage(`Starting scraper for ${cityToScrape}...`);
-        api.post('/pipeline/run', null, { params: { city: cityToScrape.trim() } })
+    const handleTriggerScraper = () => {
+        const cityToScrape = activeCity;
+        setIsScraping(true);
+        setTriggerMessage(cityToScrape ? `Ingesting signals for ${cityToScrape}...` : 'Ingesting signals...');
+        api.post('/pipeline/run', null, { params: cityToScrape ? { city: cityToScrape } : {} })
             .then(res => {
-                setTriggerMessage(res.message || `Scraper finished for ${cityToScrape}.`);
-                setActiveTab('feed');
-                fetchFeed(cityToScrape.trim());
+                setTriggerMessage(res.message || 'Scraper started in background.');
+                setTimeout(() => {
+                    fetchFeed(cityToScrape);
+                    setIsScraping(false);
+                    setTimeout(() => setTriggerMessage(''), 4000);
+                }, 2000);
             })
             .catch(err => {
                 console.error(err);
-                setTriggerMessage('Failed to start scraper.');
+                setTriggerMessage('Failed to trigger scraper.');
+                setIsScraping(false);
+                setTimeout(() => setTriggerMessage(''), 4000);
             });
-    };
-
-    const handleCityChange = (e) => {
-        const selectedCity = e.target.value;
-        setFeedCity(selectedCity);
-        if (selectedCity) {
-            handleTriggerScraper(selectedCity);
-        }
     };
 
     useEffect(() => {
@@ -131,26 +130,8 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* City Scraper Trigger */}
-            <div className="glass-card animate-in" style={{ marginBottom: '24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ color: 'white', fontWeight: 500 }}>Select City:</span>
-                <select 
-                    value={feedCity} 
-                    onChange={handleCityChange}
-                    style={{ padding: '8px 12px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.2)', background: '#1e293b', color: 'white', flex: 1 }}
-                >
-                    <option value="">-- Choose a city to scrape --</option>
-                    <option value="Prayagraj">Prayagraj</option>
-                    <option value="Delhi">Delhi</option>
-                    <option value="Mumbai">Mumbai</option>
-                    <option value="Bangalore">Bangalore</option>
-                    <option value="Chennai">Chennai</option>
-                </select>
-                {triggerMessage && <span style={{ fontSize: '0.9rem', color: '#10b981' }}>{triggerMessage}</span>}
-            </div>
-
             {/* Tabs */}
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', alignItems: 'center' }}>
                 <button 
                     onClick={() => setActiveTab('overview')} 
                     style={{ background: 'transparent', border: 'none', color: activeTab === 'overview' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
@@ -158,11 +139,16 @@ export default function Dashboard() {
                     Overview
                 </button>
                 <button 
-                    onClick={() => { setActiveTab('feed'); if (feedCity) fetchFeed(feedCity); }} 
+                    onClick={() => { setActiveTab('feed'); fetchFeed(activeCity); }} 
                     style={{ background: 'transparent', border: 'none', color: activeTab === 'feed' ? '#3b82f6' : 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' }}
                 >
-                    Live Feed {feedCity && `(${feedCity})`}
+                    Live Feed {activeCity && `(${activeCity})`}
                 </button>
+                {triggerMessage && (
+                    <span style={{ fontSize: '0.85rem', color: '#10b981', marginLeft: 'auto', fontWeight: 500 }}>
+                        {triggerMessage}
+                    </span>
+                )}
             </div>
 
             {activeTab === 'overview' ? (
@@ -347,9 +333,23 @@ export default function Dashboard() {
             </>
             ) : (
                 <div className="glass-card animate-in">
-                    <div className="section-title" style={{ display: 'flex', alignItems: 'center' }}>
-                        <Newspaper size={18} style={{ marginRight: '8px' }} /> Live Feed for {feedCity || 'All Cities'}
-                        <button onClick={() => fetchFeed(feedCity)} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Refresh</button>
+                    <div className="section-title" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <Newspaper size={18} style={{ marginRight: '8px' }} /> Live Feed for {activeCity || 'All India'}
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                            <button 
+                                onClick={handleTriggerScraper} 
+                                disabled={isScraping}
+                                style={{ background: '#3b82f6', border: 'none', color: 'white', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}
+                            >
+                                {isScraping ? 'Scraping...' : 'Sync & Scrape'}
+                            </button>
+                            <button 
+                                onClick={() => fetchFeed(activeCity)} 
+                                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                            >
+                                Refresh
+                            </button>
+                        </div>
                     </div>
                     {feedLoading ? (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading feed...</div>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Query, HTTPException, BackgroundTasks
 from datetime import datetime
 from ..database import news_articles_collection
 
@@ -6,14 +6,18 @@ router = APIRouter(prefix="/api", tags=["Data Pipeline"])
 
 
 @router.post("/pipeline/run")
-def trigger_pipeline(city: str = Query(None)):
-    """Manually trigger the data ingestion pipeline."""
+def trigger_pipeline(background_tasks: BackgroundTasks, city: str = Query(None)):
+    """Manually trigger the data ingestion pipeline in the background."""
     from ..services.data_pipeline import run_pipeline
     try:
-        result = run_pipeline(city=city)
-        return {"success": True, **result}
+        background_tasks.add_task(run_pipeline, city=city)
+        return {
+            "success": True, 
+            "status": "started", 
+            "message": f"Data ingestion scraper started for {city or 'all locations'} in background."
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to schedule pipeline: {str(e)}")
 
 
 @router.get("/pipeline/status")
@@ -98,8 +102,14 @@ async def list_news_articles(
     limit: int = Query(20, ge=1, le=100),
 ):
     match = {}
-    if city:
-        match["city"] = city
+    if city and city.strip() and city.lower() not in ["all", "all india", "all cities"]:
+        c_clean = city.strip()
+        match["$or"] = [
+            {"city": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"district": {"$regex": f"^{c_clean}$", "$options": "i"}},
+            {"title": {"$regex": c_clean, "$options": "i"}},
+            {"content": {"$regex": c_clean, "$options": "i"}},
+        ]
     if category:
         match["category"] = category
     if risk_level:
@@ -108,7 +118,14 @@ async def list_news_articles(
         match["fake_news_label"] = label
 
     total = await news_articles_collection.count_documents(match)
-    cursor = news_articles_collection.find(match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
+    
+    # Fallback to general articles if city-specific count is 0
+    if total == 0 and "$or" in match:
+        fallback_match = {k: v for k, v in match.items() if k != "$or"}
+        total = await news_articles_collection.count_documents(fallback_match)
+        cursor = news_articles_collection.find(fallback_match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
+    else:
+        cursor = news_articles_collection.find(match).sort("scraped_at", -1).skip((page - 1) * limit).limit(limit)
     results = await cursor.to_list(None)
 
     return {
