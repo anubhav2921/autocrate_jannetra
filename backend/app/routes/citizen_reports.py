@@ -19,7 +19,8 @@ from ..database import (
     detection_results_collection, 
     sources_collection,
     signal_problems_collection,
-    citizen_reports_collection
+    citizen_reports_collection,
+    news_articles_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
 from ..middleware.auth_middleware import require_role, require_auth
@@ -285,7 +286,7 @@ async def submit_final_report(req: FinalReportSubmit, current_user = Depends(get
     raw_urgency = str(req.metadata.get("urgency", "Medium")).capitalize() if req.metadata else "Medium"
     conf_score = float(req.metadata.get("confidence_score", req.metadata.get("confidence", 90))) if req.metadata else 90.0
 
-    risk_score = 75 if raw_sev == "High" or raw_sev == "Critical" else 50
+    risk_score = 99 if raw_sev in ["High", "Critical"] else 89
 
     now = datetime.datetime.utcnow()
 
@@ -394,6 +395,38 @@ async def submit_final_report(req: FinalReportSubmit, current_user = Depends(get
             "evaluated_at": now,
         }
         await detection_results_collection.insert_one(detection)
+
+        # Insert into news_articles_collection for Live Feed visibility
+        news_article = {
+            "id": art_uuid,
+            "title": req.detected_issue or "Citizen Report",
+            "content": req.user_description or ai_desc,
+            "source_name": "Citizen App",
+            "source_url": "",
+            "url": req.image_url or "",
+            "published_at": now,
+            "scraped_at": now,
+            "created_at": now,
+            "category": req.detected_issue or "Citizen Report",
+            "source_type": "CITIZEN_REPORT",
+            "tier": 1,
+            "risk_score": risk_score,
+            "risk_level": raw_sev.upper(),
+            "credibility_score": conf_score,
+            "sentiment_label": "NEGATIVE",
+            "sentiment_polarity": -0.8,
+            "anger_rating": 8 if raw_sev.upper() in ["HIGH", "CRITICAL"] else 5,
+            "fake_news_label": "REAL",
+            "fake_news_confidence": 95.0,
+            "city": "Prayagraj",
+            "state": "Uttar Pradesh",
+            "district": "Prayagraj",
+            "latitude": req.latitude,
+            "longitude": req.longitude,
+            "deleted": False
+        }
+        await news_articles_collection.insert_one(news_article)
+
     except Exception as legacy_err:
         print(f"Non-critical legacy insert notice: {legacy_err}")
 
