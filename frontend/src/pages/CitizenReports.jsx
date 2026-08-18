@@ -48,8 +48,8 @@ export default function CitizenReports() {
     const filtered = problems.filter((p) => {
         if (filterSeverity !== 'ALL' && p.severity !== filterSeverity) return false;
         if (filterStatus !== 'ALL') {
-            if (filterStatus === 'Resolved' && p.status !== 'Problem Resolved') return false;
-            if (filterStatus === 'Pending' && p.status !== 'Pending') return false;
+            if (filterStatus === 'Resolved' && p.status !== 'Problem Resolved' && p.status !== 'Resolved') return false;
+            if (filterStatus === 'Pending' && (p.status === 'Problem Resolved' || p.status === 'Resolved')) return false;
         }
         if (search) {
             const q = search.toLowerCase();
@@ -68,8 +68,8 @@ export default function CitizenReports() {
     const stats = {
         total: problems.length,
         critical: problems.filter((p) => p.severity === 'Critical').length,
-        pending: problems.filter((p) => p.status === 'Pending').length,
-        resolved: problems.filter((p) => p.status === 'Problem Resolved').length,
+        pending: problems.filter((p) => p.status !== 'Problem Resolved' && p.status !== 'Resolved').length,
+        resolved: problems.filter((p) => p.status === 'Problem Resolved' || p.status === 'Resolved').length,
     };
 
     if (loading) {
@@ -203,86 +203,96 @@ export default function CitizenReports() {
 
             {/* Reports Table */}
             <div className="panel-card" style={{ padding: '20px', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
-                    <thead>
-                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                            {['ID', 'Title', 'Media', 'Severity', 'Category', 'Location', 'Priority', 'Status', 'Action'].map((h) => (
-                                <th key={h} style={{
-                                    padding: '12px 14px', textAlign: 'left', fontSize: '0.72rem',
-                                    fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
-                                    letterSpacing: '0.05em'
-                                }}>{h}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filtered.map((p) => {
-                            const sev = SEVERITY_CONFIG[p.severity] || SEVERITY_CONFIG.Medium;
-                            const isResolved = p.status === 'Problem Resolved';
-                            return (
-                                <tr key={p.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: '#8b5cf6', whiteSpace: 'nowrap' }}>
-                                        <span title={p.id}>{p.id.length > 12 ? p.id.substring(0, 8) + '...' : p.id}</span>
-                                    </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4 }}>
-                                            {p.title}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <div style={{ display: 'flex', gap: '6px' }}>
-                                            {p.image_url && <Image size={15} style={{ color: '#60a5fa' }} title="Image Attached" />}
-                                            {p.audio_url && <Mic size={15} style={{ color: '#c084fc' }} title="Voice Audio Attached" />}
-                                            {!p.image_url && !p.audio_url && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Text</span>}
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <span style={{
-                                            padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
-                                            background: sev.bg, color: sev.color, border: `1px solid ${sev.border}`
-                                        }}>
-                                            {p.severity}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#cbd5e1' }}>
-                                        {p.category || 'Citizen Report'}
-                                    </td>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#94a3b8' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <MapPin size={12} style={{ color: '#8b5cf6' }} />
-                                            {typeof p.location === 'string' ? p.location : 'Submitted Report'}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '14px 12px', fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
-                                        {Math.round(p.priority_score || p.riskScore || 50)}
-                                    </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <span style={{
-                                            padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
-                                            background: isResolved ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
-                                            color: isResolved ? '#4ade80' : '#fbbf24'
-                                        }}>
-                                            {isResolved ? 'Resolved' : 'Pending'}
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '14px 12px' }}>
-                                        <ProblemActionMenu 
-                                            problem={p} 
-                                            onUpdate={(targetId, action) => {
-                                                const pid = targetId || p.id;
-                                                if (action === 'assigned' || action === 'deleted') {
-                                                    setProblems((prev) => prev.filter((item) => item.id !== pid));
-                                                } else {
-                                                    loadReports();
-                                                }
-                                            }} 
-                                        />
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                {filtered.length === 0 ? (
+                    <div style={{ padding: '48px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                        <Users size={36} style={{ color: '#6366f1', marginBottom: '12px' }} />
+                        <h3 style={{ color: '#f8fafc', fontSize: '1.1rem', marginBottom: '6px' }}>No Citizen Reports Found</h3>
+                        <p style={{ fontSize: '0.85rem', color: '#64748b', maxWidth: '400px', margin: '0 auto 16px' }}>
+                            No citizen reports match the current filters or location. Try clearing filters or submit a new grievance report.
+                        </p>
+                    </div>
+                ) : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '820px' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                {['ID', 'Title', 'Media', 'Severity', 'Category', 'Location', 'Priority', 'Status', 'Action'].map((h) => (
+                                    <th key={h} style={{
+                                        padding: '12px 14px', textAlign: 'left', fontSize: '0.72rem',
+                                        fontWeight: 700, color: '#64748b', textTransform: 'uppercase',
+                                        letterSpacing: '0.05em'
+                                    }}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((p) => {
+                                const sev = SEVERITY_CONFIG[p.severity] || SEVERITY_CONFIG.Medium;
+                                const isResolved = p.status === 'Problem Resolved' || p.status === 'Resolved';
+                                return (
+                                    <tr key={p.id} className="table-row-hover" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                        <td style={{ padding: '14px 12px', fontSize: '0.82rem', fontWeight: 600, color: '#8b5cf6', whiteSpace: 'nowrap' }}>
+                                            <span title={p.id}>{p.id.length > 12 ? p.id.substring(0, 8) + '...' : p.id}</span>
+                                        </td>
+                                        <td style={{ padding: '14px 12px' }}>
+                                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4 }}>
+                                                {p.title}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '14px 12px' }}>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                {p.image_url && <Image size={15} style={{ color: '#60a5fa' }} title="Image Attached" />}
+                                                {p.audio_url && <Mic size={15} style={{ color: '#c084fc' }} title="Voice Audio Attached" />}
+                                                {!p.image_url && !p.audio_url && <span style={{ color: '#64748b', fontSize: '0.75rem' }}>Text</span>}
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '14px 12px' }}>
+                                            <span style={{
+                                                padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
+                                                background: sev.bg, color: sev.color, border: `1px solid ${sev.border}`
+                                            }}>
+                                                {p.severity}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#cbd5e1' }}>
+                                            {p.category || 'Citizen Report'}
+                                        </td>
+                                        <td style={{ padding: '14px 12px', fontSize: '0.82rem', color: '#94a3b8' }}>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <MapPin size={12} style={{ color: '#8b5cf6' }} />
+                                                {typeof p.location === 'string' ? p.location : 'Submitted Report'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '14px 12px', fontSize: '0.85rem', fontWeight: 700, color: '#f8fafc' }}>
+                                            {Math.round(p.priority_score || p.riskScore || 50)}
+                                        </td>
+                                        <td style={{ padding: '14px 12px' }}>
+                                            <span style={{
+                                                padding: '3px 10px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
+                                                background: isResolved ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                                                color: isResolved ? '#4ade80' : '#fbbf24'
+                                            }}>
+                                                {isResolved ? 'Resolved' : 'Pending'}
+                                            </span>
+                                        </td>
+                                        <td style={{ padding: '14px 12px' }}>
+                                            <ProblemActionMenu 
+                                                problem={p} 
+                                                onUpdate={(targetId, action) => {
+                                                    const pid = targetId || p.id;
+                                                    if (action === 'assigned' || action === 'deleted') {
+                                                        setProblems((prev) => prev.filter((item) => item.id !== pid));
+                                                    } else {
+                                                        loadReports();
+                                                    }
+                                                }} 
+                                            />
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );

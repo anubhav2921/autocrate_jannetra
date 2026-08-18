@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from ..database import (
     signal_problems_collection,
     news_articles_collection,
-    activity_logs_collection
+    activity_logs_collection,
+    citizen_reports_collection
 )
 from ..utils import gen_uuid, get_current_user_optional
 
