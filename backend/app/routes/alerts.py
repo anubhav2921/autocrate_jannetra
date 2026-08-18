@@ -26,7 +26,7 @@ DEPT_MAP = {
 
 @router.get("/alerts")
 async def list_alerts(
-    severity: str = Query(None),
+    severity: Optional[str] = Query(None),
     active_only: bool = Query(True),
     state: Optional[str] = Query(None),
     district: Optional[str] = Query(None),
@@ -35,6 +35,8 @@ async def list_alerts(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
+    sev_val = severity if isinstance(severity, str) and severity.strip() else None
+    limit_val = limit if isinstance(limit, int) else 20
     from .location import _build_location_match
     loc_match = _build_location_match(state, district, city, ward)
     
@@ -44,11 +46,11 @@ async def list_alerts(
         match_filter = {**loc_match}
         if active_only:
             match_filter["is_active"] = True
-        if severity:
-            match_filter["severity"] = severity
+        if sev_val:
+            match_filter["severity"] = sev_val
 
         total = await alerts_collection.count_documents(match_filter)
-        cursor = alerts_collection.find(match_filter).sort("created_at", -1).skip((page - 1) * limit).limit(limit)
+        cursor = alerts_collection.find(match_filter).sort("created_at", -1).skip((page - 1) * limit_val).limit(limit_val)
         alert_docs = await cursor.to_list(None)
 
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3}
@@ -80,11 +82,11 @@ async def list_alerts(
     from ..database import signal_problems_collection, citizen_reports_collection
 
     match = {"risk_level": {"$in": ["HIGH", "MODERATE", "CRITICAL"]}, **loc_match}
-    if severity:
+    if sev_val:
         sev_map = {"CRITICAL": "HIGH", "HIGH": "HIGH", "MEDIUM": "MODERATE", "LOW": "LOW"}
-        match["risk_level"] = sev_map.get(severity, severity)
+        match["risk_level"] = sev_map.get(sev_val, sev_val)
 
-    articles = await news_articles_collection.find(match).sort("risk_score", -1).limit(limit).to_list(limit)
+    articles = await news_articles_collection.find(match).sort("risk_score", -1).limit(limit_val).to_list(limit_val)
 
     synthesized = []
     for a in articles:
@@ -109,11 +111,11 @@ async def list_alerts(
         })
 
     # If still empty, synthesize from signal_problems_collection and citizen_reports_collection
-    if len(synthesized) < limit:
-        needed = limit - len(synthesized)
+    if len(synthesized) < limit_val:
+        needed = limit_val - len(synthesized)
         sig_match = {"deleted": {"$ne": True}, **loc_match}
-        if severity:
-            sig_match["severity"] = severity.upper()
+        if sev_val:
+            sig_match["severity"] = sev_val.upper()
 
         sig_cursor = await signal_problems_collection.find(sig_match).sort("priority_score", -1).limit(needed).to_list(needed)
         for sp in sig_cursor:
@@ -133,8 +135,8 @@ async def list_alerts(
                 "article": {"id": sp["id"], "title": sp.get("title"), "category": sp.get("category"), "location": sp.get("location")},
             })
 
-    if len(synthesized) < limit:
-        needed = limit - len(synthesized)
+    if len(synthesized) < limit_val:
+        needed = limit_val - len(synthesized)
         cr_cursor = await citizen_reports_collection.find({"deleted": {"$ne": True}}).sort("created_at", -1).limit(needed).to_list(needed)
         for cr in cr_cursor:
             score = cr.get("priority_score") or cr.get("riskScore") or 70

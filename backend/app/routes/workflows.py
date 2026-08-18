@@ -187,10 +187,28 @@ async def escalate_problem(problem_id: str, req: EscalateRequest, user: dict = D
 
 @router.get("/working")
 async def get_working_problems(user: dict = Depends(get_current_user_optional)):
-    # Returns problems assigned to current user, or all in_progress if no auth
-    q_sig = {"status": "In Progress", "deleted": {"$ne": True}}
-    q_news = {"status": "In Progress", "deleted": {"$ne": True}}
-    q_cr = {"status": "In Progress", "deleted": {"$ne": True}}
+    # Returns problems assigned to current user, or all in_progress/assigned items
+    q_sig = {
+        "$or": [
+            {"status": {"$in": ["In Progress", "in_progress", "Assigned"]}},
+            {"assigned_to": {"$exists": True, "$ne": None}}
+        ],
+        "deleted": {"$ne": True}
+    }
+    q_news = {
+        "$or": [
+            {"status": {"$in": ["In Progress", "in_progress", "Assigned"]}},
+            {"assigned_to": {"$exists": True, "$ne": None}}
+        ],
+        "deleted": {"$ne": True}
+    }
+    q_cr = {
+        "$or": [
+            {"status": {"$in": ["In Progress", "in_progress", "Assigned"]}},
+            {"assigned_to": {"$exists": True, "$ne": None}}
+        ],
+        "deleted": {"$ne": True}
+    }
     
     results_map = {}
     
