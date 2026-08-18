@@ -19,6 +19,15 @@ async def sentiment_trend(
     from .location import _build_location_match
     loc_match = _build_location_match(state, district, city, ward)
     
+    # Auto-seed signal problems and citizen reports if DB empty
+    sp_count = await signal_problems_collection.count_documents({})
+    if sp_count == 0:
+        try:
+            from .signal_problems import list_signal_problems
+            await list_signal_problems()
+        except Exception:
+            pass
+
     na_count = await news_articles_collection.count_documents(loc_match)
     if na_count > 0:
         pipeline = [
@@ -81,6 +90,7 @@ async def sentiment_trend(
         ang = round(6.5 + (i * 0.4 % 2.2), 1)
         trend.append({
             "date": d,
+            
             "avg_polarity": pol,
             "avg_anger": ang,
             "count": 4 + (i * 3 % 8)

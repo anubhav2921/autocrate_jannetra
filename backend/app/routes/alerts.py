@@ -81,6 +81,22 @@ async def list_alerts(
     # Fallback: synthesize alerts from high-risk NewsArticles, Signal Problems, or Citizen Reports
     from ..database import signal_problems_collection, citizen_reports_collection
 
+    sp_count = await signal_problems_collection.count_documents({})
+    if sp_count == 0:
+        try:
+            from .signal_problems import list_signal_problems
+            await list_signal_problems()
+        except Exception as seed_err:
+            print("Alerts auto-seed signal_problems error:", seed_err)
+
+    cr_count = await citizen_reports_collection.count_documents({})
+    if cr_count == 0:
+        try:
+            from .citizen_reports import list_citizen_reports
+            await list_citizen_reports()
+        except Exception as seed_err:
+            print("Alerts auto-seed citizen_reports error:", seed_err)
+
     match = {"risk_level": {"$in": ["HIGH", "MODERATE", "CRITICAL"]}, **loc_match}
     if sev_val:
         sev_map = {"CRITICAL": "HIGH", "HIGH": "HIGH", "MEDIUM": "MODERATE", "LOW": "LOW"}
