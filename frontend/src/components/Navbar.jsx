@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Bell, Search, AlertTriangle, CheckCircle2, ChevronRight, X, Building2,
-    MapPin, Clock, Globe, ChevronDown, Moon, Sun, Menu, Command
+    MapPin, Clock, Globe, ChevronDown, Moon, Sun, Menu, Command, LogOut
 } from 'lucide-react';
 import { fetchLocationDashboard, fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from '../context/LocationContext';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import LocationFilter from './LocationFilter';
 
-export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
+export default function Navbar({ user, onHamburgerClick, isSidebarOpen, onLogout }) {
+    const { signOut } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const [alertCount, setAlertCount] = useState(3);
     const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -21,6 +23,11 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
     const locationDropdownRef = useRef(null);
     const navigate = useNavigate();
     const { location, hasLocation, locationLabel } = useLocation();
+
+    const handleLogout = () => {
+        if (onLogout) onLogout();
+        else if (signOut) signOut();
+    };
 
     useEffect(() => {
         fetchLocationDashboard(location)
@@ -186,6 +193,16 @@ export default function Navbar({ user, onHamburgerClick, isSidebarOpen }) {
                     >
                         {user?.name?.charAt(0)?.toUpperCase() || 'D'}
                     </div>
+
+                    {/* Logout Button */}
+                    <button 
+                        className="navbar-icon-btn" 
+                        title="Log Out"
+                        onClick={handleLogout}
+                        style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+                    >
+                        <LogOut size={16} />
+                    </button>
                 </div>
             </header>
 

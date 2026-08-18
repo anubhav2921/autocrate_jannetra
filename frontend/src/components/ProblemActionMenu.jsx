@@ -61,7 +61,7 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
 
     return (
         <div style={{ position: 'relative', zIndex: isOpen ? 9999 : 1 }} ref={menuRef}>
-            <button 
+            <button
                 onClick={() => setIsOpen(!isOpen)}
                 style={{
                     background: 'transparent', border: 'none', color: 'var(--text-muted)',
@@ -80,7 +80,7 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                     borderRadius: '8px', padding: '8px', zIndex: 99999,
                     boxShadow: '0 10px 25px rgba(0,0,0,0.8)', minWidth: '180px'
                 }}>
-                    <button 
+                    <button
                         onClick={() => navigate(`/signal-monitor/${problem.id}`, { state: { readonly: true } })}
                         style={{
                             width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent',
@@ -92,8 +92,8 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                     >
                         <Eye size={14} /> View Details
                     </button>
-                    
-                    <button 
+
+                    <button
                         onClick={handleTakeCustody}
                         disabled={isProcessing}
                         style={{
@@ -106,10 +106,10 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                     >
                         <UserCheck size={14} /> Take Custody
                     </button>
-                    
+
                     <div style={{ height: '1px', background: 'var(--border-color)', margin: '4px 0' }} />
-                    
-                    <button 
+
+                    <button
                         onClick={() => { setIsOpen(false); setShowDeleteModal(true); }}
                         style={{
                             width: '100%', textAlign: 'left', padding: '8px 12px', background: 'transparent',
@@ -145,7 +145,7 @@ export default function ProblemActionMenu({ problem, onUpdate }) {
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
                             Please provide a mandatory reason for deleting this report to maintain full audit logs.
                         </p>
-                        <textarea 
+                        <textarea
                             value={deleteReason}
                             onChange={(e) => setDeleteReason(e.target.value)}
                             placeholder="Reason for deletion..."

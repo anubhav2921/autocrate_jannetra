@@ -3,13 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
     Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
     Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
-    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet
+    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut
 } from 'lucide-react';
-import { fetchLocationDashboard } from '../services/api';
+import { fetchLocationDashboard, triggerPipeline } from '../services/api';
 import { useLocation } from '../context/LocationContext';
+import { useAuth } from '../context/AuthContext';
 import ExportReportModal from '../components/ExportReportModal';
 
 export default function Dashboard() {
+    const { user, signOut } = useAuth();
     const { location } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -43,14 +45,36 @@ export default function Dashboard() {
                     {/* Hero Greeting Section */}
                     <div className="hero-banner-card">
                         <div className="hero-content">
-                            <h1 className="hero-greeting">Good morning, Admin 👋</h1>
+                            <h1 className="hero-greeting">Good morning, {user?.name || 'Admin'} 👋</h1>
                             <p className="hero-subtext">Here's what needs your attention today.</p>
                         </div>
-                        <div className="hero-illustration">
-                            <div className="shield-3d-glow">
-                                <div className="shield-inner">
-                                    <Shield size={54} color="#a855f7" />
-                                    <Sparkles size={24} className="sparkle-overlay" color="#d8b4fe" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <button 
+                                onClick={signOut}
+                                style={{
+                                    padding: '10px 18px',
+                                    background: 'rgba(239, 68, 68, 0.15)',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    color: '#f87171',
+                                    borderRadius: '12px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    transition: 'all 0.2s'
+                                }}
+                                title="Log Out"
+                            >
+                                <LogOut size={16} /> Log Out
+                            </button>
+                            <div className="hero-illustration">
+                                <div className="shield-3d-glow">
+                                    <div className="shield-inner">
+                                        <Shield size={54} color="#a855f7" />
+                                        <Sparkles size={24} className="sparkle-overlay" color="#d8b4fe" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -340,9 +364,12 @@ export default function Dashboard() {
                                 <FileText size={18} />
                                 <span>Add Report</span>
                             </button>
-                            <button className="quick-action-btn blue" onClick={() => navigate('/resolutions')}>
-                                <CheckCircle2 size={18} />
-                                <span>Resolve Issue</span>
+                            <button className="quick-action-btn blue" onClick={() => {
+                                triggerPipeline(location.city || location.district).catch(console.error);
+                                navigate('/signal-monitor');
+                            }}>
+                                <Play size={18} />
+                                <span>Run Pipeline</span>
                             </button>
                             <button className="quick-action-btn purple" onClick={() => navigate('/analytics')}>
                                 <BarChart2 size={18} />

@@ -3,7 +3,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, AreaChart, Area,
 } from 'recharts';
-import { TrendingUp, MapPin, Layers, Flame, Globe, BarChart2 } from 'lucide-react';
+import { TrendingUp, MapPin, Layers, Flame, Globe, BarChart2, RefreshCw } from 'lucide-react';
 import { fetchSentimentTrend, fetchRiskSummary, fetchCategoryBreakdown } from '../services/api';
 import { useLocation } from '../context/LocationContext';
 
@@ -16,7 +16,7 @@ export default function Analytics() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const loadAnalytics = () => {
         setLoading(true);
         Promise.all([
             fetchSentimentTrend(location),
@@ -39,6 +39,10 @@ export default function Analytics() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        loadAnalytics();
     }, [location.state, location.district, location.city, location.ward]);
 
     if (loading) {
@@ -70,9 +74,25 @@ export default function Analytics() {
                     <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Analytics & Intelligence</h1>
                     <p className="hero-subtext">Deep-dive into sentiment trends, risk patterns, and category intelligence</p>
                 </div>
-                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
-                    <Globe size={14} className="location-icon" />
-                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+
+                    <button
+                        onClick={loadAnalytics}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 14px', background: '#181c2e', color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600
+                        }}
+                        title="Refresh Analytics"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 

@@ -88,15 +88,34 @@ async def assign_problem(problem_id: str, req: AssignRequest, user: dict = Depen
         "last_updated": datetime.datetime.utcnow()
     }
     
+    found = False
     p = await signal_problems_collection.find_one({"id": problem_id})
     if p:
         await signal_problems_collection.update_one({"id": problem_id}, {"$set": update_data})
-    else:
-        a = await news_articles_collection.find_one({"id": problem_id})
-        if a:
-            await news_articles_collection.update_one({"id": problem_id}, {"$set": update_data})
-        else:
-            raise HTTPException(status_code=404, detail="Problem not found")
+        found = True
+
+    cr = await citizen_reports_collection.find_one({"id": problem_id})
+    if cr:
+        await citizen_reports_collection.update_one({"id": problem_id}, {"$set": update_data})
+        found = True
+
+    a = await news_articles_collection.find_one({"id": problem_id})
+    if a:
+        await news_articles_collection.update_one({"id": problem_id}, {"$set": update_data})
+        found = True
+
+    if not found:
+        # Check if problem_id has SIG- prefix or alternative ID match
+        if problem_id.startswith("SIG-"):
+            suffix = problem_id[4:].lower()
+            async for article in news_articles_collection.find({}):
+                if str(article.get("_id"))[-6:].lower() == suffix:
+                    await news_articles_collection.update_one({"_id": article["_id"]}, {"$set": update_data})
+                    found = True
+                    break
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Problem not found")
 
     await log_activity(problem_id, "Assigned", performer, f"Assigned to {req.assignee_name}")
     return {"success": True, "status": "In Progress"}
@@ -166,10 +185,9 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
     # Returns problems assigned to current user, or all in_progress if no auth
     q_sig = {"status": "In Progress", "deleted": {"$ne": True}}
     q_news = {"status": "In Progress", "deleted": {"$ne": True}}
+    q_cr = {"status": "In Progress", "deleted": {"$ne": True}}
     
-    # In a real system we'd filter by assignee_id == user["uid"], but for this demo 
-    # we allow seeing all "Working Problems" to show functionality.
-    results = []
+    results_map = {}
     
     def safe_str(val):
         if val is None: return "Unknown"
@@ -180,10 +198,11 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
         return str(val)
 
     async for p in signal_problems_collection.find(q_sig).sort("last_updated", -1).limit(50):
-        results.append({
-            "id": p["id"],
+        pid = p["id"]
+        results_map[pid] = {
+            "id": pid,
             "title": p.get("title", ""),
-            "severity": p.get("severity", "Medium").capitalize(),
+            "severity": str(p.get("severity", "Medium")).capitalize(),
             "category": p.get("category", "General"),
             "location": safe_str(p.get("location_detail") or p.get("location")),
             "detectedAt": p.get("detected_at"),
@@ -199,28 +218,55 @@ async def get_working_problems(user: dict = Depends(get_current_user_optional)):
             "source": safe_str(", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source") or "Citizen Application"),
             "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
             "source_url": p.get("source_url")
-        })
+        }
+
+    async for cr in citizen_reports_collection.find(q_cr).sort("last_updated", -1).limit(50):
+        c_id = cr["id"]
+        if c_id not in results_map:
+            results_map[c_id] = {
+                "id": c_id,
+                "title": cr.get("title", "Citizen Report"),
+                "severity": str(cr.get("severity", "Medium")).capitalize(),
+                "category": cr.get("category", "Citizen Report"),
+                "location": safe_str(cr.get("location")),
+                "detectedAt": cr.get("created_at"),
+                "priorityScore": cr.get("priority_score", 50),
+                "frequency": 1,
+                "status": cr.get("status", "In Progress"),
+                "progress": cr.get("progress", 0),
+                "assignedName": cr.get("assigned_name", "Unknown"),
+                "assignedTo": cr.get("assigned_to", None),
+                "ownerId": cr.get("owner_id", cr.get("assigned_to", None)),
+                "collaborators": cr.get("collaborators", []),
+                "invitedBy": cr.get("invited_by", "System Admin"),
+                "source": "Citizen Application",
+                "source_type": "citizen",
+                "source_url": cr.get("image_url")
+            }
         
     async for a in news_articles_collection.find(q_news).sort("ingested_at", -1).limit(50):
-        results.append({
-            "id": a["id"],
-            "title": a.get("title", ""),
-            "severity": a.get("risk_level", "Medium").capitalize(),
-            "category": a.get("category", "General"),
-            "location": safe_str(a.get("city")),
-            "detectedAt": a.get("ingested_at"),
-            "priorityScore": a.get("risk_score", 50),
-            "frequency": 1,
-            "status": a.get("status", "In Progress"),
-            "progress": a.get("progress", 0),
-            "assignedName": a.get("assigned_name", "Unknown"),
-            "assignedTo": a.get("assigned_to", None),
-            "ownerId": a.get("owner_id", a.get("assigned_to", None)),
-            "collaborators": a.get("collaborators", []),
-            "invitedBy": a.get("invited_by", "System Admin"),
-            "source": safe_str(a.get("source_name", "Automated Scanner")),
-            "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
-            "source_url": a.get("source_url") or a.get("url")
-        })
+        aid = a["id"]
+        if aid not in results_map:
+            results_map[aid] = {
+                "id": aid,
+                "title": a.get("title", ""),
+                "severity": str(a.get("risk_level", "Medium")).capitalize(),
+                "category": a.get("category", "General"),
+                "location": safe_str(a.get("city")),
+                "detectedAt": a.get("ingested_at"),
+                "priorityScore": a.get("risk_score", 50),
+                "frequency": 1,
+                "status": a.get("status", "In Progress"),
+                "progress": a.get("progress", 0),
+                "assignedName": a.get("assigned_name", "Unknown"),
+                "assignedTo": a.get("assigned_to", None),
+                "ownerId": a.get("owner_id", a.get("assigned_to", None)),
+                "collaborators": a.get("collaborators", []),
+                "invitedBy": a.get("invited_by", "System Admin"),
+                "source": safe_str(a.get("source_name", "Automated Scanner")),
+                "source_type": a.get("source_type", "news").lower() if a.get("source_type") else "news",
+                "source_url": a.get("source_url") or a.get("url")
+            }
         
+    results = list(results_map.values())
     return sorted(results, key=lambda x: x.get("priorityScore", 0), reverse=True)

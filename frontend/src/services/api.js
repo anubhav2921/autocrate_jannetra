@@ -61,4 +61,17 @@ export const fetchLocationIssues = (locationParams = {}, extra = {}) => {
     return api.get('/location/issues', { params });
 };
 
+// Data Pipeline & Signal Helpers
+export const triggerPipeline = (city = null) => {
+    const params = city ? { city } : {};
+    return api.post('/pipeline/run', null, { params });
+};
+
+export const fetchPipelineStatus = () => api.get('/pipeline/status');
+
+export const fetchSignalProblems = (locationParams = {}) => {
+    const params = buildLocationParams(locationParams);
+    return api.get('/signal-problems', { params });
+};
+
 export default api;

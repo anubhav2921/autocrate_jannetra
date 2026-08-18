@@ -3,14 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { 
     Briefcase, Clock, MapPin, Search, Filter, AlertTriangle, 
     Flame, ArrowRight, UserCheck, Shield, Globe, Users, CheckCircle2,
-    Layers, Sparkles
+    Layers, Sparkles, RefreshCw
 } from 'lucide-react';
-import api from '../services/api';
+import api, { buildLocationParams } from '../services/api';
+import { useLocation } from '../context/LocationContext';
 import safe from '../utils/safeRender';
 import ProblemActionMenu from '../components/ProblemActionMenu';
 
 export default function WorkingProblems() {
-    const { location, hasLocation, locationLabel } = { location: {}, hasLocation: false, locationLabel: () => 'All India' };
+    const { location, hasLocation, locationLabel } = useLocation();
     const [problems, setProblems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -20,19 +21,22 @@ export default function WorkingProblems() {
     const currentUser = JSON.parse(localStorage.getItem('user')) || { uid: 'u-1', name: 'Leader' };
     const currentUserId = currentUser.uid || currentUser.id;
 
+    const fetchWorking = async () => {
+        setLoading(true);
+        try {
+            const params = buildLocationParams(location);
+            const res = await api.get('/workflows/working', { params });
+            setProblems(res || []);
+        } catch (err) {
+            console.error("Failed to fetch working problems", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchWorking = async () => {
-            try {
-                const res = await api.get('/workflows/working');
-                setProblems(res || []);
-            } catch (err) {
-                console.error("Failed to fetch working problems", err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchWorking();
-    }, []);
+    }, [location.state, location.district, location.city, location.ward]);
 
     const searched = problems.filter(p => 
         (p.title || p.id || '').toLowerCase().includes(search.toLowerCase())
@@ -56,9 +60,25 @@ export default function WorkingProblems() {
                     <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Working Problems & Escalations</h1>
                     <p className="hero-subtext">Manage, track, and resolve governance issues currently assigned under active custody</p>
                 </div>
-                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
-                    <Globe size={14} className="location-icon" />
-                    <span>All India</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+
+                    <button
+                        onClick={fetchWorking}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 14px', background: '#181c2e', color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600
+                        }}
+                        title="Refresh Working Problems"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 
@@ -215,9 +235,17 @@ export default function WorkingProblems() {
                                 <span style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <MapPin size={12} style={{ color: '#8b5cf6' }} /> {p.location || 'All India'}
                                 </span>
-                                <ProblemActionMenu problem={p} onUpdate={(updated) => {
-                                    setProblems(prev => prev.map(item => item.id === updated.id ? updated : item));
-                                }} />
+                                <ProblemActionMenu 
+                                    problem={p} 
+                                    onUpdate={(targetId, action) => {
+                                        const pid = targetId || p.id;
+                                        if (action === 'deleted') {
+                                            setProblems((prev) => prev.filter((item) => item.id !== pid));
+                                        } else {
+                                            fetchWorking();
+                                        }
+                                    }} 
+                                />
                             </div>
                         </div>
                     ))}

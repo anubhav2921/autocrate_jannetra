@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    AlertTriangle, Building2, Clock, CheckCircle2, Globe, Bell
+    AlertTriangle, Building2, Clock, CheckCircle2, Globe, Bell, RefreshCw
 } from 'lucide-react';
 import { fetchAlerts, acknowledgeAlert, buildLocationParams } from '../services/api';
 import { useLocation } from '../context/LocationContext';
@@ -62,9 +62,25 @@ export default function Alerts() {
                     <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Alerts & Actions</h1>
                     <p className="hero-subtext">AI-generated governance alerts with department assignments and response strategies</p>
                 </div>
-                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
-                    <Globe size={14} className="location-icon" />
-                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+
+                    <button
+                        onClick={loadAlerts}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 14px', background: '#181c2e', color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600
+                        }}
+                        title="Refresh Alerts"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 

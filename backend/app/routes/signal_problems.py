@@ -4,7 +4,7 @@ from typing import Optional
 from datetime import datetime
 
 from ..database import (
-    news_articles_collection, signal_problems_collection
+    news_articles_collection, signal_problems_collection, citizen_reports_collection
 )
 from ..services.ai_service import generate_signal_problems, summarize_problem_cluster, summarize_news_article, structure_single_problem
 from ..utils import get_current_user, get_current_user_optional
@@ -25,10 +25,18 @@ async def list_signal_problems(
     ward: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
-    current_user = Depends(require_role(["low_level_officer", "sector_officer", "district_admin", "ADMIN"]))
+    current_user: Optional[dict] = Depends(get_current_user_optional)
 ):
     """Return signal problems, filtered by location, department, status, and/or user."""
     
+    state = state if isinstance(state, str) else None
+    district = district if isinstance(district, str) else None
+    city = city if isinstance(city, str) else None
+    ward = ward if isinstance(ward, str) else None
+    status = status if isinstance(status, str) else None
+    user_id = user_id if isinstance(user_id, str) else None
+    current_user = current_user if isinstance(current_user, dict) else None
+
     user_dept = current_user.get("department") if current_user else None
     user_role = current_user.get("role") if current_user else None
 
@@ -57,17 +65,12 @@ async def list_signal_problems(
     # Ignore Deleted items
     match["deleted"] = {"$ne": True}
         
-    # Enforce 5-day freshness rule
-    from datetime import datetime, timedelta
-    cutoff = datetime.utcnow() - timedelta(days=5)
-    match["created_at"] = {"$gte": cutoff}
-        
     # Add User Filter
     if user_id:
         match["resolved_by"] = user_id
     
     # Add Department Filter if not admin and not specifically filtering by another user
-    if user_role != "ADMIN" and user_dept and not user_id:
+    if user_role and user_role != "ADMIN" and user_dept and not user_id:
         match["department"] = user_dept
 
     # Do NOT show Citizen Reports on the public Signal Monitor. They have their own dedicated section.
@@ -83,16 +86,16 @@ async def list_signal_problems(
         {
             "id": p["id"],
             "title": p.get("title"),
-            "severity": p.get("severity", "LOW"),
+            "severity": str(p.get("severity", "LOW")).capitalize(),
             "category": p.get("category"),
-            "location": p.get("location") or ", ".join(p.get("locations", [])),
+            "location": p.get("location") or ", ".join(p.get("locations", [])) if isinstance(p.get("locations"), list) else p.get("location") or "Unknown",
             "detectedAt": p.get("detected_at").strftime("%Y-%m-%d") if hasattr(p.get("detected_at"), "strftime") else p.get("detected_at"),
             "lastUpdated": p.get("last_updated").strftime("%Y-%m-%d %H:%M") if hasattr(p.get("last_updated"), "strftime") else p.get("last_updated"),
             "description": p.get("description") or p.get("title"),
             "riskScore": p.get("priority_score") or p.get("risk_score") or 0.0,
             "priorityScore": p.get("priority_score", 0.0),
             "frequency": p.get("frequency", 1),
-            "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source"),
+            "source": ", ".join(p.get("sources", [])) if isinstance(p.get("sources"), list) else p.get("source") or "Pipeline",
             "source_url": p.get("source_url"),
             "source_type": p.get("source_type", "unknown").lower() if p.get("source_type") else "unknown",
             "created_at": p.get("created_at").isoformat() if hasattr(p.get("created_at"), "isoformat") else p.get("created_at"),
@@ -121,10 +124,8 @@ async def list_signal_problems(
     elif state or district or ward:
         article_match = _build_location_match(state, district, city, ward)
 
-    if user_role != "ADMIN" and user_dept and not user_id:
+    if user_role and user_role != "ADMIN" and user_dept and not user_id:
         article_match["department"] = user_dept
-        
-    article_match["created_at"] = {"$gte": cutoff}
         
     # We want to show unresolved/scraped articles alongside manual/resolved problems
     # Only fetch pending if status filter is "Pending" or None
@@ -187,6 +188,8 @@ async def list_signal_problems(
 @router.get("/signal-problems/{problem_id}")
 async def get_signal_problem(problem_id: str):
     p = await signal_problems_collection.find_one({"id": problem_id})
+    if not p:
+        p = await citizen_reports_collection.find_one({"id": problem_id})
     if p:
         # Fallback text check - aggressive re-generation if missing or placeholder
         FALLBACK_SOL = "Immediate investigation by the concerned department (Municipal/Infrastructure)."

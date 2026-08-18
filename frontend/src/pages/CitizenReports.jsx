@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     AlertTriangle, MapPin, Clock, Zap,
-    CheckCircle2, Filter, Search, Globe, Users, Image, Mic
+    CheckCircle2, Filter, Search, Globe, Users, Image, Mic, RefreshCw
 } from 'lucide-react';
 import { useLocation } from '../context/LocationContext';
-import api from '../services/api';
+import api, { buildLocationParams } from '../services/api';
 import ProblemActionMenu from '../components/ProblemActionMenu';
 
 const SEVERITY_CONFIG = {
@@ -23,11 +23,12 @@ export default function CitizenReports() {
     const [filterSeverity, setFilterSeverity] = useState('ALL');
     const [filterStatus, setFilterStatus] = useState('ALL');
 
-    useEffect(() => {
+    const loadReports = () => {
         setLoading(true);
-        api.get('/citizen-reports/list')
+        const params = buildLocationParams(location);
+        api.get('/citizen-reports/list', { params })
             .then((data) => {
-                const formatted = data.map((p) => ({
+                const formatted = (data || []).map((p) => ({
                     ...p,
                     severity: p.severity || "Medium",
                     status: p.status || "Pending",
@@ -38,6 +39,10 @@ export default function CitizenReports() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        loadReports();
     }, [location.state, location.district, location.city, location.ward]);
 
     const filtered = problems.filter((p) => {
@@ -85,9 +90,25 @@ export default function CitizenReports() {
                     <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Citizen Reports</h1>
                     <p className="hero-subtext">Direct citizen grievance filings, media uploads, and community escalation tracking</p>
                 </div>
-                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
-                    <Globe size={14} className="location-icon" />
-                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+
+                    <button
+                        onClick={loadReports}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 14px', background: '#181c2e', color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600
+                        }}
+                        title="Refresh Reports"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 
@@ -245,9 +266,17 @@ export default function CitizenReports() {
                                         </span>
                                     </td>
                                     <td style={{ padding: '14px 12px' }}>
-                                        <ProblemActionMenu problem={p} onUpdate={(updated) => {
-                                            setProblems((prev) => prev.map((item) => item.id === updated.id ? updated : item));
-                                        }} />
+                                        <ProblemActionMenu 
+                                            problem={p} 
+                                            onUpdate={(targetId, action) => {
+                                                const pid = targetId || p.id;
+                                                if (action === 'assigned' || action === 'deleted') {
+                                                    setProblems((prev) => prev.filter((item) => item.id !== pid));
+                                                } else {
+                                                    loadReports();
+                                                }
+                                            }} 
+                                        />
                                     </td>
                                 </tr>
                             );
