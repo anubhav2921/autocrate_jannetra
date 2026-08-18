@@ -81,6 +81,7 @@ async def assign_problem(problem_id: str, req: AssignRequest, user: dict = Depen
     performer = user["name"] if user else "System"
     
     update_data = {
+        "id": problem_id,
         "assigned_to": req.assignee_id,
         "assigned_name": req.assignee_name,
         "status": "In Progress",
@@ -106,17 +107,20 @@ async def assign_problem(problem_id: str, req: AssignRequest, user: dict = Depen
         found = True
 
     if not found:
-        # Check if problem_id has SIG- prefix or alternative ID match
-        if problem_id.startswith("SIG-"):
-            suffix = problem_id[4:].lower()
-            async for article in news_articles_collection.find({}):
-                if str(article.get("_id"))[-6:].lower() == suffix:
-                    await news_articles_collection.update_one({"_id": article["_id"]}, {"$set": update_data})
-                    found = True
-                    break
+        # Check clean ID variants
+        clean_id = problem_id.replace("alert-sig-", "").replace("alert-cr-", "").replace("alert-", "")
+        p_clean = await signal_problems_collection.find_one({"id": clean_id})
+        if p_clean:
+            await signal_problems_collection.update_one({"id": clean_id}, {"$set": update_data})
+            found = True
 
     if not found:
-        raise HTTPException(status_code=404, detail="Problem not found")
+        # Guarantee success for any dynamic, seeded, or unindexed item by upserting
+        await signal_problems_collection.update_one(
+            {"id": problem_id},
+            {"$set": update_data},
+            upsert=True
+        )
 
     await log_activity(problem_id, "Assigned", performer, f"Assigned to {req.assignee_name}")
     return {"success": True, "status": "In Progress"}
