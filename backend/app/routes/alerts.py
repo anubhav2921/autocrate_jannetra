@@ -76,18 +76,18 @@ async def list_alerts(
 
         return {"total": total, "page": page, "alerts": result}
 
-    # Fallback: synthesize alerts from high-risk NewsArticle entries
-    match = {"risk_level": {"$in": ["HIGH", "MODERATE"]}, **loc_match}
+    # Fallback: synthesize alerts from high-risk NewsArticles, Signal Problems, or Citizen Reports
+    from ..database import signal_problems_collection, citizen_reports_collection
+
+    match = {"risk_level": {"$in": ["HIGH", "MODERATE", "CRITICAL"]}, **loc_match}
     if severity:
         sev_map = {"CRITICAL": "HIGH", "HIGH": "HIGH", "MEDIUM": "MODERATE", "LOW": "LOW"}
         match["risk_level"] = sev_map.get(severity, severity)
 
-    total = await news_articles_collection.count_documents(match)
-    cursor = news_articles_collection.find(match).sort("risk_score", -1).skip((page - 1) * limit).limit(limit)
-    articles = await cursor.to_list(None)
+    articles = await news_articles_collection.find(match).sort("risk_score", -1).limit(limit).to_list(limit)
 
     synthesized = []
-    for i, a in enumerate(articles):
+    for a in articles:
         score = a.get("risk_score", 0) or 0
         sev = "CRITICAL" if score >= 80 else "HIGH" if score >= 70 else "MEDIUM"
         dept = DEPT_MAP.get(a.get("category") or "General", "District Administration")
@@ -104,11 +104,56 @@ async def list_alerts(
                 f"Fake news confidence: {round((a.get('fake_news_confidence') or 0) * 100, 0):.0f}%."
             ),
             "is_active": True,
-            "created_at": scraped_at.isoformat() if isinstance(scraped_at, datetime) else scraped_at,
+            "created_at": scraped_at.isoformat() if isinstance(scraped_at, datetime) else str(scraped_at or datetime.utcnow()),
             "article": {"id": a["id"], "title": a.get("title"), "category": a.get("category"), "location": None},
         })
 
-    return {"total": total, "page": page, "alerts": synthesized}
+    # If still empty, synthesize from signal_problems_collection and citizen_reports_collection
+    if len(synthesized) < limit:
+        needed = limit - len(synthesized)
+        sig_match = {"deleted": {"$ne": True}, **loc_match}
+        if severity:
+            sig_match["severity"] = severity.upper()
+
+        sig_cursor = await signal_problems_collection.find(sig_match).sort("priority_score", -1).limit(needed).to_list(needed)
+        for sp in sig_cursor:
+            score = sp.get("priority_score") or sp.get("risk_score") or 75
+            sev = (sp.get("severity") or "HIGH").upper()
+            dept = DEPT_MAP.get(sp.get("category") or "General", "District Administration")
+            created_at = sp.get("detected_at") or sp.get("created_at") or datetime.utcnow()
+            synthesized.append({
+                "id": f"alert-sig-{sp['id'][:8]}",
+                "severity": sev if sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"] else "HIGH",
+                "department": dept,
+                "recommendation": f"Urgent governance action: {(sp.get('title') or '')[:120]}",
+                "urgency": "Immediate" if sev == "CRITICAL" else "Within 24h",
+                "response_strategy": f"Dispatch {dept} team to location '{sp.get('location', 'Municipal District')}'. Priority score: {round(score, 1)}/100.",
+                "is_active": True,
+                "created_at": created_at.isoformat() if isinstance(created_at, datetime) else str(created_at),
+                "article": {"id": sp["id"], "title": sp.get("title"), "category": sp.get("category"), "location": sp.get("location")},
+            })
+
+    if len(synthesized) < limit:
+        needed = limit - len(synthesized)
+        cr_cursor = await citizen_reports_collection.find({"deleted": {"$ne": True}}).sort("created_at", -1).limit(needed).to_list(needed)
+        for cr in cr_cursor:
+            score = cr.get("priority_score") or cr.get("riskScore") or 70
+            sev = (cr.get("severity") or "HIGH").upper()
+            dept = DEPT_MAP.get(cr.get("category") or "General", "District Administration")
+            created_at = cr.get("created_at") or datetime.utcnow()
+            synthesized.append({
+                "id": f"alert-cr-{cr['id'][:8]}",
+                "severity": sev if sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW"] else "HIGH",
+                "department": dept,
+                "recommendation": f"Citizen Grievance Escalation: {(cr.get('title') or '')[:120]}",
+                "urgency": "Immediate" if sev == "CRITICAL" else "Within 24h",
+                "response_strategy": f"Review direct citizen report filed at '{cr.get('location', 'City Ward')}'. Escalation score: {round(score, 1)}/100.",
+                "is_active": True,
+                "created_at": created_at.isoformat() if isinstance(created_at, datetime) else str(created_at),
+                "article": {"id": cr["id"], "title": cr.get("title"), "category": cr.get("category"), "location": cr.get("location")},
+            })
+
+    return {"total": len(synthesized), "page": page, "alerts": synthesized}
 
 
 @router.post("/alerts/{alert_id}/acknowledge")

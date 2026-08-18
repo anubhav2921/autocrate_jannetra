@@ -274,7 +274,6 @@ async def get_landing_stats():
     }
 
 
-# Fallback
 @router.get("/analytics/category-breakdown")
 async def category_breakdown(
     state: Optional[str] = Query(None),
@@ -282,10 +281,14 @@ async def category_breakdown(
     city: Optional[str] = Query(None),
     ward: Optional[str] = Query(None),
 ):
-    """Risk breakdown by category."""
+    """Risk breakdown by category across all pipeline collections."""
     from .location import _build_location_match
     loc_match = _build_location_match(state, district, city, ward)
+    from ..database import citizen_reports_collection
 
+    categories_map = {}
+
+    # 1. Aggregate news articles
     na_count = await news_articles_collection.count_documents(loc_match)
     if na_count > 0:
         pipeline = [
@@ -295,29 +298,66 @@ async def category_breakdown(
                 "avg_gri": {"$avg": "$risk_score"},
                 "total": {"$sum": 1},
             }},
-            {"$sort": {"avg_gri": -1}},
         ]
-        results = await news_articles_collection.aggregate(pipeline).to_list(None)
+        res = await news_articles_collection.aggregate(pipeline).to_list(None)
+        for r in res:
+            cat = r["_id"] or "General"
+            categories_map[cat] = {
+                "category": cat,
+                "avg_gri": round(r["avg_gri"] or 0, 1),
+                "total_signals": r["total"],
+                "fake_count": 0,
+                "risk_level": "HIGH" if (r["avg_gri"] or 0) > 60 else "MODERATE" if (r["avg_gri"] or 0) > 30 else "LOW"
+            }
 
-        fake_pipeline = [
-            {"$match": {**loc_match, "fake_news_label": "FAKE"}},
-            {"$group": {"_id": "$category", "count": {"$sum": 1}}}
-        ]
-        fake_res = await news_articles_collection.aggregate(fake_pipeline).to_list(None)
-        fake_counts = {r["_id"]: r["count"] for r in fake_res}
+    # 2. Aggregate signal problems
+    sp_pipeline = [
+        {"$match": {"deleted": {"$ne": True}}},
+        {"$group": {
+            "_id": "$category",
+            "avg_gri": {"$avg": "$priority_score"},
+            "total": {"$sum": 1},
+        }}
+    ]
+    sp_res = await signal_problems_collection.aggregate(sp_pipeline).to_list(None)
+    for r in sp_res:
+        cat = r["_id"] or "Civil Infrastructure"
+        score = round(r["avg_gri"] or 50, 1)
+        if cat in categories_map:
+            categories_map[cat]["total_signals"] += r["total"]
+            categories_map[cat]["avg_gri"] = round((categories_map[cat]["avg_gri"] + score) / 2, 1)
+        else:
+            categories_map[cat] = {
+                "category": cat,
+                "avg_gri": score,
+                "total_signals": r["total"],
+                "fake_count": 0,
+                "risk_level": "HIGH" if score > 60 else "MODERATE" if score > 30 else "LOW"
+            }
 
-        return {
-            "categories": [
-                {
-                    "category": r["_id"] or "General",
-                    "avg_gri": round(r["avg_gri"] or 0, 1),
-                    "total_signals": r["total"],
-                    "fake_count": fake_counts.get(r["_id"], 0),
-                    "risk_level": "HIGH" if (r["avg_gri"] or 0) > 60 else "MODERATE" if (r["avg_gri"] or 0) > 30 else "LOW",
-                }
-                for r in results
-            ]
-        }
+    # 3. Aggregate citizen reports
+    cr_pipeline = [
+        {"$match": {"deleted": {"$ne": True}}},
+        {"$group": {
+            "_id": "$category",
+            "avg_gri": {"$avg": "$priority_score"},
+            "total": {"$sum": 1},
+        }}
+    ]
+    cr_res = await citizen_reports_collection.aggregate(cr_pipeline).to_list(None)
+    for r in cr_res:
+        cat = r["_id"] or "Citizen Report"
+        score = round(r["avg_gri"] or 60, 1)
+        if cat in categories_map:
+            categories_map[cat]["total_signals"] += r["total"]
+        else:
+            categories_map[cat] = {
+                "category": cat,
+                "avg_gri": score,
+                "total_signals": r["total"],
+                "fake_count": 0,
+                "risk_level": "HIGH" if score > 60 else "MODERATE" if score > 30 else "LOW"
+            }
 
-    # Fallback
-    return {"categories": []}
+    result_list = sorted(list(categories_map.values()), key=lambda x: x["avg_gri"], reverse=True)
+    return {"categories": result_list}
