@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, Form, File, UploadFile
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..database import (
     news_articles_collection, signal_problems_collection, citizen_reports_collection
