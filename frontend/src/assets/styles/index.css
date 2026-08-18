@@ -769,12 +769,19 @@ a:hover {
   position: fixed;
   left: 0;
   top: 0;
-  background: var(--bg-secondary);
+  background: rgba(18, 18, 24, 0.45); /* more transparent glass */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 100;
   overflow-y: auto;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .sidebar {
+  background: rgba(255, 255, 255, 0.6);
 }
 
 .sidebar-brand {
@@ -809,24 +816,29 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px;
+  padding: 10px 16px;
+  margin: 4px 16px;
+  border-radius: var(--radius-md);
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 500;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
 }
 
 .sidebar-nav a:hover,
 .sidebar-nav button:hover {
   background: var(--bg-glass-hover);
   color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.05);
+  transform: translateX(4px);
 }
 
 .sidebar-nav a.active {
-  color: var(--accent-blue);
-  background: var(--accent-blue-bg);
-  border-left-color: var(--accent-blue);
+  color: #fff;
+  background: var(--gradient-primary);
+  box-shadow: var(--shadow-glow-purple);
+  border-color: transparent;
 }
 
 .sidebar-nav a svg {
