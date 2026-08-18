@@ -11,6 +11,12 @@ if (rawApiUrl) {
     }
 }
 
+if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    if (!rawApiUrl || rawApiUrl.includes('localhost')) {
+        BASE_URL = window.location.origin;
+    }
+}
+
 console.log(`[JanNetra Config] API Base URL: ${BASE_URL}`);
 
 const apiClient = axios.create({
