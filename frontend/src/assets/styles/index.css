@@ -8,14 +8,14 @@
   --bg-primary: #1f2937; /* Darker grey */
   --bg-secondary: #111115;
   --bg-card: rgba(18, 18, 24, 0.85);
-  --bg-glass: rgba(255, 255, 255, 0.035);
-  --bg-glass-hover: rgba(255, 255, 255, 0.07);
+  --bg-glass: rgba(255, 255, 255, 0.06);
+  --bg-glass-hover: rgba(255, 255, 255, 0.1);
 
   --text-primary: #ffffff;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
 
-  --border-color: rgba(255, 255, 255, 0.09);
+  --border-color: rgba(255, 255, 255, 0.12);
   --border-hover: rgba(168, 129, 254, 0.35);
 
   /* Risk colors */
@@ -47,9 +47,9 @@
   --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
 
   /* Shadows & Glow */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.6);
-  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.75);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 36px rgba(0, 0, 0, 0.3);
   --shadow-glow-purple: 0 0 24px rgba(168, 129, 254, 0.25);
   --shadow-glow-blue: 0 0 24px rgba(30, 144, 255, 0.25);
   --shadow-glow-red: 0 0 24px rgba(239, 68, 68, 0.2);
@@ -79,7 +79,7 @@
   --landing-border: rgba(255, 255, 255, 0.09);
   --landing-card-bg: rgba(18, 18, 24, 0.6);
   
-  --navbar-bg: rgba(9, 9, 11, 0.85);
+  --navbar-bg: rgba(31, 41, 55, 0.92);
   --card-shadow: var(--shadow-md);
 }
 
@@ -795,13 +795,13 @@ a:hover {
   position: fixed;
   left: 0;
   top: 0;
-  background: transparent;
-  border-right: none;
+  background: rgba(255, 255, 255, 0.02); /* Subtle grounding for floating items */
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   z-index: 100;
   overflow: hidden;
-  box-shadow: none;
+  box-shadow: 1px 0 0 rgba(255, 255, 255, 0.02);
 }
 
 [data-theme="light"] .sidebar {
@@ -844,41 +844,7 @@ a:hover {
   display: none; /* Chrome/Safari */
 }
 
-.sidebar-nav a,
-.sidebar-nav button {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 16px;
-  margin: 4px 16px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  font-weight: 500;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid transparent;
-}
 
-.sidebar-nav a:hover,
-.sidebar-nav button:hover {
-  background: var(--bg-glass-hover);
-  color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.05);
-  transform: translateX(4px);
-}
-
-.sidebar-nav a.active {
-  color: #fff;
-  background: var(--gradient-primary);
-  box-shadow: var(--shadow-glow-purple);
-  border-color: transparent;
-}
-
-.sidebar-nav a svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
 
 .sidebar-status {
   padding: 16px 20px;
@@ -3650,8 +3616,8 @@ tr.table-row-hover:focus-within {
   align-items: center;
   gap: 10px;
   padding: 16px 14px;
-  border-bottom: 1px solid rgba(120, 160, 255, 0.12);
-  background: linear-gradient(135deg, rgba(100, 130, 255, 0.08), rgba(80, 100, 200, 0.04));
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
 }
 
 .brand-logo-icon {
@@ -4024,10 +3990,10 @@ tr.table-row-hover:focus-within {
 }
 
 .hero-banner-card {
-  background: linear-gradient(135deg, rgba(30, 40, 80, 0.7) 0%, rgba(20, 25, 60, 0.8) 100%);
+  background: var(--bg-glass);
   backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid rgba(120, 160, 255, 0.18);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 28px;
   display: flex;
@@ -4105,10 +4071,10 @@ tr.table-row-hover:focus-within {
 
 /* Today at a Glance */
 .at-a-glance-card {
-  background: linear-gradient(135deg, rgba(25, 35, 75, 0.65) 0%, rgba(18, 22, 55, 0.75) 100%);
+  background: var(--bg-glass);
   backdrop-filter: blur(28px) saturate(160%);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid rgba(100, 140, 255, 0.15);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 20px 24px;
   width: 100%;
@@ -4203,7 +4169,7 @@ tr.table-row-hover:focus-within {
 .stat-num {
   font-size: 1.4rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--text-primary);
   line-height: 1.2;
 }
 
@@ -4331,7 +4297,7 @@ tr.table-row-hover:focus-within {
 .action-card-title {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
@@ -4603,7 +4569,7 @@ tr.table-row-hover:focus-within {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #cbd5e1;
+  color: var(--text-secondary);
 }
 
 .health-check-icon {
