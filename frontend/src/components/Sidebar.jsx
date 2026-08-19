@@ -43,7 +43,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     <Shield size={18} color="#ffffff" />
                 </div>
                 <div className="brand-text-container">
-                    <h2>jannetra'</h2>
+                    <h2>JanNetra</h2>
                     <span>Decision Support System</span>
                 </div>
             </div>
