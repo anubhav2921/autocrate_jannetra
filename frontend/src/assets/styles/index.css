@@ -5,16 +5,15 @@
 
 :root {
   /* Uizard-Inspired Ultra-Dark Palette */
-  /* Default Theme bg also set to light grey to ensure it covers both if they just wanted 'light grey' overall */
-  --bg-primary: #f1f5f9;
-  --bg-secondary: #ffffff;
-  --bg-card: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-glass-hover: rgba(255, 255, 255, 0.9);
+  --bg-primary: #1f2937; /* Darker grey */
+  --bg-secondary: #111115;
+  --bg-card: rgba(18, 18, 24, 0.85);
+  --bg-glass: rgba(255, 255, 255, 0.035);
+  --bg-glass-hover: rgba(255, 255, 255, 0.07);
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
 
   --border-color: rgba(255, 255, 255, 0.09);
   --border-hover: rgba(168, 129, 254, 0.35);
@@ -87,7 +86,7 @@
 
 [data-theme="light"] {
   /* Premium sky/indigo tinted light palette */
-  --bg-primary: #f1f5f9; /* Light grey background */
+  --bg-primary: #e5e7eb; /* Grey background in white mode */
   --bg-secondary: #ffffff;
   --bg-card: rgba(220, 235, 255, 0.55);
   --bg-glass: rgba(180, 210, 255, 0.15);
