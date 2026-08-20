@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
+    Wrench, Droplets, Zap, CheckCircle2, BarChart2, FileText,
+    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet
     Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
     TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut
 } from 'lucide-react';
@@ -15,23 +17,47 @@ export default function Dashboard() {
     const { location } = useLocation();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
         setLoading(true);
+        setError(null);
         fetchLocationDashboard(location)
             .then(resData => {
                 setData(resData);
             })
-            .catch(console.error)
+            .catch(err => {
+                console.error(err);
+                setError('Failed to load dashboard data. Please try again.');
+            })
             .finally(() => setLoading(false));
     }, [location.state, location.district, location.city, location.ward]);
 
-    const totalSignals = data?.total_articles || 125;
-    const problemClusters = data?.active_problems_count || 113;
-    const activeAlertsCount = data?.active_alerts || 1;
-    const citizenReportsCount = data?.citizen_reports_count || 1;
+    if (loading) {
+        return (
+            <div className="dashboard-page-wrapper animate-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <div className="loading-spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-purple)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="dashboard-page-wrapper animate-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+                <AlertTriangle size={48} className="text-red-500" color="var(--risk-high)" />
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Error Loading Dashboard</h2>
+                <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+                <button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button>
+            </div>
+        );
+    }
+
+    const totalSignals = data?.total_articles ?? 0;
+    const problemClusters = data?.active_problems_count ?? 0;
+    const activeAlertsCount = data?.active_alerts ?? 0;
+    const citizenReportsCount = data?.citizen_reports_count ?? 0;
 
     return (
         <div className="dashboard-page-wrapper animate-in">
@@ -89,7 +115,7 @@ export default function Dashboard() {
 
                         <div className="at-a-glance-stats-grid">
                             {/* Stat 1: Total Signals */}
-                            <div className="glance-stat-item" onClick={() => navigate('/signal-monitor')}>
+                            <div className="glance-stat-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/signal-monitor'); } }} onClick={() => navigate('/signal-monitor')}>
                                 <div className="stat-icon-wrapper purple">
                                     <Activity size={20} />
                                 </div>
@@ -104,7 +130,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Stat 2: Problem Clusters */}
-                            <div className="glance-stat-item" onClick={() => navigate('/signal-monitor')}>
+                            <div className="glance-stat-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/signal-monitor'); } }} onClick={() => navigate('/signal-monitor')}>
                                 <div className="stat-icon-wrapper blue">
                                     <Layers size={20} />
                                 </div>
@@ -119,7 +145,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Stat 3: Active Alerts */}
-                            <div className="glance-stat-item" onClick={() => navigate('/alerts')}>
+                            <div className="glance-stat-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="stat-icon-wrapper red">
                                     <Bell size={20} />
                                 </div>
@@ -134,7 +160,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Stat 4: Citizen Reports */}
-                            <div className="glance-stat-item" onClick={() => navigate('/citizen-reports')}>
+                            <div className="glance-stat-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/citizen-reports'); } }} onClick={() => navigate('/citizen-reports')}>
                                 <div className="stat-icon-wrapper green">
                                     <Users size={20} />
                                 </div>
@@ -156,7 +182,7 @@ export default function Dashboard() {
                         
                         <div className="action-cards-grid">
                             {/* Card 1: Monitor Signals */}
-                            <div className="action-card-item" onClick={() => navigate('/signal-monitor')}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/signal-monitor'); } }} onClick={() => navigate('/signal-monitor')}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box purple">
                                         <Activity size={20} />
@@ -170,7 +196,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Card 2: Review Alerts */}
-                            <div className="action-card-item" onClick={() => navigate('/alerts')}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box red">
                                         <Bell size={20} />
@@ -184,7 +210,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Card 3: Citizen Reports */}
-                            <div className="action-card-item" onClick={() => navigate('/citizen-reports')}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/citizen-reports'); } }} onClick={() => navigate('/citizen-reports')}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box green">
                                         <Users size={20} />
@@ -198,7 +224,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Card 4: Analytics Dashboard */}
-                            <div className="action-card-item" onClick={() => navigate('/analytics')}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/analytics'); } }} onClick={() => navigate('/analytics')}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box blue">
                                         <BarChart2 size={20} />
@@ -212,7 +238,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Card 5: Escalation Center */}
-                            <div className="action-card-item" onClick={() => navigate('/working')}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/working'); } }} onClick={() => navigate('/working')}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box orange">
                                         <ShieldAlert size={20} />
@@ -226,7 +252,7 @@ export default function Dashboard() {
                             </div>
 
                             {/* Card 6: Generate Reports */}
-                            <div className="action-card-item" onClick={() => setIsExportModalOpen(true)}>
+                            <div className="action-card-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setIsExportModalOpen(true); } }} onClick={() => setIsExportModalOpen(true)}>
                                 <div className="action-card-header">
                                     <div className="action-icon-box purple">
                                         <FileSpreadsheet size={20} />
@@ -268,12 +294,12 @@ export default function Dashboard() {
                     <div className="panel-card">
                         <div className="panel-card-header">
                             <h3 className="panel-card-title">Recent Alerts</h3>
-                            <button className="panel-view-all" onClick={() => navigate('/alerts')}>View All</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/alerts')}>View All</button>
                         </div>
 
                         <div className="recent-alerts-list">
                             {/* Alert 1 */}
-                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                            <div className="alert-list-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="alert-item-icon red">
                                     <AlertTriangle size={16} />
                                 </div>
@@ -283,12 +309,12 @@ export default function Dashboard() {
                                 </div>
                                 <div className="alert-item-right">
                                     <div className="alert-time">09:25 AM</div>
-                                    <span className="severity-badge high">High</span>
+                                    <span className="badge badge-high">High</span>
                                 </div>
                             </div>
 
                             {/* Alert 2 */}
-                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                            <div className="alert-list-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="alert-item-icon orange">
                                     <Wrench size={16} />
                                 </div>
@@ -298,12 +324,12 @@ export default function Dashboard() {
                                 </div>
                                 <div className="alert-item-right">
                                     <div className="alert-time">09:10 AM</div>
-                                    <span className="severity-badge medium">Medium</span>
+                                    <span className="badge badge-moderate">Medium</span>
                                 </div>
                             </div>
 
                             {/* Alert 3 */}
-                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                            <div className="alert-list-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="alert-item-icon orange">
                                     <Users size={16} />
                                 </div>
@@ -313,12 +339,12 @@ export default function Dashboard() {
                                 </div>
                                 <div className="alert-item-right">
                                     <div className="alert-time">08:55 AM</div>
-                                    <span className="severity-badge medium">Medium</span>
+                                    <span className="badge badge-moderate">Medium</span>
                                 </div>
                             </div>
 
                             {/* Alert 4 */}
-                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                            <div className="alert-list-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="alert-item-icon blue">
                                     <Droplets size={16} />
                                 </div>
@@ -328,12 +354,12 @@ export default function Dashboard() {
                                 </div>
                                 <div className="alert-item-right">
                                     <div className="alert-time">08:30 AM</div>
-                                    <span className="severity-badge high">High</span>
+                                    <span className="badge badge-high">High</span>
                                 </div>
                             </div>
 
                             {/* Alert 5 */}
-                            <div className="alert-list-item" onClick={() => navigate('/alerts')}>
+                            <div className="alert-list-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/alerts'); } }} onClick={() => navigate('/alerts')}>
                                 <div className="alert-item-icon blue">
                                     <Zap size={16} />
                                 </div>
@@ -343,7 +369,7 @@ export default function Dashboard() {
                                 </div>
                                 <div className="alert-item-right">
                                     <div className="alert-time">08:15 AM</div>
-                                    <span className="severity-badge low">Low</span>
+                                    <span className="badge badge-low">Low</span>
                                 </div>
                             </div>
                         </div>
@@ -382,7 +408,7 @@ export default function Dashboard() {
                     <div className="panel-card">
                         <div className="panel-card-header">
                             <h3 className="panel-card-title">System Health</h3>
-                            <button className="panel-view-all" onClick={() => navigate('/system-monitoring')}>View Details</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/system-monitoring')}>View Details</button>
                         </div>
 
                         <div className="system-health-list">
