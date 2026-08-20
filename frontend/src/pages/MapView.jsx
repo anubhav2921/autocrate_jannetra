@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet';
-import { MapPin, Globe, Activity, ShieldAlert, Layers } from 'lucide-react';
+import { MapPin, Globe, Activity, ShieldAlert, Layers, RefreshCw } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { fetchLocationMapMarkers } from '../services/api';
 import { useLocation } from '../context/LocationContext';
@@ -22,7 +22,7 @@ export default function MapView() {
     const [zoom, setZoom] = useState(5);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const loadMarkers = () => {
         setLoading(true);
         fetchLocationMapMarkers(location)
             .then((data) => {
@@ -32,6 +32,10 @@ export default function MapView() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
+    };
+
+    useEffect(() => {
+        loadMarkers();
     }, [location.state, location.district, location.city, location.ward]);
 
     const highRiskCount = markers.filter(m => m.risk_level === 'HIGH').length;
@@ -46,9 +50,25 @@ export default function MapView() {
                     <h1 className="hero-greeting" style={{ fontSize: '1.5rem' }}>Problem Location Map</h1>
                     <p className="hero-subtext">Interactive geospatial map tracking governance issue hotspots and risk levels</p>
                 </div>
-                <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
-                    <Globe size={14} className="location-icon" />
-                    <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="navbar-location-pill" style={{ background: '#181c2e' }}>
+                        <Globe size={14} className="location-icon" />
+                        <span>{hasLocation ? locationLabel() : 'All India'}</span>
+                    </div>
+
+                    <button
+                        onClick={loadMarkers}
+                        disabled={loading}
+                        style={{
+                            padding: '8px 14px', background: '#181c2e', color: '#94a3b8',
+                            border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600
+                        }}
+                        title="Refresh Map Data"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 

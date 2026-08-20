@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends
 from datetime import datetime, timedelta
 from ..database import (
     news_articles_collection, articles_collection,
-    alerts_collection, signal_problems_collection
+    alerts_collection, signal_problems_collection,
+    citizen_reports_collection
 )
 from ..utils import get_current_user
 
@@ -55,7 +56,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     active_alerts = await news_articles_collection.count_documents({**fresh_match, "risk_level": {"$in": ["HIGH", "MODERATE"]}})
 
     # Citizen Reports
-    citizen_reports_count = await signal_problems_collection.count_documents({**match_filter, "category": "Citizen Report"})
+    cr_cnt = await citizen_reports_collection.count_documents({"deleted": {"$ne": True}})
+    sp_cr_cnt = await signal_problems_collection.count_documents({**match_filter, "category": "Citizen Report"})
+    citizen_reports_count = max(cr_cnt, sp_cr_cnt)
 
     # Sentiment distribution
     sent_res = await news_articles_collection.aggregate([

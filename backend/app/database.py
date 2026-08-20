@@ -77,8 +77,9 @@ class SupabaseCursorAdapter:
         if self._skip:
             filtered = filtered[self._skip:]
 
-        if self._limit or length:
-            filtered = filtered[:self._limit or length]
+        lim = self._limit if self._limit is not None else length
+        if lim is not None and isinstance(lim, int) and lim > 0:
+            filtered = filtered[:lim]
             
         return filtered
 
@@ -134,11 +135,15 @@ class SupabaseCursorAdapter:
                 if row_val is None or _to_comparable(row_val) >= _to_comparable(cmp):
                     return False
             elif op == "$regex":
-                if row_val is None:
+                if row_val is None or not cmp:
                     return False
-                flags = re.IGNORECASE if ops.get("$options", "") == "i" else 0
-                if not re.search(cmp, str(row_val), flags):
-                    return False
+                try:
+                    pattern = cmp if hasattr(cmp, "search") else str(cmp)
+                    flags = re.IGNORECASE if ops.get("$options", "") == "i" else 0
+                    if not re.search(pattern, str(row_val), flags):
+                        return False
+                except Exception:
+                    pass
             # Unknown operators are silently ignored (graceful degradation)
         return True
 

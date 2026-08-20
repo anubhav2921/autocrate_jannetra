@@ -486,116 +486,160 @@ const ReportIssue = () => {
                         </motion.div>
                     )}
 
-                    {step === 'autofill' && (
-                        <motion.div 
-                            key="autofill"
-                            initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
-                            className="details-view"
-                        >
-                            <div className="details-card glass-premium">
-                                <div className="results-header">
-                                    <div className="result-img-box">
-                                        <img src={capturedImage} alt="Problem" />
+                    {step === 'autofill' && (() => {
+                        const confidenceScore = Number(aiResult?.confidence_score ?? aiResult?.confidence ?? 0);
+                        const detectedIssueStr = String(aiResult?.detected_issue || issueType || '').trim().toLowerCase();
+                        const severityStr = String(aiResult?.severity || '').trim().toLowerCase();
+
+                        const isNoProblem = 
+                            !aiResult || 
+                            detectedIssueStr === 'none' || 
+                            detectedIssueStr === 'no issue' || 
+                            detectedIssueStr === 'no problem' ||
+                            detectedIssueStr === 'no problem detected' ||
+                            detectedIssueStr === 'normal' ||
+                            severityStr === 'none';
+
+                        const isLowConfidence = confidenceScore < 50;
+                        const isInvalidReport = isNoProblem || isLowConfidence;
+
+                        return (
+                            <motion.div 
+                                key="autofill"
+                                initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ opacity: 0 }}
+                                className="details-view"
+                            >
+                                <div className="details-card glass-premium">
+                                    <div className="results-header">
+                                        <div className="result-img-box">
+                                            <img src={capturedImage} alt="Problem" />
+                                        </div>
+                                        <div className="result-meta">
+                                            <span className="badge-ai">
+                                                <Sparkles size={12} /> {aiResult?.scene_type || 'AI Detected'}
+                                            </span>
+                                            <h3>{issueType}</h3>
+                                            <div className="confidence-label" style={{ color: isLowConfidence ? '#ef4444' : '#10b981' }}>
+                                                {confidenceScore}% confidence {isLowConfidence ? '(Low Confidence)' : ''}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="result-meta">
-                                        <span className="badge-ai">
-                                            <Sparkles size={12} /> {aiResult?.scene_type || 'AI Detected'}
+
+                                    <div className="location-row">
+                                        <MapPin size={14} />
+                                        <span>
+                                            {location 
+                                                ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
+                                                : "Detecting GPS..."}
                                         </span>
-                                        <h3>{issueType}</h3>
-                                        <div className="confidence-label">
-                                            {aiResult?.confidence_score ?? aiResult?.confidence ?? 0}% confidence
-                                        </div>
+                                        <span className="timestamp">{new Date().toLocaleTimeString()}</span>
                                     </div>
-                                </div>
 
-                                <div className="location-row">
-                                    <MapPin size={14} />
-                                    <span>
-                                        {location 
-                                            ? `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}`
-                                            : "Detecting GPS..."}
-                                    </span>
-                                    <span className="timestamp">{new Date().toLocaleTimeString()}</span>
-                                </div>
+                                    <div className="form-section">
+                                        <label>Add Audio Evidence (Voice Recording)</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                            <button 
+                                                className={`mic-floating-btn ${isRecordingAudio ? 'active' : ''}`}
+                                                onClick={toggleAudioRecording}
+                                                style={{ position: 'relative', width: '56px', height: '56px', right: 0, bottom: 0 }}
+                                            >
+                                                <Mic size={24} />
+                                            </button>
+                                            <div style={{ flex: 1 }}>
+                                                {isRecordingAudio ? (
+                                                    <div className="text-blue animate-pulse font-medium">Recording Audio... Tap to stop</div>
+                                                ) : audioUrl ? (
+                                                    <audio src={audioUrl} controls style={{ width: '100%', height: '40px' }} />
+                                                ) : (
+                                                    <div className="text-muted text-sm">Tap mic to record authentic audio evidence</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        <label>Report Description</label>
+                                        <div className="ai-textarea-container">
+                                            <textarea 
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
+                                                placeholder="Add more details..."
+                                                rows={7}
+                                                style={{ paddingRight: '16px', color: '#f8fafc', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                            />
+                                        </div>
 
-                                <div className="form-section">
-                                    <label>Add Audio Evidence (Voice Recording)</label>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                                        <button 
-                                            className={`mic-floating-btn ${isRecordingAudio ? 'active' : ''}`}
-                                            onClick={toggleAudioRecording}
-                                            style={{ position: 'relative', width: '56px', height: '56px', right: 0, bottom: 0 }}
+                                        <label style={{ marginTop: '16px' }}>Tag Responsible Authority (Optional)</label>
+                                        <select 
+                                            value={department} 
+                                            onChange={(e) => setDepartment(e.target.value)}
+                                            style={{ 
+                                                width: '100%', padding: '12px 16px', borderRadius: '12px',
+                                                background: '#181c2e', border: '1px solid rgba(255,255,255,0.15)',
+                                                color: '#f8fafc', fontSize: '0.95rem', fontFamily: 'inherit',
+                                                cursor: 'pointer'
+                                            }}
                                         >
-                                            <Mic size={24} />
-                                        </button>
-                                        <div style={{ flex: 1 }}>
-                                            {isRecordingAudio ? (
-                                                <div className="text-blue animate-pulse font-medium">Recording Audio... Tap to stop</div>
-                                            ) : audioUrl ? (
-                                                <audio src={audioUrl} controls style={{ width: '100%', height: '40px' }} />
-                                            ) : (
-                                                <div className="text-muted text-sm">Tap mic to record authentic audio evidence</div>
-                                            )}
+                                            <option value="" style={{ background: '#181c2e', color: '#f8fafc' }}>-- Let AI Decide Automatically --</option>
+                                            <option value="police" style={{ background: '#181c2e', color: '#f8fafc' }}>Police Department</option>
+                                            <option value="municipal" style={{ background: '#181c2e', color: '#f8fafc' }}>Municipal Corporation</option>
+                                            <option value="traffic" style={{ background: '#181c2e', color: '#f8fafc' }}>Traffic Police</option>
+                                            <option value="electricity" style={{ background: '#181c2e', color: '#f8fafc' }}>Electricity Board</option>
+                                            <option value="water" style={{ background: '#181c2e', color: '#f8fafc' }}>Water & Sanitation</option>
+                                            <option value="health" style={{ background: '#181c2e', color: '#f8fafc' }}>Public Health Dept</option>
+                                            <option value="environment" style={{ background: '#181c2e', color: '#f8fafc' }}>Environmental Control</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="priority-pills">
+                                        <div className={`p_pill ${aiResult?.severity?.toLowerCase()}`}>
+                                            <AlertTriangle size={14} /> {aiResult?.severity} Severity
+                                        </div>
+                                        <div className="p_pill urgency">
+                                            <Clock size={14} /> {aiResult?.urgency || 'Medium'} Urgency
                                         </div>
                                     </div>
-                                    
-                                    <label>Report Description</label>
-                                    <div className="ai-textarea-container">
-                                        <textarea 
-                                            value={description}
-                                            onChange={(e) => setDescription(e.target.value)}
-                                            placeholder="Add more details..."
-                                            rows={7}
-                                            style={{ paddingRight: '16px' }}
-                                        />
-                                    </div>
 
-                                    <label style={{ marginTop: '16px' }}>Tag Responsible Authority (Optional)</label>
-                                    <select 
-                                        value={department} 
-                                        onChange={(e) => setDepartment(e.target.value)}
-                                        style={{ 
-                                            width: '100%', padding: '12px 16px', borderRadius: '12px',
-                                            background: 'var(--bg-glass)', border: '1px solid var(--border-color)',
-                                            color: 'var(--text-primary)', fontSize: '0.95rem', fontFamily: 'inherit',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <option value="">-- Let AI Decide Automatically --</option>
-                                        <option value="police">Police Department</option>
-                                        <option value="municipal">Municipal Corporation</option>
-                                        <option value="traffic">Traffic Police</option>
-                                        <option value="electricity">Electricity Board</option>
-                                        <option value="water">Water & Sanitation</option>
-                                        <option value="health">Public Health Dept</option>
-                                        <option value="environment">Environmental Control</option>
-                                    </select>
-                                </div>
+                                    {/* Submission Warning Banner when Invalid */}
+                                    {isInvalidReport && (
+                                        <div style={{
+                                            background: 'rgba(239, 68, 68, 0.15)',
+                                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                                            color: '#f87171',
+                                            padding: '14px 16px',
+                                            borderRadius: '14px',
+                                            marginBottom: '16px',
+                                            fontSize: '0.85rem',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px'
+                                        }}>
+                                            <AlertTriangle size={20} style={{ flexShrink: 0 }} />
+                                            <div>
+                                                <strong style={{ color: '#fca5a5' }}>Submission Disabled:</strong>{' '}
+                                                {isNoProblem 
+                                                    ? `AI detected no civic problem in this photo ("${aiResult?.detected_issue || 'None'}"). Please retake a photo of a valid civic issue.`
+                                                    : `AI confidence score is too low (${confidenceScore}% < 50%). Please retake a clearer photo.`
+                                                }
+                                            </div>
+                                        </div>
+                                    )}
 
-                                <div className="priority-pills">
-                                    <div className={`p_pill ${aiResult?.severity?.toLowerCase()}`}>
-                                        <AlertTriangle size={14} /> {aiResult?.severity} Severity
-                                    </div>
-                                    <div className="p_pill urgency">
-                                        <Clock size={14} /> {aiResult?.urgency || 'Medium'} Urgency
+                                    <div className="submission-actions">
+                                        <button className="btn btn-ghost flex-1" onClick={() => setStep('camera')}>
+                                            <RotateCcw size={18} /> Retake
+                                        </button>
+                                        <button 
+                                            className={`btn btn-primary flex-2 ${isInvalidReport ? 'btn-disabled' : ''}`} 
+                                            onClick={handleSubmit}
+                                            disabled={isSubmitting || isInvalidReport}
+                                            title={isInvalidReport ? (isNoProblem ? 'No civic problem detected' : 'Confidence score too low (< 50%)') : 'Submit Report'}
+                                        >
+                                            {isSubmitting ? <Loader2 className="animate-spin" /> : 'Submit Report'}
+                                        </button>
                                     </div>
                                 </div>
-
-                                <div className="submission-actions">
-                                    <button className="btn btn-ghost flex-1" onClick={() => setStep('camera')}>
-                                        <RotateCcw size={18} /> Retake
-                                    </button>
-                                    <button 
-                                        className="btn btn-primary flex-2" 
-                                        onClick={handleSubmit}
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting ? <Loader2 className="animate-spin" /> : 'Submit Report'}
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
+                            </motion.div>
+                        );
+                    })()}
 
                     {step === 'success' && (
                         <motion.div 
@@ -615,8 +659,8 @@ const ReportIssue = () => {
                                     Your report has been logged. <br />
                                     Use the ID above to track resolution status.
                                 </p>
-                                <button className="btn btn-primary mt-xl w-full" style={{ padding: '18px' }} onClick={() => navigate('/')}>
-                                    Back to Home
+                                <button className="btn btn-primary mt-xl w-full" style={{ padding: '18px' }} onClick={() => navigate('/citizen-reports')}>
+                                    View All Citizen Reports
                                 </button>
                             </div>
                         </motion.div>
@@ -628,14 +672,33 @@ const ReportIssue = () => {
                 .report-full-page {
                     position: fixed;
                     inset: 0;
-                    background: rgba(9, 9, 11, 0.75);
+                    background: rgba(9, 9, 11, 0.85);
                     backdrop-filter: blur(20px);
                     -webkit-backdrop-filter: blur(20px);
-                    color: var(--text-primary);
+                    color: #f8fafc !important;
                     z-index: 10000;
                     display: flex;
                     flex-direction: column;
                     font-family: 'Plus Jakarta Sans', sans-serif;
+                }
+                .report-full-page textarea, 
+                .report-full-page input {
+                    color: #f8fafc !important;
+                    background: rgba(255, 255, 255, 0.08) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                }
+                .report-full-page textarea::placeholder,
+                .report-full-page input::placeholder {
+                    color: rgba(248, 250, 252, 0.5) !important;
+                }
+                .report-full-page select {
+                    color: #f8fafc !important;
+                    background: #181c2e !important;
+                    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+                }
+                .report-full-page select option {
+                    background: #181c2e !important;
+                    color: #f8fafc !important;
                 }
                 .guided-header {
                     height: 68px;
@@ -643,7 +706,7 @@ const ReportIssue = () => {
                     align-items: center;
                     justify-content: space-between;
                     padding: 0 24px;
-                    background: rgba(14, 14, 18, 0.6);
+                    background: rgba(14, 14, 18, 0.8);
                     backdrop-filter: blur(16px);
                     -webkit-backdrop-filter: blur(16px);
                     z-index: 10;
@@ -667,7 +730,7 @@ const ReportIssue = () => {
                 .card-icon { color: #A881FE; margin-bottom: 16px; }
                 .work-card h4 { font-size: 1.1rem; margin-bottom: 8px; color: #ffffff; font-weight: 700; }
                 .work-card p { font-size: 0.85rem; color: #a1a1aa; line-height: 1.5; }
-                .start-btn { padding: 20px; font-size: 1.1rem; border-radius: 16px; margin-top: 20px; background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%); border: none; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(168, 129, 254, 0.4); }
+                .start-btn { padding: 20px; font-size: 1.1rem; border-radius: 16px; margin-top: 20px; background: radial-gradient(59.46% 220% at 50% 100%, #A881FE 0%, #6419FF 100%); border: none; font-weight: 700; cursor: pointer; box-shadow: 0 4px 18px rgba(168, 129, 254, 0.4); color: white; }
                 .ml-s { margin-left: 8px; }
 
                 /* Camera Styles */
@@ -676,7 +739,7 @@ const ReportIssue = () => {
                 .camera-loading-overlay {
                     position: absolute; inset: 0; 
                     display: flex; flex-direction: column; align-items: center; justify-content: center;
-                    background: var(--bg-primary); z-index: 5;
+                    background: #09090b; z-index: 5; color: white;
                 }
                 .video-el { width: 100%; height: 100%; object-fit: cover; }
                 .video-el.mirrored { transform: scaleX(-1); }
@@ -737,55 +800,73 @@ const ReportIssue = () => {
                 .details-view { 
                     padding: 20px; height: 100%; overflow-y: auto; 
                 }
-                .details-card { padding: 24px; border-radius: 24px; max-width: 500px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border-color); }
+                .details-card { padding: 24px; border-radius: 24px; max-width: 540px; margin: 0 auto; background: #12131a; border: 1px solid rgba(255,255,255,0.12); color: #f8fafc; }
                 .results-header { display: flex; gap: 16px; margin-bottom: 24px; align-items: center; }
                 .result-img-box { width: 80px; height: 80px; border-radius: 12px; overflow: hidden; flex-shrink: 0; border: 2px solid #6366f1; }
                 .result-img-box img { width: 100%; height: 100%; object-fit: cover; }
-                .result-meta h3 { margin: 4px 0; font-size: 1.25rem; color: var(--text-primary); }
+                .result-meta h3 { margin: 4px 0; font-size: 1.25rem; color: #f8fafc; }
                 .badge-ai { font-size: 0.65rem; color: #818cf8; background: rgba(99, 102, 241, 0.1); padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; text-transform: uppercase; font-weight: 700; }
-                .confidence-label { font-size: 0.8rem; color: #10b981; font-weight: 500; }
+                .confidence-label { font-size: 0.8rem; color: #10b981; font-weight: 600; }
 
-                .location-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 24px; padding: 12px; background: var(--bg-glass); border-radius: 8px; border: 1px solid var(--border-color); }
+                .location-row { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: #94a3b8; margin-bottom: 24px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
                 .timestamp { margin-left: auto; }
 
-                .form-section label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 500; }
+                .form-section label { display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; font-weight: 600; }
                 .ai-textarea-container { position: relative; margin-bottom: 12px; }
-                textarea { width: 100%; background: var(--bg-glass); border: 1px solid var(--border-color); border-radius: 16px; padding: 16px; color: var(--text-primary); resize: none; font-family: inherit; line-height: 1.5; font-size: 0.95rem; }
-                .mic-floating-btn { position: absolute; right: 12px; bottom: 12px; width: 48px; height: 48px; border-radius: 50%; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s; }
+                textarea { width: 100%; border-radius: 16px; padding: 16px; resize: none; font-family: inherit; line-height: 1.5; font-size: 0.95rem; }
+                .mic-floating-btn { position: absolute; right: 12px; bottom: 12px; width: 48px; height: 48px; border-radius: 50%; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); color: #f8fafc; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: all 0.3s; }
                 .mic-floating-btn.active { background: #ef4444; color: white; animation: pulse-red 1s infinite; }
-                .mic-hint { font-size: 0.75rem; color: var(--text-muted); text-align: center; }
+                .mic-hint { font-size: 0.75rem; color: #94a3b8; text-align: center; }
 
                 .priority-pills { display: flex; gap: 10px; margin: 24px 0; }
-                .p_pill { flex: 1; padding: 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border-color); }
-                .p_pill.high { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-                .p_pill.medium { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
-                .p_pill.urgency { background: rgba(99, 102, 241, 0.1); color: #818cf8; }
+                .p_pill { flex: 1; padding: 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(255,255,255,0.1); }
+                .p_pill.high { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+                .p_pill.medium { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+                .p_pill.urgency { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
 
-                .submission-actions { display: flex; gap: 12px; margin-top: 32px; }
+                .submission-actions { display: flex; gap: 12px; margin-top: 24px; }
                 .btn { padding: 14px 20px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
                 .btn-primary { background: #6366f1; color: white; }
-                .btn-primary:active { transform: scale(0.98); }
-                .btn-ghost { background: var(--bg-glass); color: var(--text-primary); border: 1px solid var(--border-color); }
+                .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+                .btn-primary.btn-disabled, 
+                .btn-primary:disabled {
+                    background: #334155 !important;
+                    color: #64748b !important;
+                    cursor: not-allowed !important;
+                    box-shadow: none !important;
+                    opacity: 0.6;
+                }
+                .btn-ghost { background: rgba(255,255,255,0.06); color: #f8fafc; border: 1px solid rgba(255,255,255,0.12); }
+
+                /* Mobile Responsiveness */
+                @media (max-width: 640px) {
+                    .how-it-works-grid { grid-template-columns: 1fr !important; }
+                    .main-title { font-size: 1.8rem !important; }
+                    .details-card { padding: 16px !important; border-radius: 16px !important; }
+                    .results-header { flex-direction: column !important; text-align: center !important; }
+                    .submission-actions { flex-direction: column !important; }
+                    .priority-pills { flex-direction: column !important; }
+                }
 
                 /* Utils */
                 .text-center { text-align: center; }
-                .text-muted { color: var(--text-muted); }
+                .text-muted { color: #94a3b8; }
                 .text-blue { color: #6366f1; }
                 .mt-s { margin-top: 8px; } .mt-m { margin-top: 16px; } .mt-l { margin-top: 24px; } .mt-xl { margin-top: 32px; }
                 .w-full { width: 100%; }
                 .flex-center { display: flex; align-items: center; justify-content: center; height: 100%; }
-                .bg-dark { background: var(--bg-primary); }
+                .bg-dark { background: #09090b; }
                 .success-view-inner { max-width: 480px; width: 100%; padding: 40px; }
-                .glass-premium { background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-color); }
+                .glass-premium { background: rgba(18, 19, 26, 0.95); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.12); }
 
                 @keyframes scanning { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
                 @keyframes pulse-scale { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.7; } }
                 @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 100% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } }
                 .animate-pulse { animation: pulse 2s infinite; }
-                                        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-                    ` }} />
-                </div>
-            );
-        };
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+            ` }} />
+        </div>
+    );
+};
 
-        export default ReportIssue;
+export default ReportIssue;
