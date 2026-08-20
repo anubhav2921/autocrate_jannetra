@@ -17,9 +17,9 @@ if os.path.exists(dotenv_backend):
 load_dotenv()
 
 # ─── CONFIG ───────────────────────────────────────────────────
-API_KEY   =
-MODEL     = ""
-API_URL   = ""
+API_KEY   = 
+MODEL     = "meta/llama-3.2-90b-vision-instruct"
+API_URL   = os.getenv("NVIDIA_API_URL", "https://integrate.api.nvidia.com/v1/chat/completions")
 IMAGE_PATH = "test_image.jpg"   # <-- place your test image here
 # ──────────────────────────────────────────────────────────────
 

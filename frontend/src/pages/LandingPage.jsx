@@ -191,7 +191,7 @@ const LandingPage = () => {
             {/* Navigation Bar */}
             <nav className={`landing-nav ${scrolled ? 'nav-scrolled' : ''}`}>
                 <div className="nav-container">
-                    <div className="nav-logo" onClick={() => navigate('/')}>
+                    <div className="nav-logo" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/'); } }} onClick={() => navigate('/')}>
                         <div className="logo-symbol-box">
                             <span className="logo-symbol-text">J ✦ N</span>
                         </div>
@@ -849,7 +849,7 @@ const LandingPage = () => {
                 </div>
                 <div className="faq-grid">
                     {faqItems.map((item, idx) => (
-                        <div key={idx} className="faq-item" onClick={() => toggleFaq(idx)}>
+                        <div key={idx} className="faq-item" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleFaq(idx); } }} onClick={() => toggleFaq(idx)}>
                             <div className="faq-question">
                                 <span>{item.q}</span>
                                 <ChevronDown size={18} style={{ transform: expandedFaq === idx ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />

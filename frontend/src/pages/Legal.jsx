@@ -89,7 +89,7 @@ const Legal = () => {
         <div className="landing-root" style={{ background: 'var(--landing-bg-start)', minHeight: '100vh', color: 'var(--text-primary)', transition: 'background var(--transition-base)' }}>
             <nav className="landing-nav nav-scrolled" style={{ background: 'var(--navbar-bg)', borderBottom: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
                 <div className="nav-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '0 40px' }}>
-                    <div className="nav-logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+                    <div className="nav-logo" role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/'); } }} onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
                         <span className="logo-brand" style={{ color: 'var(--landing-text-main)', fontWeight: 700 }}>Jan<span className="highlight" style={{ color: 'var(--landing-accent)' }}>Netra</span></span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -105,13 +105,13 @@ const Legal = () => {
 
             <div className="legal-container" style={{ maxWidth: '1200px', margin: '140px auto 100px', display: 'grid', gridTemplateColumns: '250px 1fr', gap: '40px', padding: '0 40px' }}>
                 <div className="legal-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div className={`legal-nav-item ${section === 'privacy' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'privacy' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'privacy' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'privacy' ? 600 : 500 }} onClick={() => navigate('/legal/privacy')}>
+                    <div className={`legal-nav-item ${section === 'privacy' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'privacy' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'privacy' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'privacy' ? 600 : 500 }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/legal/privacy'); } }} onClick={() => navigate('/legal/privacy')}>
                         <Lock size={18} /> Privacy Policy
                     </div>
-                    <div className={`legal-nav-item ${section === 'terms' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'terms' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'terms' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'terms' ? 600 : 500 }} onClick={() => navigate('/legal/terms')}>
+                    <div className={`legal-nav-item ${section === 'terms' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'terms' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'terms' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'terms' ? 600 : 500 }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/legal/terms'); } }} onClick={() => navigate('/legal/terms')}>
                         <Scale size={18} /> Terms of Service
                     </div>
-                    <div className={`legal-nav-item ${section === 'transparency' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'transparency' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'transparency' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'transparency' ? 600 : 500 }} onClick={() => navigate('/legal/transparency')}>
+                    <div className={`legal-nav-item ${section === 'transparency' ? 'active' : ''}`} style={{ padding: '12px 20px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', background: section === 'transparency' ? 'var(--accent-blue-bg)' : 'transparent', color: section === 'transparency' ? 'var(--accent-blue)' : 'var(--text-secondary)', fontWeight: section === 'transparency' ? 600 : 500 }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate('/legal/transparency'); } }} onClick={() => navigate('/legal/transparency')}>
                         <Info size={18} /> Transparency
                     </div>
                 </div>

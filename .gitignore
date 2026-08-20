@@ -44,6 +44,8 @@ tmp/
 # --- IDEs ---
 .vscode/
 .idea/
+.gemini/
+.agent/
 .DS_Store
 Thumbs.db
 
