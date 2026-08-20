@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
-    Wrench, Droplets, Zap, CheckCircle2, BarChart2, FileText,
-    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet
     Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
     TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut
 } from 'lucide-react';
