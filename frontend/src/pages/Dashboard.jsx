@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
     Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
-    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut
+    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut, MessageSquare, AtSign
 } from 'lucide-react';
 import { fetchLocationDashboard, triggerPipeline } from '../services/api';
 import { useLocation } from '../context/LocationContext';
@@ -370,6 +370,44 @@ export default function Dashboard() {
                                     <span className="badge badge-low">Low</span>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Recent Social Mentions */}
+                    <div className="panel-card">
+                        <div className="panel-card-header">
+                            <h3 className="panel-card-title">Recent Social Mentions</h3>
+                        </div>
+
+                        <div className="recent-alerts-list">
+                            {data?.recent_social_mentions && data.recent_social_mentions.length > 0 ? (
+                                data.recent_social_mentions.map((mention, index) => (
+                                    <div key={mention.id || index} className="alert-list-item" style={{ cursor: 'default' }}>
+                                        <div className="alert-item-icon blue">
+                                            <MessageSquare size={16} />
+                                        </div>
+                                        <div className="alert-item-body">
+                                            <div className="alert-item-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                                                {mention.content}
+                                            </div>
+                                            <div className="alert-item-meta" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <AtSign size={12} /> {mention.author} • {mention.platform}
+                                            </div>
+                                        </div>
+                                        {mention.url && (
+                                            <div className="alert-item-right">
+                                                <a href={mention.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '11px' }}>
+                                                    View
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            ) : (
+                                <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                    No recent mentions found.
+                                </div>
+                            )}
                         </div>
                     </div>
 

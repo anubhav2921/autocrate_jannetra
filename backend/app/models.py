@@ -288,3 +288,16 @@ class NewsArticleSchema(BaseModel):
     ward: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+
+# ─────────────────────────────────────────────
+#  Social Mention
+# ─────────────────────────────────────────────
+class SocialMentionSchema(BaseModel):
+    id: str = Field(default_factory=gen_uuid)
+    platform: str = "instagram"
+    author_username: Optional[str] = None
+    content: Optional[str] = None
+    post_url: Optional[str] = None
+    media_id: Optional[str] = None
+    raw_payload: Dict[str, Any] = {}
+    created_at: Optional[datetime] = None
