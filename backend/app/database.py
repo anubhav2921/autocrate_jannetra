@@ -321,6 +321,7 @@ system_metrics_collection     = SupabaseCollectionAdapter("system_metrics")
 community_reviews_collection  = SupabaseCollectionAdapter("community_reviews")
 activity_logs_collection      = SupabaseCollectionAdapter("activity_logs")
 citizen_reports_collection    = SupabaseCollectionAdapter("citizen_reports")
+social_mentions_collection    = SupabaseCollectionAdapter("social_mentions")
 
 # Generic db dictionary interface
 class DatabaseAccessor:

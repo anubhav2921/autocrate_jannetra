@@ -16,7 +16,8 @@ from app.routes import (
     account, alerts, analytics, articles, auth, chatbot,
     citizen_reports, complaints, dashboard, leaderboard,
     location, map_route, pipeline, reports, resolutions,
-    scanner, signal_problems, signals, sources, system_monitoring, workflows
+    scanner, signal_problems, signals, sources, system_monitoring, workflows,
+    webhooks
 )
 
 # Configure logging
@@ -145,6 +146,7 @@ app.include_router(signals.router)
 app.include_router(sources.router)
 app.include_router(system_monitoring.router)
 app.include_router(workflows.router)
+app.include_router(webhooks.router)
 
 @app.get("/")
 async def health_check():

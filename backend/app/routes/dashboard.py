@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from ..database import (
     news_articles_collection, articles_collection,
     alerts_collection, signal_problems_collection,
-    citizen_reports_collection
+    citizen_reports_collection, social_mentions_collection
 )
 from ..utils import get_current_user
 
@@ -85,6 +85,9 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
     # Top Risks (from signal problems to match Signal Monitor contents)
     top_issues = await signal_problems_collection.find(fresh_match).sort("priority_score", -1).limit(10).to_list(10)
 
+    # Recent Social Mentions
+    social_mentions = await social_mentions_collection.find(match_filter).sort("created_at", -1).limit(5).to_list(5)
+
     return {
         "overall_gri": round(avg_risk, 1),
         "total_articles": na_total, # Signal counts
@@ -115,4 +118,15 @@ async def get_dashboard(current_user: dict = Depends(get_current_user)):
             for a in top_issues
         ],
         "critical_alerts": [],
+        "recent_social_mentions": [
+            {
+                "id": m.get("id"),
+                "platform": m.get("platform", "Unknown"),
+                "author": m.get("author_username") or "Anonymous",
+                "content": m.get("content") or "No content",
+                "url": m.get("post_url"),
+                "created_at": m.get("created_at")
+            }
+            for m in social_mentions
+        ]
     }
