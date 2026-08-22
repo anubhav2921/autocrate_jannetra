@@ -108,25 +108,28 @@ async def analyze_reported_issue(
         "confidence_score": <int 0-100>
     }
     """
-    import time
+    import asyncio
     max_retries = 3
     base_delay = 2 # seconds
     
+    def _compress_image_sync(image_content):
+        from PIL import Image
+        img = Image.open(io.BytesIO(image_content)).convert("RGB")
+        img.thumbnail((1024, 1024), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        return buf.getvalue()
+
     for attempt in range(max_retries):
         try:
-            import requests as req_lib
+            import httpx
             import base64
             
             print(f"Calling NVIDIA Vision API (Attempt {attempt + 1})...")
             
             # Compress for NVIDIA Vision to avoid Payload Too Large limits
             try:
-                from PIL import Image
-                img = Image.open(io.BytesIO(content)).convert("RGB")
-                img.thumbnail((1024, 1024), Image.LANCZOS)
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=85, optimize=True)
-                content_for_ai = buf.getvalue()
+                content_for_ai = await asyncio.to_thread(_compress_image_sync, content)
                 mime_type_for_ai = "image/jpeg"
             except Exception as e:
                 print(f"Image compression failed: {e}")
@@ -168,7 +171,8 @@ async def analyze_reported_issue(
             import logging
             logger = logging.getLogger("nvidia_api")
             
-            response = req_lib.post(invoke_url, headers=nv_headers, json=payload, timeout=120)
+            async with httpx.AsyncClient() as client:
+                response = await client.post(invoke_url, headers=nv_headers, json=payload, timeout=120.0)
             
             if response.status_code != 200:
                 logger.error(f"[NVIDIA API ERROR] Status {response.status_code}: {response.text}")
@@ -214,7 +218,7 @@ async def analyze_reported_issue(
             if ("429" in error_msg or "timeout" in error_msg.lower()) and attempt < max_retries - 1:
                 sleep_time = base_delay * (2 ** attempt)
                 print(f"Retrying NVIDIA in {sleep_time}s...")
-                time.sleep(sleep_time)
+                await asyncio.sleep(sleep_time)
                 continue
             
             # ─────────────────────────────────────────────────────────────
