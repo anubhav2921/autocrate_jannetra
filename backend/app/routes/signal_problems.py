@@ -77,10 +77,25 @@ async def list_signal_problems(
     match["category"] = {"$ne": "Citizen Report"}
 
     # Fetch from the aggregated collection
-    # We sort chronologically to ensure new scraped data stays on top
-    problems_cursor = await signal_problems_collection.find(match).sort([
-        ("_id", -1)
-    ]).to_list(100)
+    # Use aggregation pipeline to sort reddit sources to top
+    pipeline = [
+        {"$match": match},
+        {"$addFields": {
+            "source_order": {
+                "$switch": {
+                    "branches": [
+                        {"case": {"$eq": [{"$toLower": "$source_type"}, "reddit"]}, "then": 0},
+                        {"case": {"$eq": [{"$toLower": "$source_type"}, "rss"]}, "then": 1},
+                        {"case": {"$eq": [{"$toLower": "$source_type"}, "government"]}, "then": 2},
+                    ],
+                    "default": 3
+                }
+            }
+        }},
+        {"$sort": {"source_order": 1, "priority_score": -1, "_id": -1}},
+        {"$limit": 100}
+    ]
+    problems_cursor = await signal_problems_collection.aggregate(pipeline).to_list(100)
     
     results = [
         {
@@ -132,7 +147,24 @@ async def list_signal_problems(
     if not status or status == "Pending":
         needed = 100 - len(results)
         if needed > 0:
-            articles_cursor = await news_articles_collection.find(article_match).sort("_id", -1).limit(needed + 100).to_list(needed + 100)
+            article_pipeline = [
+                {"$match": article_match},
+                {"$addFields": {
+                    "source_order": {
+                        "$switch": {
+                            "branches": [
+                                {"case": {"$eq": [{"$toLower": "$source_type"}, "reddit"]}, "then": 0},
+                                {"case": {"$eq": [{"$toLower": "$source_type"}, "rss"]}, "then": 1},
+                                {"case": {"$eq": [{"$toLower": "$source_type"}, "government"]}, "then": 2},
+                            ],
+                            "default": 3
+                        }
+                    }
+                }},
+                {"$sort": {"source_order": 1, "risk_score": -1, "_id": -1}},
+                {"$limit": needed + 100}
+            ]
+            articles_cursor = await news_articles_collection.aggregate(article_pipeline).to_list(needed + 100)
             
             def get_severity(score):
                 if score >= 85: return "Critical"

@@ -293,9 +293,7 @@ def run_pipeline(city: str = None) -> dict:
         last_city = last_city_doc.get("city") if last_city_doc else None
         
         if last_city and last_city.lower() != city.lower():
-            logger.info(f"[Pipeline] City changed from {last_city} to {city}. Clearing old data.")
-            loop.run_until_complete(db["news_articles"].delete_many({}))
-            loop.run_until_complete(db["signal_problems"].delete_many({}))
+            logger.info(f"[Pipeline] City changed from {last_city} to {city}. Keeping existing data.")
         
         loop.run_until_complete(
             db["scraper_config"].update_one(
@@ -308,10 +306,10 @@ def run_pipeline(city: str = None) -> dict:
 
     # Stage 1: Collect from all sources
     scrapers = [
+        ("Reddit", scrape_reddit_complaints),                   # Indian subreddit complaints via RSS
         ("RSS Feeds", lambda city=None: scrape_rss_feeds()),  # Verified Indian news outlets
-        ("News APIs", scrape_news_apis),                       # NewsAPI + GDELT (specific governance queries)
         ("Gov Portals", scrape_government_portals),            # PIB + data.gov.in
-        ("Reddit", scrape_reddit_complaints)                   # Indian subreddit complaints via RSS
+        ("News APIs", scrape_news_apis)                       # NewsAPI + GDELT (specific governance queries)
     ]
 
     for name, scraper_func in scrapers:
@@ -320,6 +318,10 @@ def run_pipeline(city: str = None) -> dict:
                 articles = scraper_func(city=city)
             else:
                 articles = scraper_func()
+            
+            if name == "News APIs":
+                articles = articles[:15] # Limit news to reduce clutter
+                
             all_articles.extend(articles)
             logger.info("[Pipeline] %s: %d raw signals", name, len(articles))
         except Exception as e:

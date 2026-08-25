@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Activity, Bell, Users, Eye, ArrowRight, AlertTriangle, Shield,
     Wrench, Droplets, Zap, PlusCircle, CheckCircle2, BarChart2, FileText,
-    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut, MessageSquare, AtSign
+    TrendingUp, TrendingDown, Sparkles, Layers, ShieldAlert, FileSpreadsheet, Play, LogOut, MessageSquare, AtSign, Download
 } from 'lucide-react';
 import { fetchLocationDashboard, triggerPipeline } from '../services/api';
 import { useLocation } from '../context/LocationContext';
@@ -20,7 +20,7 @@ export default function Dashboard() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        setLoading(true);
+        if (!data) setLoading(true);
         setError(null);
         fetchLocationDashboard(location)
             .then(resData => {
@@ -28,7 +28,7 @@ export default function Dashboard() {
             })
             .catch(err => {
                 console.error(err);
-                setError('Failed to load dashboard data. Please try again.');
+                if (!data) setError('Failed to load dashboard data. Please try again.');
             })
             .finally(() => setLoading(false));
     }, [location.state, location.district, location.city, location.ward]);
@@ -280,6 +280,68 @@ export default function Dashboard() {
                             <Sparkles size={16} />
                             <span>Ask AI Assistant</span>
                         </button>
+                    </div>
+
+                    {/* Governance Report Summary Card */}
+                    <div className="ai-insight-banner" style={{ marginTop: '20px', background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'block' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                            <div className="ai-insight-title" style={{ color: '#f8fafc', marginBottom: 0 }}>
+                                <FileText size={18} style={{ color: '#3b82f6' }} />
+                                <span>Governance Intelligence Report</span>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
+                                Auto-generated
+                            </span>
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Avg Risk Index (GRI)</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data?.overall_gri > 60 ? '#f87171' : data?.overall_gri > 30 ? '#fbbf24' : '#4ade80' }}>
+                                    {data?.overall_gri || 0}
+                                </div>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Fake News Detected</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data?.fake_news_percentage > 20 ? '#f87171' : '#f8fafc' }}>
+                                    {data?.fake_news_percentage || 0}%
+                                </div>
+                            </div>
+                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Top Risk Category</div>
+                                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={data?.category_risk?.[0]?.category || 'None'}>
+                                    {data?.category_risk?.[0]?.category || 'None'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <a 
+                                href="/api/report/download" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                style={{ 
+                                    flex: 1, padding: '10px 16px', background: 'rgba(59, 130, 246, 0.15)', 
+                                    color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', 
+                                    borderRadius: '10px', display: 'flex', alignItems: 'center', 
+                                    justifyContent: 'center', gap: '8px', fontSize: '0.85rem', 
+                                    fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' 
+                                }}
+                            >
+                                <Download size={16} /> Download Full PDF Report
+                            </a>
+                            <button 
+                                onClick={() => navigate('/analytics')}
+                                style={{ 
+                                    padding: '10px 16px', background: 'rgba(255, 255, 255, 0.05)', 
+                                    color: '#cbd5e1', border: '1px solid rgba(255, 255, 255, 0.1)', 
+                                    borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, 
+                                    cursor: 'pointer', transition: 'all 0.2s' 
+                                }}
+                            >
+                                View Details
+                            </button>
+                        </div>
                     </div>
                 </div>
 
