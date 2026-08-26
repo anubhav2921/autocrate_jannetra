@@ -546,7 +546,7 @@ const LandingPage = () => {
             {/* 5. Report Tracking Section */}
             <section className="track-section">
                 <motion.div
-                    className="track-container glass-card"
+                    className="track-container"
                     initial={{ y: 40, opacity: 0 }}
                     whileInView={{ y: 0, opacity: 1 }}
                     viewport={{ once: true }}
@@ -862,36 +862,7 @@ const LandingPage = () => {
                 </div>
             </section>
 
-            {/* 9. Team & Institution Section */}
-            <section className="team-section">
-                <div className="section-head">
-                    <div className="mn-tag-row" style={{ justifyContent: 'center' }}>
-                        <span className="mn-badge">TEAM // FOUNDERS</span>
-                    </div>
-                    <h2 className="section-title">Team AUTOCRAT</h2>
-                    <p className="section-subtitle">Developing intelligence solutions at United Institute of Technology, Prayagraj.</p>
-                </div>
-                <div className="team-grid">
-                    <div className="team-card">
-                        <div className="team-avatar-box">DT</div>
-                        <h4 className="team-member-name">Deepanshu Tripathi</h4>
-                        <span className="team-member-role">Lead AI & Full Stack Developer</span>
-                        <span className="team-inst">UIT Prayagraj</span>
-                    </div>
-                    <div className="team-card">
-                        <div className="team-avatar-box">AP</div>
-                        <h4 className="team-member-name">Amit Patel</h4>
-                        <span className="team-member-role">NLP Systems Engineer</span>
-                        <span className="team-inst">UIT Prayagraj</span>
-                    </div>
-                    <div className="team-card">
-                        <div className="team-avatar-box">RS</div>
-                        <h4 className="team-member-name">Riya Singh</h4>
-                        <span className="team-member-role">Frontend Architect</span>
-                        <span className="team-inst">UIT Prayagraj</span>
-                    </div>
-                </div>
-            </section>
+
 
             {/* Security/Privacy Note & Trust Statement */}
             <section className="security-note-section">
