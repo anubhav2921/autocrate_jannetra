@@ -35,18 +35,18 @@ export default function Dashboard() {
 
     if (loading) {
         return (
-            <div className="dashboard-page-wrapper animate-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <div className="loading-spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTopColor: 'var(--accent-purple)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            <div className="dashboard-page-wrapper animate-in dashboard-centered-state">
+                <div className="loading-spinner dashboard-spinner"></div>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className="dashboard-page-wrapper animate-in" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '16px' }}>
+            <div className="dashboard-page-wrapper animate-in dashboard-centered-state flex-col gap-16">
                 <AlertTriangle size={48} className="text-red-500" color="var(--risk-high)" />
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 600 }}>Error Loading Dashboard</h2>
-                <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
+                <h2 className="dashboard-error-title">Error Loading Dashboard</h2>
+                <p className="dashboard-error-text">{error}</p>
                 <button className="btn btn-primary" onClick={() => window.location.reload()}>Retry</button>
             </div>
         );
@@ -72,23 +72,10 @@ export default function Dashboard() {
                             <h1 className="hero-greeting">Good morning, {user?.name || 'Admin'} 👋</h1>
                             <p className="hero-subtext">Here's what needs your attention today.</p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div className="hero-actions">
                             <button 
                                 onClick={signOut}
-                                style={{
-                                    padding: '10px 18px',
-                                    background: 'rgba(239, 68, 68, 0.15)',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                    color: '#f87171',
-                                    borderRadius: '12px',
-                                    fontWeight: 700,
-                                    fontSize: '0.85rem',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.2s'
-                                }}
+                                className="btn btn-danger-outline"
                                 title="Log Out"
                             >
                                 <LogOut size={16} /> Log Out
@@ -283,61 +270,50 @@ export default function Dashboard() {
                     </div>
 
                     {/* Governance Report Summary Card */}
-                    <div className="ai-insight-banner" style={{ marginTop: '20px', background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%)', border: '1px solid rgba(255, 255, 255, 0.05)', display: 'block' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                            <div className="ai-insight-title" style={{ color: '#f8fafc', marginBottom: 0 }}>
-                                <FileText size={18} style={{ color: '#3b82f6' }} />
+                    <div className="governance-report-card">
+                        <div className="governance-report-header">
+                            <div className="ai-insight-title" style={{ marginBottom: 0 }}>
+                                <FileText size={18} className="blue-icon" />
                                 <span>Governance Intelligence Report</span>
                             </div>
-                            <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px' }}>
+                            <span className="badge-auto-generated">
                                 Auto-generated
                             </span>
                         </div>
                         
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '20px' }}>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Avg Risk Index (GRI)</div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data?.overall_gri > 60 ? '#f87171' : data?.overall_gri > 30 ? '#fbbf24' : '#4ade80' }}>
+                        <div className="governance-stats-grid">
+                            <div className="governance-stat-box">
+                                <div className="stat-label">Avg Risk Index (GRI)</div>
+                                <div className={`stat-value ${data?.overall_gri > 60 ? 'text-red' : data?.overall_gri > 30 ? 'text-orange' : 'text-green'}`}>
                                     {data?.overall_gri || 0}
                                 </div>
                             </div>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Fake News Detected</div>
-                                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: data?.fake_news_percentage > 20 ? '#f87171' : '#f8fafc' }}>
+                            <div className="governance-stat-box">
+                                <div className="stat-label">Fake News Detected</div>
+                                <div className={`stat-value ${data?.fake_news_percentage > 20 ? 'text-red' : ''}`}>
                                     {data?.fake_news_percentage || 0}%
                                 </div>
                             </div>
-                            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>Top Risk Category</div>
-                                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={data?.category_risk?.[0]?.category || 'None'}>
+                            <div className="governance-stat-box">
+                                <div className="stat-label">Top Risk Category</div>
+                                <div className="stat-value text-truncate" title={data?.category_risk?.[0]?.category || 'None'}>
                                     {data?.category_risk?.[0]?.category || 'None'}
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '12px' }}>
+                        <div className="governance-actions">
                             <a 
                                 href="/api/report/download" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                style={{ 
-                                    flex: 1, padding: '10px 16px', background: 'rgba(59, 130, 246, 0.15)', 
-                                    color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)', 
-                                    borderRadius: '10px', display: 'flex', alignItems: 'center', 
-                                    justifyContent: 'center', gap: '8px', fontSize: '0.85rem', 
-                                    fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s' 
-                                }}
+                                className="btn btn-download-report"
                             >
                                 <Download size={16} /> Download Full PDF Report
                             </a>
                             <button 
                                 onClick={() => navigate('/analytics')}
-                                style={{ 
-                                    padding: '10px 16px', background: 'rgba(255, 255, 255, 0.05)', 
-                                    color: '#cbd5e1', border: '1px solid rgba(255, 255, 255, 0.1)', 
-                                    borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, 
-                                    cursor: 'pointer', transition: 'all 0.2s' 
-                                }}
+                                className="btn btn-view-details"
                             >
                                 View Details
                             </button>
@@ -449,7 +425,7 @@ export default function Dashboard() {
                                             <MessageSquare size={16} />
                                         </div>
                                         <div className="alert-item-body">
-                                            <div className="alert-item-title" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
+                                            <div className="alert-item-title text-truncate" style={{ maxWidth: '200px' }}>
                                                 {mention.content}
                                             </div>
                                             <div className="alert-item-meta" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -458,7 +434,7 @@ export default function Dashboard() {
                                         </div>
                                         {mention.url && (
                                             <div className="alert-item-right">
-                                                <a href={mention.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px', fontSize: '11px' }}>
+                                                <a href={mention.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm btn-view-mention">
                                                     View
                                                 </a>
                                             </div>
